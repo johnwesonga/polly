@@ -1,4 +1,11 @@
 defmodule Polly.Polls.Option do
+  @moduledoc """
+  Represents an administrator-defined choice displayed on a poll's ballot.
+
+  Options belong to one poll, have deterministic ordering, and are frozen when
+  the poll leaves the draft state.
+  """
+
   use Ash.Resource,
     otp_app: :polly,
     domain: Polly.Polls,

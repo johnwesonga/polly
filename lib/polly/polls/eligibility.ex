@@ -1,4 +1,11 @@
 defmodule Polly.Polls.Eligibility do
+  @moduledoc """
+  Records that a member is eligible to participate in a specific poll.
+
+  Eligibility is configured while a poll is a draft and retained as a snapshot
+  once voting begins.
+  """
+
   use Ash.Resource,
     otp_app: :polly,
     domain: Polly.Polls,

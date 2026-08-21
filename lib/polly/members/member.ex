@@ -1,4 +1,11 @@
 defmodule Polly.Members.Member do
+  @moduledoc """
+  Represents a roster member who may be selected for a poll's electorate.
+
+  Members are reusable across polls and can be made inactive without changing
+  historical eligibility snapshots.
+  """
+
   use Ash.Resource,
     otp_app: :polly,
     domain: Polly.Members,

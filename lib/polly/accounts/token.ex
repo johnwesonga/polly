@@ -1,4 +1,9 @@
 defmodule Polly.Accounts.Token do
+  @moduledoc """
+  Stores authentication tokens used by the application's sign-in, confirmation,
+  and password-reset flows.
+  """
+
   use Ash.Resource,
     otp_app: :polly,
     domain: Polly.Accounts,

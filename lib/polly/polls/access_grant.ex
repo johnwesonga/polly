@@ -1,4 +1,10 @@
 defmodule Polly.Polls.AccessGrant do
+  @moduledoc """
+  Stores a revocable credential granting one eligible member access to one poll.
+
+  Tokens are poll-scoped and may be revoked, reissued, or optionally expired.
+  """
+
   use Ash.Resource,
     otp_app: :polly,
     domain: Polly.Polls,

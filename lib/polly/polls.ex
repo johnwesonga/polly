@@ -1,4 +1,11 @@
 defmodule Polly.Polls do
+  @moduledoc """
+  Provides poll configuration, lifecycle, electorate, and access management.
+
+  The domain owns polls and their options, eligibility snapshots, and revocable
+  member access grants.
+  """
+
   use Ash.Domain,
     otp_app: :polly
 

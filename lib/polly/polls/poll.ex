@@ -1,4 +1,11 @@
 defmodule Polly.Polls.Poll do
+  @moduledoc """
+  Represents a configurable poll and controls its forward-only lifecycle.
+
+  A poll owns its ballot options, electorate, access grants, and result
+  publication state.
+  """
+
   use Ash.Resource,
     otp_app: :polly,
     domain: Polly.Polls,

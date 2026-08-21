@@ -1,4 +1,8 @@
 defmodule Polly.Accounts.User do
+  @moduledoc """
+  Represents an administrator who can authenticate and manage members and polls.
+  """
+
   use Ash.Resource,
     otp_app: :polly,
     domain: Polly.Accounts,
