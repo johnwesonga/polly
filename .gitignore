@@ -35,3 +35,6 @@ polly-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Local AshSqlite databases and sidecar files.
+/polly_test*
+/polly_dev*

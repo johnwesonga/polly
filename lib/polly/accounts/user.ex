@@ -40,6 +40,7 @@ defmodule Polly.Accounts.User do
       password :password do
         identity_field :email
         hash_provider AshAuthentication.BcryptProvider
+        registration_enabled? false
 
         resettable do
           sender Polly.Accounts.User.Senders.SendPasswordResetEmail

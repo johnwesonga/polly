@@ -25,16 +25,7 @@ defmodule PollyWeb.Router do
     pipe_through :browser
 
     ash_authentication_live_session :authenticated_routes do
-      # in each liveview, add one of the following at the top of the module:
-      #
-      # If an authenticated user must be present:
-      # on_mount {PollyWeb.LiveUserAuth, :live_user_required}
-      #
-      # If an authenticated user *may* be present:
-      # on_mount {PollyWeb.LiveUserAuth, :live_user_optional}
-      #
-      # If an authenticated user must *not* be present:
-      # on_mount {PollyWeb.LiveUserAuth, :live_no_user}
+      live "/admin", AdminLive, :index
     end
   end
 
@@ -46,8 +37,7 @@ defmodule PollyWeb.Router do
     sign_out_route AuthController
 
     # Remove these if you'd like to use your own authentication views
-    sign_in_route register_path: "/register",
-                  reset_path: "/reset",
+    sign_in_route reset_path: "/reset",
                   auth_routes_prefix: "/auth",
                   on_mount: [{PollyWeb.LiveUserAuth, :live_no_user}],
                   overrides: [

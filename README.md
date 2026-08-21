@@ -10,7 +10,8 @@ features such as ranked voting, write-ins, public results, scheduling, and
 audience segments are intentionally deferred.
 
 See [the configurable polls proposal](docs/configurable-polls-proposal.md) for
-the full product and domain design.
+the full product and domain design. The decisions made during bootstrap are in
+[the first-release decision record](docs/first-release-decisions.md).
 
 ## First-release rules
 
@@ -48,7 +49,7 @@ poll.
 
 ## Delivery plan
 
-1. **Bootstrap** — establish the new project, administrator authentication,
+1. **Bootstrap (complete)** — establish the new project, administrator authentication,
    test foundation, and remaining product decisions.
 2. **Poll foundation** — implement polls, text options, lifecycle actions, and
    authenticated configuration pages.
@@ -61,21 +62,9 @@ poll.
 6. **Hardening** — verify concurrency, authorization, token handling, logging,
    deployment, and operator documentation.
 
-The project is currently in the bootstrap stage. The Phoenix/Ash application
-and authentication foundation exist; the polling resources and workflows are
-not yet implemented.
-
-## Open product decisions
-
-Before implementing behavior affected by them, decide:
-
-- whether a closed poll can be reopened;
-- whether published results can be withdrawn and whether polls can be archived;
-- whether all members are eligible by default or selection is always explicit;
-- whether links are initially delivered by copy/paste, CSV export, or email;
-- how link revocation and reissuing affect an unsubmitted ballot;
-- whether options need descriptions; and
-- whether option ordering uses move controls or drag-and-drop.
+Phase 0 is complete. The Phoenix/Ash application, protected administrator area,
+authentication foundation, test helpers, and first-release decisions are in
+place. The polling resources and workflows are not yet implemented.
 
 ## Development
 
@@ -102,6 +91,18 @@ iex -S mix phx.server
 ```
 
 Visit [http://localhost:4000](http://localhost:4000).
+
+### Create an administrator
+
+Public account registration is disabled. Provision an administrator from a
+trusted shell:
+
+```sh
+POLLY_ADMIN_PASSWORD="a secure password" mix polly.admin.create admin@example.com
+```
+
+In development, open [http://localhost:4000/dev/mailbox](http://localhost:4000/dev/mailbox)
+to retrieve the account confirmation message.
 
 ## Quality checks
 
