@@ -2,7 +2,8 @@ defmodule Polly.Polls.PollTest do
   use Polly.DataCase
 
   alias Polly.Accounts.User
-  alias Polly.Polls.{Option, Poll}
+  alias Polly.Members.Member
+  alias Polly.Polls.{Eligibility, Option, Poll}
 
   setup do
     actor =
@@ -36,10 +37,20 @@ defmodule Polly.Polls.PollTest do
     assert Exception.message(error) =~ "at least two active options"
   end
 
+  test "requires an eligible member before opening", %{actor: actor} do
+    poll = create_poll!(actor, "Team Theme")
+    create_option!(poll, actor, "Under the Sea", 1)
+    create_option!(poll, actor, "Retro Arcade", 2)
+
+    assert {:error, error} = Ash.update(poll, %{}, action: :open, actor: actor)
+    assert Exception.message(error) =~ "at least one member is eligible"
+  end
+
   test "opens and closes through forward-only lifecycle actions", %{actor: actor} do
     poll = create_poll!(actor, "Team Theme")
     create_option!(poll, actor, "Under the Sea", 1)
     create_option!(poll, actor, "Retro Arcade", 2)
+    create_eligibility!(poll, actor)
 
     opened = Ash.update!(poll, %{}, action: :open, actor: actor)
     assert opened.status == :open
@@ -57,6 +68,7 @@ defmodule Polly.Polls.PollTest do
     poll = create_poll!(actor, "Team Theme")
     first = create_option!(poll, actor, "Under the Sea", 1)
     create_option!(poll, actor, "Retro Arcade", 2)
+    create_eligibility!(poll, actor)
     opened = Ash.update!(poll, %{}, action: :open, actor: actor)
 
     assert {:error, poll_error} =
@@ -99,5 +111,10 @@ defmodule Polly.Polls.PollTest do
 
   defp create_option!(poll, actor, label, position) do
     Ash.create!(Option, %{poll_id: poll.id, label: label, position: position}, actor: actor)
+  end
+
+  defp create_eligibility!(poll, actor) do
+    member = Ash.create!(Member, %{name: "Eligible Member"}, actor: actor)
+    Ash.create!(Eligibility, %{poll_id: poll.id, member_id: member.id}, actor: actor)
   end
 end

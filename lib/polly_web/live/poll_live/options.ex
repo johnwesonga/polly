@@ -56,7 +56,10 @@ defmodule PollyWeb.PollLive.Options do
 
         <div class="detail-tabs" aria-label="Poll configuration sections">
           <span class="phase-tab current">Options</span>
-          <span class="phase-tab">Electorate · Phase 2</span>
+          <.link navigate={~p"/admin/polls/#{@poll.id}/electorate"} class="phase-tab">
+            Electorate
+          </.link>
+          <.link navigate={~p"/admin/polls/#{@poll.id}/access"} class="phase-tab">Access links</.link>
           <span class="phase-tab">Results · Phase 4</span>
         </div>
 
@@ -204,7 +207,7 @@ defmodule PollyWeb.PollLive.Options do
                 /> At least two options
               </li>
               <li class="checklist-item">
-                <.icon name="hero-minus-circle" class="size-5" /> Electorate configured in Phase 2
+                <.icon name="hero-minus-circle" class="size-5" /> Configure the electorate next
               </li>
             </ul>
           </aside>

@@ -54,7 +54,13 @@ defmodule PollyWeb.Layouts do
           >
             Overview
           </.link>
-          <span class="nav-disabled" aria-disabled="true">Members</span>
+          <.link
+            id="admin-nav-members"
+            navigate={~p"/admin/members"}
+            class={if(@active_nav == :members, do: "current", else: nil)}
+          >
+            Members
+          </.link>
           <.link
             id="admin-nav-polls"
             navigate={~p"/admin/polls"}

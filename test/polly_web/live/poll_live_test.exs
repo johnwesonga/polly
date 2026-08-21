@@ -3,7 +3,8 @@ defmodule PollyWeb.PollLiveTest do
 
   require Ash.Query
 
-  alias Polly.Polls.{Option, Poll}
+  alias Polly.Members.Member
+  alias Polly.Polls.{Eligibility, Option, Poll}
 
   test "protects poll management routes", %{conn: conn} do
     assert {:error, {:redirect, %{to: "/sign-in"}}} = live(conn, ~p"/admin/polls")
@@ -92,6 +93,8 @@ defmodule PollyWeb.PollLiveTest do
     poll = create_poll!(actor)
     create_option!(poll, actor, "Under the Sea", 1)
     create_option!(poll, actor, "Retro Arcade", 2)
+    member = Ash.create!(Member, %{name: "Eligible Member"}, actor: actor)
+    Ash.create!(Eligibility, %{poll_id: poll.id, member_id: member.id}, actor: actor)
     poll = Ash.update!(poll, %{}, action: :open, actor: actor)
 
     {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/options")

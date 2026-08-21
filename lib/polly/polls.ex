@@ -3,6 +3,8 @@ defmodule Polly.Polls do
     otp_app: :polly
 
   resources do
+    resource Polly.Polls.AccessGrant
+    resource Polly.Polls.Eligibility
     resource Polly.Polls.Option
     resource Polly.Polls.Poll
   end
