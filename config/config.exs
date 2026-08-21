@@ -56,7 +56,7 @@ config :spark,
 config :polly,
   ecto_repos: [Polly.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Polly.Accounts]
+  ash_domains: [Polly.Accounts, Polly.Polls]
 
 # Configures the endpoint
 config :polly, PollyWeb.Endpoint,

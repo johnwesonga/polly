@@ -26,6 +26,10 @@ defmodule PollyWeb.Router do
 
     ash_authentication_live_session :authenticated_routes do
       live "/admin", AdminLive, :index
+      live "/admin/polls", PollLive.Index, :index
+      live "/admin/polls/new", PollLive.Form, :new
+      live "/admin/polls/:id/edit", PollLive.Form, :edit
+      live "/admin/polls/:id/options", PollLive.Options, :index
     end
   end
 

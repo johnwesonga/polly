@@ -36,4 +36,24 @@ defmodule PollyWeb.ConnCase do
     Polly.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  def register_and_log_in_administrator(conn, attributes \\ %{}) do
+    email = Map.get(attributes, :email, "admin-#{System.unique_integer([:positive])}@example.com")
+    password = Map.get(attributes, :password, "secure-password")
+
+    administrator =
+      Ash.create!(
+        Polly.Accounts.User,
+        %{email: email, password: password, password_confirmation: password},
+        action: :register_with_password,
+        authorize?: false
+      )
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> AshAuthentication.Plug.Helpers.store_in_session(administrator)
+
+    {conn, administrator}
+  end
 end

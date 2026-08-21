@@ -28,7 +28,8 @@ defmodule PollyWeb.AdminLiveTest do
     {:ok, view, _html} = live(conn, ~p"/admin")
 
     assert has_element?(view, "#admin-overview")
-    assert has_element?(view, "#phase-zero-status")
+    assert has_element?(view, "#poll-management-card")
+    assert has_element?(view, "#manage-polls-link")
   end
 
   test "does not expose public administrator registration", %{conn: conn} do

@@ -51,7 +51,7 @@ poll.
 
 1. **Bootstrap (complete)** — establish the new project, administrator authentication,
    test foundation, and remaining product decisions.
-2. **Poll foundation** — implement polls, text options, lifecycle actions, and
+2. **Poll foundation (complete)** — implement polls, text options, lifecycle actions, and
    authenticated configuration pages.
 3. **Electorate and access** — add eligibility snapshots, revocable member
    links, electorate selection, and ballot preview.
@@ -62,9 +62,10 @@ poll.
 6. **Hardening** — verify concurrency, authorization, token handling, logging,
    deployment, and operator documentation.
 
-Phase 0 is complete. The Phoenix/Ash application, protected administrator area,
-authentication foundation, test helpers, and first-release decisions are in
-place. The polling resources and workflows are not yet implemented.
+Phases 0 and 1 are complete. The protected administrator area now supports
+creating and editing draft polls and managing ordered text options. Poll
+lifecycle actions enforce forward-only transitions and freeze poll options once
+voting opens. Electorate selection and member access grants begin in Phase 2.
 
 ## Development
 

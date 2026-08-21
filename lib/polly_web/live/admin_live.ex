@@ -11,23 +11,22 @@ defmodule PollyWeb.AdminLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <section id="admin-overview" class="space-y-6">
-        <div>
-          <p class="text-sm font-semibold uppercase tracking-wide text-primary">Polly</p>
-          <h1 class="mt-2 text-3xl font-bold">Administration</h1>
-          <p class="mt-3 text-base-content/70">
-            The authentication foundation is ready. Poll and member management arrive in the
-            next delivery phases.
-          </p>
+    <Layouts.app flash={@flash} current_scope={@current_scope} active_nav={:overview}>
+      <section id="admin-overview">
+        <div class="admin-titlebar">
+          <div class="admin-h1">Overview</div>
         </div>
+        <p class="admin-sub">Configure independent polls and prepare their ballot options.</p>
+        <div class="laneline"></div>
 
-        <div id="phase-zero-status" class="rounded-box border border-base-300 bg-base-100 p-6">
-          <h2 class="text-lg font-semibold">Phase 0 complete</h2>
-          <p class="mt-2 text-sm text-base-content/70">
-            Administrator access is protected and the first-release product decisions are
-            recorded.
+        <div id="poll-management-card" class="card card-pad" style="margin-top:20px; max-width:620px;">
+          <h3>Poll management</h3>
+          <p class="admin-sub" style="margin-bottom:16px;">
+            Create draft polls, edit their details, and manage ordered text options.
           </p>
+          <.link id="manage-polls-link" navigate={~p"/admin/polls"} class="btn btn-coral">
+            Manage polls
+          </.link>
         </div>
       </section>
     </Layouts.app>

@@ -31,42 +31,70 @@ defmodule PollyWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :active_nav, :atom,
+    default: nil,
+    values: [nil, :overview, :members, :polls],
+    doc: "the active administrator navigation item"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </header>
+    <%= if @current_scope do %>
+      <div id="admin-shell" class="admin-layout">
+        <nav id="admin-navigation" class="admin-nav" aria-label="Administrator navigation">
+          <.link navigate={~p"/admin"} class="navhead brand-link">
+            <span class="sq" aria-hidden="true"></span>
+            <span>Touchpad</span>
+          </.link>
+          <.link
+            id="admin-nav-overview"
+            navigate={~p"/admin"}
+            class={if(@active_nav == :overview, do: "current", else: nil)}
+          >
+            Overview
+          </.link>
+          <span class="nav-disabled" aria-disabled="true">Members</span>
+          <.link
+            id="admin-nav-polls"
+            navigate={~p"/admin/polls"}
+            class={if(@active_nav == :polls, do: "current", else: nil)}
+          >
+            Polls
+          </.link>
+          <div class="navfoot">
+            Signed in as<br />
+            <strong>{to_string(@current_scope.user.email)}</strong>
+            <br />
+            <.link href={~p"/sign-out"} class="mt-2 inline-block text-white underline">
+              Sign out
+            </.link>
+          </div>
+        </nav>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
+        <main class="admin-main">
+          <div class="admin-content">
+            {render_slot(@inner_block)}
+          </div>
+        </main>
       </div>
-    </main>
+    <% else %>
+      <header class="navbar px-4 sm:px-6 lg:px-8">
+        <div class="flex-1">
+          <a href="/" class="brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span class="brand-name">Touchpad</span>
+          </a>
+        </div>
+        <.theme_toggle />
+      </header>
+
+      <main class="px-4 py-20 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-2xl space-y-4">
+          {render_slot(@inner_block)}
+        </div>
+      </main>
+    <% end %>
 
     <.flash_group flash={@flash} />
     """
