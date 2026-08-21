@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Polly responsive UI mock</title>
+    <style>
+      :root {
+        --ink: #111b35;
+        --muted: #65708a;
+        --canvas: #f4f5f8;
+        --surface: #ffffff;
+        --line: #e1e5ed;
+        --primary: #4c46dc;
+        --primary-dark: #3730b7;
+        --primary-soft: #eeedff;
+        --teal: #0f9b8e;
+        --teal-soft: #e7f7f3;
+        --coral: #ec6b57;
+        --coral-soft: #fff0ed;
+        --amber: #a16207;
+        --amber-soft: #fff7dc;
+        --nav: #0c2141;
+        --shadow: 0 18px 48px rgb(17 27 53 / 10%);
+        --radius: 18px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--canvas);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      button:focus-visible, input:focus-visible { outline: 3px solid #9c98ff; outline-offset: 2px; }
+
+      .prototype-bar {
+        position: sticky;
+        inset-block-start: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 60px;
+        padding: 10px clamp(16px, 3vw, 40px);
+        color: #fff;
+        background: #11182c;
+      }
+
+      .prototype-bar p { margin: 0; font-size: 14px; color: #c8cede; }
+      .prototype-bar strong { color: #fff; }
+
+      .view-switcher {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        border-radius: 12px;
+        background: rgb(255 255 255 / 10%);
+      }
+
+      .view-switcher button {
+        min-height: 36px;
+        padding: 7px 14px;
+        border: 0;
+        border-radius: 9px;
+        color: #dce0eb;
+        background: transparent;
+        font-weight: 700;
+      }
+
+      .view-switcher button[aria-selected="true"] { color: var(--ink); background: #fff; }
+      .prototype { display: none; min-height: calc(100vh - 60px); }
+      .prototype.active { display: block; }
+
+      .brand { display: inline-flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 800; }
+      .brand-mark {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border-radius: 11px 11px 11px 4px;
+        color: #fff;
+        background: linear-gradient(145deg, #625cf2, #3934c1);
+        box-shadow: 0 8px 16px rgb(76 70 220 / 25%);
+      }
+
+      .admin-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: calc(100vh - 60px); }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        padding: 26px 20px 20px;
+        color: #fff;
+        background: var(--nav);
+      }
+
+      .sidebar .brand { padding: 0 10px 28px; }
+      .sidebar nav { display: grid; gap: 8px; }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 46px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 12px;
+        color: #d8e1ee;
+        background: transparent;
+        text-align: left;
+        font-weight: 650;
+      }
+      .nav-item.active { color: #fff; background: #4c46dc; }
+      .nav-icon { width: 22px; text-align: center; font-size: 17px; }
+
+      .admin-profile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: auto;
+        padding: 16px 10px 4px;
+        border-top: 1px solid rgb(255 255 255 / 12%);
+      }
+      .avatar { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #fff; background: var(--teal); font-weight: 800; }
+      .admin-profile small { display: block; margin-top: 2px; color: #9fb0c7; }
+
+      .admin-main { min-width: 0; padding: clamp(22px, 4vw, 48px); }
+      .topline { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 8px; font-size: clamp(28px, 3vw, 38px); letter-spacing: -.035em; }
+      .lede { margin-bottom: 0; color: var(--muted); }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 10px 17px;
+        border: 1px solid transparent;
+        border-radius: 11px;
+        font-weight: 750;
+      }
+      .button.primary { color: #fff; background: var(--primary); box-shadow: 0 8px 18px rgb(76 70 220 / 22%); }
+      .button.primary:hover { background: var(--primary-dark); }
+      .button.secondary { color: var(--ink); border-color: var(--line); background: #fff; }
+      .button.ghost { color: var(--primary); background: transparent; }
+      .button.wide { width: 100%; }
+
+      .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 34px 0 20px; }
+      .metric, .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 2px 4px rgb(17 27 53 / 2%); }
+      .metric { padding: 20px; }
+      .metric-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .metric strong { font-size: 30px; letter-spacing: -.03em; }
+      .metric-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: var(--primary-soft); }
+      .metric:nth-child(2) .metric-icon { background: var(--teal-soft); }
+      .metric:nth-child(3) .metric-icon { background: var(--coral-soft); }
+      .metric:nth-child(4) .metric-icon { background: #edf4ff; }
+      .metric p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+
+      .dashboard-grid { display: grid; grid-template-columns: minmax(240px, .75fr) minmax(440px, 1.75fr); gap: 20px; }
+      .panel { min-width: 0; padding: 22px; }
+      .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+      .panel-header h2 { margin: 0; font-size: 18px; }
+      .panel-header a { color: var(--primary); font-size: 14px; font-weight: 700; }
+
+      .turnout { display: grid; place-items: center; padding: 16px 0 8px; }
+      .turnout-ring { position: relative; display: grid; width: 164px; height: 164px; place-items: center; border-radius: 50%; background: conic-gradient(var(--primary) 0 72%, #e8eaf0 72% 100%); }
+      .turnout-ring::after { content: ""; position: absolute; inset: 18px; border-radius: 50%; background: #fff; }
+      .turnout-ring div { z-index: 1; text-align: center; }
+      .turnout-ring strong { display: block; font-size: 32px; }
+      .turnout-ring span { color: var(--muted); font-size: 13px; }
+      .turnout-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin-top: 22px; }
+      .turnout-details div { padding: 12px; border-radius: 12px; background: #f7f8fa; }
+      .turnout-details strong { display: block; }
+      .turnout-details small { color: var(--muted); }
+
+      .poll-list { display: grid; }
+      .poll-row { display: grid; grid-template-columns: minmax(180px, 1.6fr) .7fr .6fr .85fr 24px; align-items: center; gap: 14px; min-height: 58px; padding: 8px 4px; border-top: 1px solid var(--line); }
+      .poll-row.header { min-height: 38px; padding-top: 0; border: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .poll-title { font-weight: 750; }
+      .poll-row small { display: none; color: var(--muted); }
+      .kebab { border: 0; background: transparent; font-size: 20px; }
+
+      .pill { display: inline-flex; width: fit-content; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 750; }
+      .pill.draft { color: #566076; background: #eef0f4; }
+      .pill.open { color: #08776d; background: var(--teal-soft); }
+      .pill.closed { color: #b14332; background: var(--coral-soft); }
+      .pill.published { color: #3730b7; background: var(--primary-soft); }
+
+      .mobile-admin-nav { display: none; }
+
+      .member-shell { min-height: calc(100vh - 60px); padding: 24px; background: linear-gradient(145deg, #f0efff 0%, #f8f9fb 35%, #e8f8f5 100%); }
+      .member-frame { width: min(100%, 680px); margin: 0 auto; overflow: hidden; border: 1px solid rgb(76 70 220 / 13%); border-radius: 24px; background: #fff; box-shadow: var(--shadow); }
+      .member-header { display: flex; align-items: center; justify-content: space-between; min-height: 78px; padding: 18px 28px; border-bottom: 1px solid var(--line); }
+      .secure-note { color: var(--muted); font-size: 13px; }
+      .member-content { padding: clamp(24px, 6vw, 44px); }
+      .eyebrow { margin-bottom: 10px; color: var(--primary); font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .member-content h1 { font-size: clamp(30px, 7vw, 44px); }
+      .member-content .intro { color: var(--muted); line-height: 1.65; }
+      .poll-meta { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 24px 0; padding: 16px 18px; border-radius: 14px; color: var(--muted); background: #f7f8fa; font-size: 14px; }
+      .poll-meta strong { color: var(--ink); }
+
+      fieldset { margin: 0; padding: 0; border: 0; }
+      legend { margin-bottom: 14px; font-size: 17px; font-weight: 800; }
+      .option-list { display: grid; gap: 12px; }
+      .option { position: relative; display: grid; grid-template-columns: 24px 48px 1fr; align-items: center; gap: 13px; min-height: 74px; padding: 12px 16px; border: 1.5px solid var(--line); border-radius: 15px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+      .option:hover { transform: translateY(-1px); border-color: #aaa6f3; }
+      .option:has(input:checked) { border-color: var(--primary); background: #fafaff; box-shadow: 0 0 0 3px rgb(76 70 220 / 10%); }
+      .option input { width: 20px; height: 20px; margin: 0; accent-color: var(--primary); }
+      .option-art { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 14px; color: #fff; background: var(--coral); font-size: 22px; }
+      .option:nth-child(2) .option-art { background: var(--teal); }
+      .option:nth-child(3) .option-art { background: #d6921d; }
+      .option strong { display: block; }
+      .option small { display: block; margin-top: 3px; color: var(--muted); }
+      .member-actions { display: grid; gap: 10px; margin-top: 24px; }
+
+      .confirmation, .results { display: none; }
+      .member-frame[data-step="confirm"] .ballot, .member-frame[data-step="results"] .ballot { display: none; }
+      .member-frame[data-step="confirm"] .confirmation, .member-frame[data-step="results"] .results { display: block; }
+      .confirmation-choice { display: flex; align-items: center; gap: 14px; margin: 24px 0 16px; padding: 18px; border: 1px solid var(--coral); border-radius: 15px; background: #fffaf9; }
+      .final-warning { padding: 18px; border-radius: 15px; background: #eef5ff; line-height: 1.5; }
+      .final-warning strong { display: block; margin-bottom: 5px; }
+
+      .result-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; margin: 22px 0; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+      .result-summary div { padding: 16px; background: #fff; }
+      .result-summary span { display: block; color: var(--muted); font-size: 13px; }
+      .result-summary strong { font-size: 24px; }
+      .result-list { display: grid; gap: 20px; }
+      .result-line { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; }
+      .rank { font-size: 18px; font-weight: 800; }
+      .bar-label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+      .bar { height: 9px; overflow: hidden; border-radius: 999px; background: #e9ebf0; }
+      .bar span { display: block; width: var(--value); height: 100%; border-radius: inherit; background: var(--teal); }
+      .vote-count { color: var(--muted); font-size: 13px; white-space: nowrap; }
+      .fine-print { margin: 24px 0 0; color: var(--muted); font-size: 12px; }
+
+      @media (max-width: 980px) {
+        .admin-shell { grid-template-columns: 82px minmax(0, 1fr); }
+        .sidebar { padding-inline: 13px; }
+        .sidebar .brand { justify-content: center; padding-inline: 0; }
+        .sidebar .brand span:last-child, .nav-label, .admin-profile div:last-child { display: none; }
+        .nav-item { justify-content: center; padding: 0; }
+        .admin-profile { justify-content: center; padding-inline: 0; }
+        .metrics { grid-template-columns: 1fr 1fr; }
+        .dashboard-grid { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 700px) {
+        .prototype-bar { align-items: flex-start; flex-direction: column; }
+        .prototype-bar p { display: none; }
+        .view-switcher { width: 100%; }
+        .view-switcher button { flex: 1; }
+        .prototype { min-height: calc(100vh - 104px); }
+        .admin-shell { display: block; min-height: calc(100vh - 104px); }
+        .sidebar { display: none; }
+        .admin-main { padding: 20px 16px 92px; }
+        .topline { align-items: flex-start; }
+        .topline .button span { display: none; }
+        .metrics { grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; }
+        .metric { padding: 15px; }
+        .metric strong { font-size: 24px; }
+        .metric p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dashboard-grid { gap: 12px; }
+        .panel { padding: 17px; }
+        .poll-row.header { display: none; }
+        .poll-row { grid-template-columns: 1fr auto 24px; gap: 8px 12px; padding: 14px 0; }
+        .poll-row > span:nth-child(3), .poll-row > span:nth-child(4) { display: none; }
+        .poll-row small { display: block; margin-top: 4px; font-weight: 500; }
+        .mobile-admin-nav { position: fixed; inset: auto 0 0; z-index: 15; display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px 8px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgb(255 255 255 / 96%); backdrop-filter: blur(12px); }
+        .mobile-admin-nav button { min-height: 52px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 700; }
+        .mobile-admin-nav button span { display: block; margin-bottom: 3px; font-size: 18px; }
+        .mobile-admin-nav button.active { color: var(--primary); background: var(--primary-soft); }
+        .member-shell { min-height: calc(100vh - 104px); padding: 0; background: #fff; }
+        .member-frame { min-height: calc(100vh - 104px); border: 0; border-radius: 0; box-shadow: none; }
+        .member-header { min-height: 66px; padding: 14px 18px; }
+        .member-header .brand { font-size: 18px; }
+        .secure-note { font-size: 0; }
+        .secure-note::after { content: "Secure link"; font-size: 12px; }
+        .member-content { padding: 26px 18px 40px; }
+      }
+
+      @media (max-width: 420px) {
+        .metrics { grid-template-columns: 1fr; }
+        .metric { display: grid; grid-template-columns: auto 1fr; gap: 0 14px; align-items: center; }
+        .metric-top { grid-row: span 2; }
+        .metric-top strong { order: 2; margin-left: 12px; }
+        .metric p { margin: 0; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="prototype-bar">
+      <p><strong>Polly UI prototype</strong> · Standalone design mock, not application code</p>
+      <div class="view-switcher" role="tablist" aria-label="Prototype view">
+        <button type="button" role="tab" aria-selected="true" data-view="admin">Admin interface</button>
+        <button type="button" role="tab" aria-selected="false" data-view="member">Member interface</button>
+      </div>
+    </header>
+
+    <section id="admin-view" class="prototype active" aria-label="Administrator interface mock">
+      <div class="admin-shell">
+        <aside class="sidebar">
+          <div class="brand"><span class="brand-mark">P</span><span>Polly</span></div>
+          <nav aria-label="Admin navigation">
+            <button class="nav-item active"><span class="nav-icon">⌂</span><span class="nav-label">Overview</span></button>
+            <button class="nav-item"><span class="nav-icon">▣</span><span class="nav-label">Polls</span></button>
+            <button class="nav-item"><span class="nav-icon">♙</span><span class="nav-label">Members</span></button>
+            <button class="nav-item"><span class="nav-icon">⚙</span><span class="nav-label">Settings</span></button>
+          </nav>
+          <div class="admin-profile"><span class="avatar">AD</span><div><strong>Admin</strong><small>Workspace</small></div></div>
+        </aside>
+
+        <main class="admin-main">
+          <div class="topline">
+            <div><h1>Overview</h1><p class="lede">Monitor polls and participation across your workspace.</p></div>
+            <button class="button primary"><b>＋</b><span>Create poll</span></button>
+          </div>
+
+          <section class="metrics" aria-label="Poll metrics">
+            <article class="metric"><div class="metric-top"><span class="metric-icon">□</span><strong>7</strong></div><p>Draft polls</p></article>
+            <article class="metric"><div class="metric-top"><span class="metric-icon">●</span><strong>2</strong></div><p>Open polls</p></article>
+            <article class="metric"><div class="metric-top"><span class="metric-icon">◷</span><strong>1</strong></div><p>Closed poll</p></article>
+            <article class="metric"><div class="metric-top"><span class="metric-icon">↗</span><strong>12</strong></div><p>Published results</p></article>
+          </section>
+
+          <div class="dashboard-grid">
+            <article class="panel">
+              <div class="panel-header"><h2>Turnout</h2><span class="pill open">Last 30 days</span></div>
+              <div class="turnout">
+                <div class="turnout-ring"><div><strong>72%</strong><span>average turnout</span></div></div>
+                <div class="turnout-details"><div><strong>846</strong><small>eligible members</small></div><div><strong>609</strong><small>ballots submitted</small></div></div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header"><h2>Recent polls</h2><a href="#">View all polls →</a></div>
+              <div class="poll-list">
+                <div class="poll-row header"><span>Poll</span><span>Status</span><span>Turnout</span><span>Updated</span><span></span></div>
+                <div class="poll-row"><span class="poll-title">2027 Team Theme<small>63% turnout · Updated today</small></span><span class="pill open">Open</span><span>63%</span><span>Today</span><button class="kebab" aria-label="Actions for 2027 Team Theme">⋮</button></div>
+                <div class="poll-row"><span class="poll-title">Office Lunch Options<small>81% turnout · Updated May 10</small></span><span class="pill closed">Closed</span><span>81%</span><span>May 10</span><button class="kebab" aria-label="Actions for Office Lunch Options">⋮</button></div>
+                <div class="poll-row"><span class="poll-title">Annual Volunteer Day<small>74% turnout · Updated April 21</small></span><span class="pill published">Published</span><span>74%</span><span>Apr 21</span><button class="kebab" aria-label="Actions for Annual Volunteer Day">⋮</button></div>
+                <div class="poll-row"><span class="poll-title">Q2 All Hands Topics<small>Not opened · Updated May 17</small></span><span class="pill draft">Draft</span><span>—</span><span>May 17</span><button class="kebab" aria-label="Actions for Q2 All Hands Topics">⋮</button></div>
+              </div>
+            </article>
+          </div>
+        </main>
+
+        <nav class="mobile-admin-nav" aria-label="Mobile admin navigation">
+          <button class="active"><span>⌂</span>Overview</button><button><span>▣</span>Polls</button><button><span>♙</span>Members</button><button><span>⚙</span>Settings</button>
+        </nav>
+      </div>
+    </section>
+
+    <section id="member-view" class="prototype" aria-label="Member interface mock">
+      <div class="member-shell">
+        <div class="member-frame" data-step="ballot">
+          <header class="member-header"><div class="brand"><span class="brand-mark">P</span><span>Polly</span></div><span class="secure-note">Private member link</span></header>
+          <main class="member-content ballot">
+            <p class="eyebrow">Hi Taylor · Voting is open</p>
+            <h1>2027 Team Theme</h1>
+            <p class="intro">Choose the theme you would most like to see next year. You may select one option, and your submitted vote will be final.</p>
+            <div class="poll-meta"><span><strong>Closes</strong> May 24, 5:00 PM</span><span><strong>Selection</strong> Choose one</span></div>
+            <form id="ballot-form">
+              <fieldset>
+                <legend>Choose an option</legend>
+                <div class="option-list">
+                  <label class="option"><input type="radio" name="theme" value="Under the Sea" checked /><span class="option-art">♨</span><span><strong>Under the Sea</strong><small>Ocean colors, coral, and sea life</small></span></label>
+                  <label class="option"><input type="radio" name="theme" value="Retro Arcade" /><span class="option-art">▦</span><span><strong>Retro Arcade</strong><small>Pixels, neon, and classic games</small></span></label>
+                  <label class="option"><input type="radio" name="theme" value="Wild West" /><span class="option-art">☆</span><span><strong>Wild West</strong><small>Frontier fun and western style</small></span></label>
+                </div>
+              </fieldset>
+              <div class="member-actions"><button class="button primary wide" type="submit">Review vote</button></div>
+            </form>
+          </main>
+
+          <main class="member-content confirmation">
+            <p class="eyebrow">Review your vote</p><h1>Ready to submit?</h1><p class="intro">Please confirm your selection before submitting.</p>
+            <div class="confirmation-choice"><span class="option-art">♨</span><div><small>Your selection</small><strong id="selected-choice">Under the Sea</strong></div></div>
+            <div class="final-warning"><strong>Your vote is final</strong>Once submitted, you won’t be able to change or resubmit your vote.</div>
+            <div class="member-actions"><button id="submit-final" class="button primary wide">Submit final vote</button><button id="go-back" class="button ghost wide">Go back</button></div>
+          </main>
+
+          <main class="member-content results">
+            <p class="eyebrow">Results published</p><h1>2027 Team Theme</h1><p class="intro">Voting is closed. Thanks for taking part, Taylor.</p>
+            <div class="result-summary"><div><span>Total votes</span><strong>609</strong></div><div><span>Turnout</span><strong>72%</strong></div></div>
+            <div class="result-list">
+              <div class="result-line"><span class="rank">1</span><div><div class="bar-label"><strong>Under the Sea</strong><strong>46%</strong></div><div class="bar"><span style="--value:46%"></span></div></div><span class="vote-count">280 votes</span></div>
+              <div class="result-line"><span class="rank">2</span><div><div class="bar-label"><strong>Retro Arcade</strong><strong>33%</strong></div><div class="bar"><span style="--value:33%"></span></div></div><span class="vote-count">201 votes</span></div>
+              <div class="result-line"><span class="rank">3</span><div><div class="bar-label"><strong>Wild West</strong><strong>21%</strong></div><div class="bar"><span style="--value:21%"></span></div></div><span class="vote-count">128 votes</span></div>
+            </div>
+            <p class="fine-print">Percentages may not add up to 100% due to rounding.</p>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      const prototypes = document.querySelectorAll(".prototype");
+      const viewButtons = document.querySelectorAll("[data-view]");
+      const memberFrame = document.querySelector(".member-frame");
+      const ballotForm = document.querySelector("#ballot-form");
+
+      viewButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          viewButtons.forEach((item) => item.setAttribute("aria-selected", String(item === button)));
+          prototypes.forEach((view) => view.classList.toggle("active", view.id === `${button.dataset.view}-view`));
+        });
+      });
+
+      ballotForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const choice = new FormData(ballotForm).get("theme");
+        document.querySelector("#selected-choice").textContent = choice;
+        memberFrame.dataset.step = "confirm";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      document.querySelector("#go-back").addEventListener("click", () => { memberFrame.dataset.step = "ballot"; });
+      document.querySelector("#submit-final").addEventListener("click", () => {
+        memberFrame.dataset.step = "results";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    </script>
+  </body>
+</html>

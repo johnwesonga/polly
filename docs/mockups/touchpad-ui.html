@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Touchpad — UI Mock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0B1F33;
+            --ink-soft: #1B3A55;
+            --paper: #F5F7F6;
+            --paper-alt: #ECF1EF;
+            --water: #DCEEEA;
+            --water-deep: #BFE0DA;
+            --coral: #E8491D;
+            --coral-dark: #C23815;
+            --coral-wash: #FCE4DA;
+            --slate: #5C7080;
+            --slate-light: #8CA0AC;
+            --green: #1F8A5F;
+            --green-wash: #DDEFE6;
+            --amber: #B9791A;
+            --amber-wash: #F5E8D2;
+            --line: rgba(11, 31, 51, 0.12);
+            --line-strong: rgba(11, 31, 51, 0.22);
+            --shadow: 0 1px 2px rgba(11, 31, 51, 0.06), 0 8px 24px -12px rgba(11, 31, 51, 0.18);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--paper-alt);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+            padding: 32px 20px 80px;
+        }
+
+        .mono {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .display {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 0.04em;
+        }
+
+        /* ---- Lane line signature ---- */
+        .laneline {
+            height: 4px;
+            background-image: repeating-linear-gradient(90deg, var(--coral) 0 16px, transparent 16px 24px);
+            border-radius: 2px;
+        }
+
+        .laneline.thin {
+            height: 2px;
+            background-image: repeating-linear-gradient(90deg, var(--line-strong) 0 10px, transparent 10px 16px);
+        }
+
+        .laneline.ink {
+            background-image: repeating-linear-gradient(90deg, var(--ink) 0 16px, transparent 16px 24px);
+        }
+
+        /* ---- Page shell ---- */
+        .shell {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        .masthead {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-mark {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: var(--ink);
+            position: relative;
+            flex: none;
+        }
+
+        .brand-mark::after {
+            content: "";
+            position: absolute;
+            inset: 7px 7px 7px 7px;
+            border: 2px solid var(--coral);
+            border-radius: 3px;
+        }
+
+        .brand-name {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 26px;
+            letter-spacing: 0.06em;
+            color: var(--ink);
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: var(--slate);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-left: 4px;
+        }
+
+        /* ---- Switcher ---- */
+        .switcher {
+            display: inline-flex;
+            background: var(--ink);
+            border-radius: 999px;
+            padding: 4px;
+            gap: 2px;
+        }
+
+        .switcher button {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            color: #B9C6D1;
+            background: transparent;
+            border: none;
+            padding: 9px 20px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+
+        .switcher button.active {
+            background: var(--coral);
+            color: #fff;
+        }
+
+        .switcher button:not(.active):hover {
+            color: #fff;
+        }
+
+        .note {
+            max-width: 640px;
+            margin: 0 auto 36px;
+            text-align: center;
+            color: var(--slate);
+            font-size: 13.5px;
+            line-height: 1.6;
+        }
+
+        section.panel {
+            display: none;
+        }
+
+        section.panel.active {
+            display: block;
+        }
+
+        /* ============ ADMIN FRAME ============ */
+        .device-admin {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid var(--line);
+        }
+
+        .device-chrome {
+            background: var(--paper-alt);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--line-strong);
+        }
+
+        .device-url {
+            margin-left: 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11.5px;
+            color: var(--slate);
+            background: #fff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--line);
+        }
+
+        .admin-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            min-height: 640px;
+        }
+
+        .admin-nav {
+            background: var(--ink);
+            color: #fff;
+            padding: 22px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .admin-nav .navhead {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            letter-spacing: 0.06em;
+            padding: 0 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .admin-nav .navhead .sq {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--coral);
+            border-radius: 3px;
+        }
+
+        .admin-nav a {
+            color: #B9C6D1;
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 500;
+            padding: 9px 12px;
+            border-radius: 8px;
+            margin-bottom: 2px;
+        }
+
+        .admin-nav a.current {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .admin-nav a:hover {
+            color: #fff;
+        }
+
+        .navfoot {
+            margin-top: auto;
+            padding: 12px 12px 0;
+            font-size: 11.5px;
+            color: var(--slate-light);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-main {
+            padding: 26px 30px 34px;
+        }
+
+        .admin-titlebar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .admin-h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 30px;
+            letter-spacing: 0.03em;
+        }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 9px;
+            cursor: pointer;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-coral {
+            background: var(--coral);
+            color: #fff;
+        }
+
+        .btn-coral:hover {
+            background: var(--coral-dark);
+        }
+
+        .btn-ghost {
+            background: #fff;
+            border: 1px solid var(--line-strong);
+            color: var(--ink);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--ink);
+        }
+
+        .btn-sm {
+            padding: 7px 12px;
+            font-size: 12px;
+            border-radius: 7px;
+        }
+
+        .admin-sub {
+            color: var(--slate);
+            font-size: 13.5px;
+            margin: 0 0 22px;
+        }
+
+        /* poll list cards */
+        .poll-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .poll-card {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 16px 18px;
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            align-items: center;
+            gap: 18px;
+            cursor: pointer;
+            transition: border-color .12s ease, transform .12s ease;
+            background: #fff;
+        }
+
+        .poll-card:hover {
+            border-color: var(--line-strong);
+            transform: translateY(-1px);
+        }
+
+        .poll-name {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 3px;
+        }
+
+        .poll-meta {
+            color: var(--slate);
+            font-size: 12px;
+        }
+
+        .pill {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 4px 9px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .pill .dotlive {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .pill.open {
+            background: var(--coral-wash);
+            color: var(--coral-dark);
+        }
+
+        .pill.draft {
+            background: var(--paper-alt);
+            color: var(--slate);
+        }
+
+        .pill.closed {
+            background: #EDEEF0;
+            color: var(--ink-soft);
+        }
+
+        .pill.published {
+            background: var(--green-wash);
+            color: var(--green);
+        }
+
+        .turnout {
+            width: 150px;
+        }
+
+        .turnout-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--ink);
+            margin-bottom: 5px;
+        }
+
+        .turnout-track {
+            height: 5px;
+            background: var(--paper-alt);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .turnout-fill {
+            height: 100%;
+            background: var(--coral);
+            border-radius: 3px;
+        }
+
+        .arrow {
+            color: var(--slate-light);
+            font-size: 18px;
+        }
+
+        /* poll detail */
+        .detail-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .breadcrumb {
+            color: var(--slate);
+            font-size: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .detail-tabs {
+            display: flex;
+            gap: 4px;
+            margin: 18px 0 20px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .detail-tabs button {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--slate);
+            background: none;
+            border: none;
+            padding: 10px 4px;
+            margin-right: 22px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            position: relative;
+            top: 1px;
+        }
+
+        .detail-tabs button.active {
+            color: var(--ink);
+            border-bottom-color: var(--coral);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 260px;
+            gap: 26px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .card-pad {
+            padding: 18px 20px;
+        }
+
+        .card h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--slate);
+            margin: 0 0 14px;
+            font-weight: 700;
+        }
+
+        .option-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .option-row:last-child {
+            border-bottom: none;
+        }
+
+        .reorder {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .reorder button {
+            width: 20px;
+            height: 16px;
+            border: 1px solid var(--line);
+            background: #fff;
+            border-radius: 4px;
+            color: var(--slate);
+            font-size: 9px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reorder button:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        .option-pos {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: var(--paper-alt);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--slate);
+            flex: none;
+        }
+
+        .option-label {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .option-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--slate);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .add-option {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .add-option input {
+            flex: 1;
+            border: 1px solid var(--line-strong);
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13.5px;
+        }
+
+        .meta-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .meta-item .k {
+            font-size: 11px;
+            color: var(--slate);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .meta-item .v {
+            font-size: 13.5px;
+            font-weight: 600;
+        }
+
+        .meta-item .v.mono {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
+            font-size: 12.5px;
+        }
+
+        /* electorate */
+        .search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--line-strong);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            color: var(--slate);
+            font-size: 13px;
+        }
+
+        .member-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .member-row:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 5px;
+            border: 2px solid var(--line-strong);
+            flex: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox.on {
+            background: var(--coral);
+            border-color: var(--coral);
+            color: #fff;
+            font-size: 11px;
+        }
+
+        .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--water-deep);
+            color: var(--ink-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex: none;
+        }
+
+        .member-name {
+            font-size: 13.5px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .link-token {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--slate);
+        }
+
+        /* results */
+        .result-row {
+            margin-bottom: 16px;
+        }
+
+        .result-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 6px;
+        }
+
+        .result-name {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .result-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12.5px;
+            color: var(--slate);
+        }
+
+        .result-track {
+            height: 10px;
+            background: var(--paper-alt);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .result-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .result-row.win .result-fill {
+            background: var(--coral);
+        }
+
+        .result-row.win .result-name::after {
+            content: " — winner";
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
+            font-size: 10.5px;
+            color: var(--coral);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        .result-row:not(.win) .result-fill {
+            background: var(--slate-light);
+        }
+
+        .callout {
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 12.5px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 18px;
+        }
+
+        .callout.green {
+            background: var(--green-wash);
+            color: #155C40;
+        }
+
+        .callout.amber {
+            background: var(--amber-wash);
+            color: #7A550F;
+        }
+
+        /* ============ MEMBER FRAME ============ */
+        .member-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .state-switcher {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 20px;
+            background: #fff;
+            border: 1px solid var(--line);
+            padding: 4px;
+            border-radius: 999px;
+        }
+
+        .state-switcher button {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--slate);
+            background: none;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .state-switcher button.active {
+            background: var(--ink);
+            color: #fff;
+        }
+
+        .phone {
+            width: 380px;
+            max-width: 100%;
+            background: #fff;
+            border-radius: 36px;
+            border: 10px solid var(--ink);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 22px;
+            background: var(--ink);
+            border-radius: 0 0 14px 14px;
+            z-index: 2;
+        }
+
+        .phone-screen {
+            padding: 38px 22px 26px;
+            min-height: 640px;
+            background: var(--paper);
+        }
+
+        .mstate {
+            display: none;
+        }
+
+        .mstate.active {
+            display: block;
+        }
+
+        .m-eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--slate);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .m-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 32px;
+            line-height: 1;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+
+        .m-desc {
+            font-size: 13px;
+            color: var(--slate);
+            line-height: 1.55;
+            margin-bottom: 18px;
+        }
+
+        .touch-option {
+            position: relative;
+            border: 2px solid var(--line-strong);
+            border-radius: 12px;
+            padding: 16px 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: border-color .12s ease, background .12s ease;
+            background: #fff;
+        }
+
+        .touch-option input[type="radio"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .touch-option .box {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 2px solid var(--line-strong);
+            flex: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .touch-option.picked {
+            border-color: var(--coral);
+            background: var(--coral-wash);
+        }
+
+        .touch-option.picked .box {
+            background: var(--coral);
+            border-color: var(--coral);
+        }
+
+        .touch-option:has(input:focus-visible) {
+            outline: 2px solid var(--ink);
+            outline-offset: 3px;
+        }
+
+        .touch-option .opt-text {
+            font-weight: 600;
+            font-size: 14.5px;
+        }
+
+        .review-card {
+            border: 2px solid var(--coral);
+            background: var(--coral-wash);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .review-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--coral-dark);
+            margin-bottom: 6px;
+        }
+
+        .review-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 24px;
+            letter-spacing: .02em;
+        }
+
+        .m-back {
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--slate);
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 12px;
+            margin-top: 6px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .m-submit {
+            width: 100%;
+            background: var(--coral);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 15px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+
+        .m-fine {
+            font-size: 11px;
+            color: var(--slate-light);
+            text-align: center;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+
+        .m-confirm {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-top: 40px;
+        }
+
+        .stamp {
+            width: 74px;
+            height: 74px;
+            border-radius: 50%;
+            border: 3px solid var(--coral);
+            color: var(--coral);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 20px;
+            font-family: 'Bebas Neue', sans-serif;
+            transform: rotate(-8deg);
+        }
+
+        .m-confirm h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 26px;
+            letter-spacing: .03em;
+            margin: 0 0 8px;
+        }
+
+        .m-confirm p {
+            font-size: 13px;
+            color: var(--slate);
+            line-height: 1.6;
+            max-width: 260px;
+        }
+
+        .receipt {
+            margin-top: 22px;
+            width: 100%;
+            border: 1px dashed var(--line-strong);
+            border-radius: 10px;
+            padding: 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--slate);
+            text-align: left;
+        }
+
+        .receipt div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .receipt div:last-child {
+            margin-bottom: 0;
+        }
+
+        .m-results-hero {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .m-results-hero .k {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--slate);
+        }
+
+        .m-results-hero .v {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 34px;
+            margin: 6px 0;
+        }
+
+        .m-result-row {
+            margin-bottom: 14px;
+        }
+
+        .m-result-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .m-result-top b {
+            font-weight: 700;
+        }
+
+        .m-result-top span {
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--slate);
+            font-size: 11.5px;
+        }
+
+        .m-result-track {
+            height: 8px;
+            background: var(--paper-alt);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .m-result-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--slate-light);
+        }
+
+        .m-result-row.win .m-result-fill {
+            background: var(--coral);
+        }
+
+        .waiting {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-top: 56px;
+        }
+
+        .waiting .ring {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid var(--line);
+            border-top-color: var(--coral);
+            margin-bottom: 20px;
+        }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 860px) {
+            body {
+                padding: 20px 12px 60px;
+            }
+
+            .masthead {
+                flex-wrap: wrap;
+                gap: 14px;
+                align-items: center;
+            }
+
+            .admin-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-nav {
+                flex-direction: row;
+                align-items: center;
+                overflow-x: auto;
+                padding: 12px 14px;
+                gap: 4px;
+            }
+
+            .admin-nav .navhead {
+                padding: 0 14px 0 0;
+                margin-right: auto;
+            }
+
+            .admin-nav a {
+                white-space: nowrap;
+                margin-bottom: 0;
+            }
+
+            .navfoot {
+                display: none;
+            }
+
+            .admin-main {
+                padding: 20px 16px 28px;
+            }
+
+            .admin-h1 {
+                font-size: 26px;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .poll-card {
+                grid-template-columns: 1fr auto;
+                grid-template-areas: "name status" "turnout turnout" "arrow arrow";
+                row-gap: 10px;
+            }
+
+            .poll-card .poll-name,
+            .poll-card .poll-meta {
+                grid-area: name;
+            }
+
+            .poll-card>span.pill {
+                grid-area: status;
+                justify-self: end;
+            }
+
+            .poll-card>.turnout {
+                grid-area: turnout;
+                width: 100%;
+            }
+
+            .poll-card>.arrow {
+                display: none;
+            }
+
+            .device-url {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-titlebar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .detail-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .phone {
+                border-width: 8px;
+                border-radius: 28px;
+            }
+
+            .phone-screen {
+                padding: 32px 16px 22px;
+            }
+
+            .m-title {
+                font-size: 27px;
+            }
+
+            .state-switcher {
+                flex-wrap: wrap;
+                justify-content: center;
+                border-radius: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="shell">
+        <div class="masthead">
+            <div class="brand">
+                <div class="brand-mark"></div>
+                <div>
+                    <div class="brand-name">TOUCHPAD</div>
+                </div>
+                <div class="brand-sub">team polls &amp; nominations</div>
+            </div>
+            <div class="switcher">
+                <button class="active" data-target="admin">Admin</button>
+                <button data-target="member">Member link</button>
+            </div>
+        </div>
+
+        <p class="note">Two surfaces, one poll: administrators configure and publish from the dashboard below, and each
+            eligible member votes through their own single-use link. Switch views above — inside the member preview you
+            can also step through Voting → Submitted → Results.</p>
+
+        <!-- ============================================================ ADMIN ============================================================ -->
+        <section class="panel active" id="panel-admin">
+            <div class="device-admin">
+                <div class="device-chrome">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="device-url">app.touchpad.team/admin/polls/2027-team-theme</div>
+                </div>
+                <div class="admin-layout">
+                    <nav class="admin-nav">
+                        <div class="navhead">
+                            <div class="sq"></div>Touchpad
+                        </div>
+                        <a>Overview</a>
+                        <a>Members</a>
+                        <a class="current">Polls</a>
+                        <div class="navfoot">Signed in as<br>Coach Priya · Admin</div>
+                    </nav>
+
+                    <div class="admin-main">
+                        <!-- LIST VIEW -->
+                        <div id="admin-list">
+                            <div class="admin-titlebar">
+                                <div class="admin-h1">POLLS</div>
+                                <button class="btn btn-coral">+ New poll</button>
+                            </div>
+                            <p class="admin-sub">Every poll owns its own options, electorate, and results.</p>
+                            <div class="laneline" style="margin-bottom:20px;"></div>
+
+                            <div class="poll-list">
+                                <div class="poll-card" onclick="openDetail()">
+                                    <div>
+                                        <div class="poll-name">2027 Team Theme</div>
+                                        <div class="poll-meta">Single choice · opened by admin, no scheduled close</div>
+                                    </div>
+                                    <span class="pill open"><span class="dotlive"></span>Open</span>
+                                    <div class="turnout">
+                                        <div class="turnout-num">34 / 52 voted</div>
+                                        <div class="turnout-track">
+                                            <div class="turnout-fill" style="width:65%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="arrow">›</div>
+                                </div>
+
+                                <div class="poll-card">
+                                    <div>
+                                        <div class="poll-name">Most Inspirational Swimmer — 2026</div>
+                                        <div class="poll-meta">Single choice · closed Aug 2, 2026</div>
+                                    </div>
+                                    <span class="pill published">Published</span>
+                                    <div class="turnout">
+                                        <div class="turnout-num">48 / 48 voted</div>
+                                        <div class="turnout-track">
+                                            <div class="turnout-fill" style="width:100%; background:var(--green)"></div>
+                                        </div>
+                                    </div>
+                                    <div class="arrow">›</div>
+                                </div>
+
+                                <div class="poll-card">
+                                    <div>
+                                        <div class="poll-name">Fall Banquet Date</div>
+                                        <div class="poll-meta">Single choice · not opened</div>
+                                    </div>
+                                    <span class="pill draft">Draft</span>
+                                    <div class="turnout">
+                                        <div class="turnout-num">— not open</div>
+                                        <div class="turnout-track">
+                                            <div class="turnout-fill" style="width:0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="arrow">›</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DETAIL VIEW -->
+                        <div id="admin-detail" style="display:none;">
+                            <div class="breadcrumb"><span onclick="closeDetail()"
+                                    style="cursor:pointer; text-decoration:underline;">Polls</span> / 2027 Team Theme
+                            </div>
+                            <div class="detail-header">
+                                <div>
+                                    <div class="admin-h1">2027 TEAM THEME</div>
+                                    <p class="admin-sub" style="margin:4px 0 0;">What should we call the 2027 season?
+                                        Voted on by every eligible member.</p>
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <span class="pill open" style="align-self:flex-start;"><span
+                                            class="dotlive"></span>Open</span>
+                                </div>
+                            </div>
+
+                            <div class="detail-tabs">
+                                <button class="active" data-tab="options">Options</button>
+                                <button data-tab="electorate">Electorate</button>
+                                <button data-tab="results">Results</button>
+                            </div>
+
+                            <div class="detail-grid">
+                                <div>
+                                    <!-- OPTIONS TAB -->
+                                    <div class="tab-pane" id="tab-options">
+                                        <div class="card card-pad">
+                                            <h3>Ballot options</h3>
+                                            <div class="callout amber">⚠ Options are frozen while this poll is open.
+                                                Close the poll to edit.</div>
+                                            <div class="option-row">
+                                                <div class="reorder"><button disabled
+                                                        aria-label="Move Under the Sea up">▲</button><button disabled
+                                                        aria-label="Move Under the Sea down">▼</button></div>
+                                                <span class="option-pos">01</span>
+                                                <span class="option-label">Under the Sea</span>
+                                                <div class="option-actions"><button class="icon-btn"
+                                                        disabled>✎</button><button class="icon-btn" disabled>✕</button>
+                                                </div>
+                                            </div>
+                                            <div class="option-row">
+                                                <div class="reorder"><button disabled
+                                                        aria-label="Move Retro Arcade up">▲</button><button disabled
+                                                        aria-label="Move Retro Arcade down">▼</button></div>
+                                                <span class="option-pos">02</span>
+                                                <span class="option-label">Retro Arcade</span>
+                                                <div class="option-actions"><button class="icon-btn"
+                                                        disabled>✎</button><button class="icon-btn" disabled>✕</button>
+                                                </div>
+                                            </div>
+                                            <div class="option-row">
+                                                <div class="reorder"><button disabled
+                                                        aria-label="Move Space Explorers up">▲</button><button disabled
+                                                        aria-label="Move Space Explorers down">▼</button></div>
+                                                <span class="option-pos">03</span>
+                                                <span class="option-label">Space Explorers</span>
+                                                <div class="option-actions"><button class="icon-btn"
+                                                        disabled>✎</button><button class="icon-btn" disabled>✕</button>
+                                                </div>
+                                            </div>
+                                            <div class="option-row">
+                                                <div class="reorder"><button disabled
+                                                        aria-label="Move Neon Splash up">▲</button><button disabled
+                                                        aria-label="Move Neon Splash down">▼</button></div>
+                                                <span class="option-pos">04</span>
+                                                <span class="option-label">Neon Splash</span>
+                                                <div class="option-actions"><button class="icon-btn"
+                                                        disabled>✎</button><button class="icon-btn" disabled>✕</button>
+                                                </div>
+                                            </div>
+                                            <div class="add-option">
+                                                <input placeholder="Add another option — disabled while open" disabled>
+                                                <button class="btn btn-ghost btn-sm" disabled>Add</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- ELECTORATE TAB -->
+                                    <div class="tab-pane" id="tab-electorate" style="display:none;">
+                                        <div class="card card-pad">
+                                            <h3>Eligible members · 52 selected</h3>
+                                            <div class="search">🔍 Search members</div>
+                                            <div class="member-row">
+                                                <div class="avatar">AK</div>
+                                                <div class="member-name">Ava Kessler</div><span
+                                                    class="link-token">/vote/8f2a…c91</span>
+                                                <div class="checkbox on">✓</div>
+                                            </div>
+                                            <div class="member-row">
+                                                <div class="avatar">DM</div>
+                                                <div class="member-name">Diego Marsh</div><span
+                                                    class="link-token">/vote/1b7e…44f</span>
+                                                <div class="checkbox on">✓</div>
+                                            </div>
+                                            <div class="member-row">
+                                                <div class="avatar">RP</div>
+                                                <div class="member-name">Rhea Patel</div><span
+                                                    class="link-token">/vote/9c02…a17</span>
+                                                <div class="checkbox on">✓</div>
+                                            </div>
+                                            <div class="member-row">
+                                                <div class="avatar">LT</div>
+                                                <div class="member-name">Liam Torres</div><span class="link-token"
+                                                    style="color:var(--slate-light)">revoked</span>
+                                                <div class="checkbox"></div>
+                                            </div>
+                                            <div class="member-row">
+                                                <div class="avatar">…</div>
+                                                <div class="member-name" style="color:var(--slate)">48 more members
+                                                </div><span></span>
+                                                <div></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- RESULTS TAB -->
+                                    <div class="tab-pane" id="tab-results" style="display:none;">
+                                        <div class="card card-pad">
+                                            <h3>Live results — private to admins</h3>
+                                            <div class="callout amber">Results stay hidden from members until this poll
+                                                is closed and you publish.</div>
+                                            <div class="result-row win">
+                                                <div class="result-top"><span class="result-name">Under the
+                                                        Sea</span><span class="result-num">15 votes · 44%</span></div>
+                                                <div class="result-track">
+                                                    <div class="result-fill" style="width:44%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="result-row">
+                                                <div class="result-top"><span class="result-name">Retro
+                                                        Arcade</span><span class="result-num">10 votes · 29%</span>
+                                                </div>
+                                                <div class="result-track">
+                                                    <div class="result-fill" style="width:29%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="result-row">
+                                                <div class="result-top"><span class="result-name">Neon
+                                                        Splash</span><span class="result-num">6 votes · 18%</span></div>
+                                                <div class="result-track">
+                                                    <div class="result-fill" style="width:18%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="result-row">
+                                                <div class="result-top"><span class="result-name">Space
+                                                        Explorers</span><span class="result-num">3 votes · 9%</span>
+                                                </div>
+                                                <div class="result-track">
+                                                    <div class="result-fill" style="width:9%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- side meta -->
+                                <div class="card card-pad" style="height:fit-content;">
+                                    <h3>Poll details</h3>
+                                    <div class="meta-list">
+                                        <div class="meta-item"><span class="k">Status</span><span class="v">Open</span>
+                                        </div>
+                                        <div class="meta-item"><span class="k">Opened</span><span class="v mono">Aug 18,
+                                                2026 · 9:02 AM</span></div>
+                                        <div class="meta-item"><span class="k">Closing</span><span class="v">Manual — an
+                                                admin closes this poll</span></div>
+                                        <div class="meta-item"><span class="k">Selection mode</span><span
+                                                class="v">Single choice</span></div>
+                                        <div class="meta-item"><span class="k">Turnout</span><span class="v mono">34 /
+                                                52 · 65%</span></div>
+                                    </div>
+                                    <div class="laneline thin" style="margin:16px 0;"></div>
+                                    <p style="font-size:12px; color:var(--slate); line-height:1.6; margin:0 0 14px;">
+                                        Each member's link lives on the Electorate tab and can be copied or revoked
+                                        individually.</p>
+                                    <button class="btn btn-ghost"
+                                        style="width:100%; color:var(--coral-dark); border-color:var(--coral-wash);">Close
+                                        poll now</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================ MEMBER ============================================================ -->
+        <section class="panel" id="panel-member">
+            <div class="member-wrap">
+                <div class="state-switcher">
+                    <button class="active" data-mstate="voting">Voting</button>
+                    <button data-mstate="review">Review &amp; confirm</button>
+                    <button data-mstate="submitted">Submitted</button>
+                    <button data-mstate="waiting">Closed, unpublished</button>
+                    <button data-mstate="results">Published results</button>
+                </div>
+
+                <div class="phone">
+                    <div class="phone-notch"></div>
+                    <div class="phone-screen">
+
+                        <!-- VOTING STATE -->
+                        <div class="mstate active" id="mstate-voting">
+                            <div class="m-eyebrow"><span class="dotlive" style="color:var(--coral)">●</span>Voting open
+                            </div>
+                            <div class="m-title">2027 Team Theme</div>
+                            <p class="m-desc">Cast your vote for next season's theme. One vote per member — you won't be
+                                able to change it after you submit.</p>
+
+                            <fieldset style="border:none; padding:0; margin:0;">
+                                <legend class="visually-hidden"
+                                    style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);">
+                                    Choose a theme</legend>
+                                <label class="touch-option picked">
+                                    <input type="radio" name="team-theme" value="Under the Sea" checked>
+                                    <span class="box" aria-hidden="true">✓</span>
+                                    <span class="opt-text">Under the Sea</span>
+                                </label>
+                                <label class="touch-option">
+                                    <input type="radio" name="team-theme" value="Retro Arcade">
+                                    <span class="box" aria-hidden="true"></span>
+                                    <span class="opt-text">Retro Arcade</span>
+                                </label>
+                                <label class="touch-option">
+                                    <input type="radio" name="team-theme" value="Space Explorers">
+                                    <span class="box" aria-hidden="true"></span>
+                                    <span class="opt-text">Space Explorers</span>
+                                </label>
+                                <label class="touch-option">
+                                    <input type="radio" name="team-theme" value="Neon Splash">
+                                    <span class="box" aria-hidden="true"></span>
+                                    <span class="opt-text">Neon Splash</span>
+                                </label>
+                            </fieldset>
+
+                            <button class="m-submit" id="btn-review">Review my vote</button>
+                            <p class="m-fine">This private link identifies Ava Kessler. One final ballot may be
+                                submitted.</p>
+                        </div>
+
+                        <!-- REVIEW / CONFIRM STATE -->
+                        <div class="mstate" id="mstate-review">
+                            <div class="m-eyebrow">Step 2 of 2 · Confirm</div>
+                            <div class="m-title" style="font-size:26px;">Review before you submit</div>
+                            <p class="m-desc">Once you confirm, this ballot is final. There's no edit or resubmit.</p>
+                            <div class="review-card">
+                                <div class="review-label">Your selection</div>
+                                <div class="review-value" id="review-selection">Under the Sea</div>
+                            </div>
+                            <button class="m-submit" id="btn-confirm">Confirm and submit</button>
+                            <button class="m-back" id="btn-back">Go back and change my answer</button>
+                        </div>
+
+                        <!-- SUBMITTED STATE -->
+                        <div class="mstate" id="mstate-submitted">
+                            <div class="m-confirm">
+                                <div class="stamp">✓</div>
+                                <h2>VOTE RECORDED</h2>
+                                <p>Your ballot for 2027 Team Theme is final. Results will be visible here once the poll
+                                    closes and are published.</p>
+                                <div class="receipt">
+                                    <div><span>Poll</span><span>2027 Team Theme</span></div>
+                                    <div><span>Voted as</span><span>Ava Kessler</span></div>
+                                    <div><span>Submitted</span><span>Aug 20, 2026 4:12 PM</span></div>
+                                    <div><span>Selection</span><span id="receipt-selection">Under the Sea</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CLOSED, NOT PUBLISHED -->
+                        <div class="mstate" id="mstate-waiting">
+                            <div class="waiting">
+                                <div class="ring"></div>
+                                <h2
+                                    style="font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.03em; margin:0 0 8px;">
+                                    RESULTS NOT YET AVAILABLE</h2>
+                                <p style="font-size:13px; color:var(--slate); max-width:250px; line-height:1.6;">Voting
+                                    has been closed by an admin. Results aren't published yet — check back soon.</p>
+                            </div>
+                        </div>
+
+                        <!-- PUBLISHED RESULTS -->
+                        <div class="mstate" id="mstate-results">
+                            <div class="m-eyebrow">Results published · Sep 2, 2026</div>
+                            <div class="m-results-hero">
+                                <div class="k">2027 Team Theme</div>
+                                <div class="v">Under the Sea</div>
+                                <div class="laneline" style="margin:10px auto; width:120px;"></div>
+                                <div
+                                    style="font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--slate);">
+                                    34 of 52 members voted · 65% turnout</div>
+                            </div>
+
+                            <div class="m-result-row win">
+                                <div class="m-result-top"><b>Under the Sea</b><span>15 · 44%</span></div>
+                                <div class="m-result-track">
+                                    <div class="m-result-fill" style="width:44%"></div>
+                                </div>
+                            </div>
+                            <div class="m-result-row">
+                                <div class="m-result-top"><b>Retro Arcade</b><span>10 · 29%</span></div>
+                                <div class="m-result-track">
+                                    <div class="m-result-fill" style="width:29%"></div>
+                                </div>
+                            </div>
+                            <div class="m-result-row">
+                                <div class="m-result-top"><b>Neon Splash</b><span>6 · 18%</span></div>
+                                <div class="m-result-track">
+                                    <div class="m-result-fill" style="width:18%"></div>
+                                </div>
+                            </div>
+                            <div class="m-result-row">
+                                <div class="m-result-top"><b>Space Explorers</b><span>3 · 9%</span></div>
+                                <div class="m-result-track">
+                                    <div class="m-result-fill" style="width:9%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // top-level admin / member switcher
+        document.querySelectorAll('.switcher button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.switcher button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const target = btn.dataset.target;
+                document.getElementById('panel-admin').classList.toggle('active', target === 'admin');
+                document.getElementById('panel-member').classList.toggle('active', target === 'member');
+            });
+        });
+
+        // admin detail tabs
+        document.querySelectorAll('.detail-tabs button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.detail-tabs button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+                document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+            });
+        });
+
+        function openDetail() {
+            document.getElementById('admin-list').style.display = 'none';
+            document.getElementById('admin-detail').style.display = 'block';
+        }
+        function closeDetail() {
+            document.getElementById('admin-detail').style.display = 'none';
+            document.getElementById('admin-list').style.display = 'block';
+        }
+
+        // member option picking (voting state demo) — driven by real radio change events
+        document.querySelectorAll('#mstate-voting input[name="team-theme"]').forEach(input => {
+            input.addEventListener('change', () => {
+                document.querySelectorAll('#mstate-voting .touch-option').forEach(o => {
+                    o.classList.remove('picked'); o.querySelector('.box').textContent = '';
+                });
+                const label = input.closest('.touch-option');
+                label.classList.add('picked');
+                label.querySelector('.box').textContent = '✓';
+            });
+        });
+
+        // shared state switching, used by both the preview switcher and the real flow buttons
+        function switchMemberState(name) {
+            document.querySelectorAll('.state-switcher button').forEach(b => {
+                b.classList.toggle('active', b.dataset.mstate === name);
+            });
+            document.querySelectorAll('.mstate').forEach(s => s.classList.remove('active'));
+            document.getElementById('mstate-' + name).classList.add('active');
+        }
+
+        document.querySelectorAll('.state-switcher button').forEach(btn => {
+            btn.addEventListener('click', () => switchMemberState(btn.dataset.mstate));
+        });
+
+        function selectedThemeLabel() {
+            const checked = document.querySelector('#mstate-voting input[name="team-theme"]:checked');
+            return checked ? checked.value : '';
+        }
+
+        // Voting -> Review: carry the selected option into the confirmation screen
+        document.getElementById('btn-review').addEventListener('click', () => {
+            document.getElementById('review-selection').textContent = selectedThemeLabel();
+            switchMemberState('review');
+        });
+
+        // Review -> Submitted: only now is the ballot treated as final
+        document.getElementById('btn-confirm').addEventListener('click', () => {
+            document.getElementById('receipt-selection').textContent = selectedThemeLabel();
+            switchMemberState('submitted');
+        });
+
+        // Review -> back to Voting, selection is preserved since it's real radio state
+        document.getElementById('btn-back').addEventListener('click', () => switchMemberState('voting'));
+    </script>
+</body>
+
+</html>
