@@ -31,6 +31,9 @@ config :spark,
     remove_parens?: true,
     "Ash.Resource": [
       section_order: [
+        :authentication,
+        :token,
+        :user_identity,
         :resource,
         :code_interface,
         :actions,
@@ -52,7 +55,8 @@ config :spark,
 
 config :polly,
   ecto_repos: [Polly.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  ash_domains: [Polly.Accounts]
 
 # Configures the endpoint
 config :polly, PollyWeb.Endpoint,

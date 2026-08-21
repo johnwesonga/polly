@@ -15,7 +15,8 @@ defmodule Polly.Application do
       # Start a worker by calling: Polly.Worker.start_link(arg)
       # {Polly.Worker, arg},
       # Start to serve requests, typically the last entry
-      PollyWeb.Endpoint
+      PollyWeb.Endpoint,
+      {AshAuthentication.Supervisor, [otp_app: :polly]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

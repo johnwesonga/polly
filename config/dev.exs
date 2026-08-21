@@ -65,7 +65,7 @@ config :polly, PollyWeb.Endpoint,
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :polly, dev_routes: true
+config :polly, dev_routes: true, token_signing_secret: "DfKYXIZAkbcY3neQC+wWrmBDeSXidtch"
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
