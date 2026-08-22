@@ -99,7 +99,7 @@ defmodule PollyWeb.PollLive.Access do
                   title={access_url(@poll, grant)}
                   data-url={access_url(@poll, grant)}
                 >
-                  {access_url(@poll, grant)}
+                  {access_url_preview(@poll, grant)}
                 </code>
                 <button
                   id={"copy-access-link-#{eligibility.member_id}"}
