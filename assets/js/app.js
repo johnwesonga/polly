@@ -37,9 +37,26 @@ topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
-window.addEventListener("phx:copy", event => {
-  const input = event.target
-  navigator.clipboard.writeText(input.value)
+window.addEventListener("phx:copy", async event => {
+  const button = event.target
+
+  try {
+    await navigator.clipboard.writeText(button.dataset.copyValue)
+
+    button.textContent = "Copied"
+    button.disabled = true
+
+    window.setTimeout(() => {
+      button.textContent = "Copy"
+      button.disabled = false
+    }, 1800)
+  } catch (_error) {
+    button.textContent = "Copy failed"
+
+    window.setTimeout(() => {
+      button.textContent = "Copy"
+    }, 2400)
+  }
 })
 
 // connect if there are any LiveViews on the page

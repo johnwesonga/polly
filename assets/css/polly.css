@@ -787,6 +787,73 @@
      color: var(--slate);
  }
 
+ .access-row {
+     display: block;
+     width: 100%;
+     min-width: 0;
+     padding: 16px 0;
+ }
+
+ .access-member-heading {
+     display: flex;
+     align-items: center;
+     gap: 12px;
+ }
+
+ .access-member-identity {
+     min-width: 0;
+     flex: 1;
+ }
+
+ .access-link-controls {
+     display: flex;
+     flex-wrap: wrap;
+     align-items: center;
+     gap: 8px;
+     margin: 12px 0 0 40px;
+     min-width: 0;
+ }
+
+ .access-url-preview {
+     display: inline-flex;
+     width: 100%;
+     min-width: 0;
+     max-width: min(100%, 820px);
+     overflow: hidden;
+     text-overflow: ellipsis;
+     white-space: nowrap;
+     padding: 9px 11px;
+     border: 1px solid var(--line-strong);
+     border-radius: 7px;
+     background: var(--paper-alt);
+     color: var(--slate);
+     font-family: 'IBM Plex Mono', monospace;
+     font-size: 11px;
+ }
+
+ .access-actions {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     margin-left: auto;
+ }
+
+ .access-revoked-message {
+     margin: 10px 0 0 40px;
+     color: var(--slate);
+     font-size: 12px;
+ }
+
+ .access-revoke {
+     color: var(--coral-dark);
+     border-color: var(--coral-dark);
+ }
+
+ .access-issue {
+     display: block;
+     margin: 10px 0 0 auto;
+ }
+
  /* results */
  .result-row {
      margin-bottom: 16px;
@@ -1305,6 +1372,40 @@
      .detail-header {
          flex-direction: column;
          gap: 10px;
+     }
+
+     .access-row {
+         padding: 14px 0;
+     }
+
+     .access-link-controls,
+     .access-actions,
+     .access-revoked-message {
+         margin-left: 0;
+     }
+
+     .access-issue {
+         width: 100%;
+     }
+
+     .access-member-heading {
+         align-items: center;
+     }
+
+     .access-link-controls {
+         align-items: stretch;
+     }
+
+     .access-actions .btn,
+     .access-issue {
+         width: 100%;
+     }
+
+     .access-actions {
+         flex-direction: column;
+         width: 100%;
+         margin-top: 8px;
+         margin-left: 0;
      }
 
      .form-actions {

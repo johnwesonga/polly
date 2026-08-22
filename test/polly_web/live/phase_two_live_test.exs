@@ -41,6 +41,9 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     member =
       Ash.create!(Member, %{name: "Jamie Rivera", email: "jamie@example.com"}, actor: actor)
 
+    {:ok, empty_access, _html} = live(conn, ~p"/admin/polls/#{poll.id}/access")
+    assert has_element?(empty_access, "#configure-electorate-link")
+
     {:ok, electorate, _html} = live(conn, ~p"/admin/polls/#{poll.id}/electorate")
     assert has_element?(electorate, "#ballot-preview")
 
@@ -50,6 +53,8 @@ defmodule PollyWeb.PhaseTwoLiveTest do
 
     {:ok, access, _html} = live(conn, ~p"/admin/polls/#{poll.id}/access")
     assert has_element?(access, "#access-link-#{member.id}")
+    assert has_element?(access, "#access-link-#{member.id}[data-url^='http://localhost']")
+    assert has_element?(access, "#access-members .pill.open", "Active")
 
     grant = Ash.read_one!(AccessGrant, actor: actor)
     access |> element("#reissue-access-link-#{member.id}") |> render_click()
