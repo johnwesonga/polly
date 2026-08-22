@@ -628,15 +628,41 @@ At minimum, add coverage for:
 - Generate poll-and-member-specific revocable links.
 - Add access and cross-poll security tests.
 
-### Phase 3 — Ballots and cutover
+### Phase 3A — Ballot domain and submission integrity
 
-**Complexity: High**
+**Complexity: Medium to high**
 
-- Add Ballot and Selection.
-- Implement transactional submission.
-- Build poll-aware public voting routes and UI.
-- Add the single-choice text-option renderer.
-- Show a final-submission confirmation and duplicate-submission outcome.
+- Add Ballot and Selection resources.
+- Add a unique ballot identity for `[:poll_id, :member_id]`.
+- Associate selections with ballots and options from the same poll.
+- Implement ballot submission as one transactional domain operation.
+- Require an open poll, a valid poll-scoped grant, an eligible member, and
+  exactly one option belonging to the poll.
+- Treat submitted ballots as final and reject duplicate submissions.
+- Protect the one-ballot rule against concurrent requests.
+- Add domain tests for invalid grants, ineligible members, cross-poll options,
+  duplicate submissions, and concurrent submissions.
+
+Phase 3A is complete when a ballot can be submitted safely through the domain
+API without relying on a LiveView or browser-supplied member identity.
+
+### Phase 3B — Public voting experience and cutover
+
+**Complexity: Medium to high**
+
+- Add the public `/polls/:poll_id/vote/:token` route and poll-aware LiveView.
+- Resolve the member exclusively from the access grant in the URL.
+- Render single-choice text options as accessible radio cards.
+- Add a review step that clearly explains submission finality.
+- Show distinct states for invalid or revoked links, draft polls, open polls,
+  successful submissions, duplicate submissions, and closed polls awaiting
+  published results.
+- Build the member-facing interface responsively from the approved mockup.
+- Add LiveView tests for the complete voting journey and all denied states.
+
+Phase 3B is complete when an eligible member can follow a private link, review
+the ballot, submit one final vote, and receive a clear outcome. Results,
+turnout, closing controls, and publication remain Phase 4 responsibilities.
 
 ### Phase 4 — Results and operations
 

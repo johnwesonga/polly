@@ -49,23 +49,28 @@ poll.
 
 ## Delivery plan
 
-1. **Bootstrap (complete)** — establish the new project, administrator authentication,
-   test foundation, and remaining product decisions.
-2. **Poll foundation (complete)** — implement polls, text options, lifecycle actions, and
-   authenticated configuration pages.
-3. **Electorate and access** — add eligibility snapshots, revocable member
-   links, electorate selection, and ballot preview.
-4. **Ballots** — add transactional single-choice submission and the public
-   poll-aware voting experience.
+0. **Bootstrap (complete)** — establish the new project, administrator
+   authentication, test foundation, and remaining product decisions.
+1. **Poll foundation (complete)** — implement polls, text options, lifecycle
+   actions, and authenticated configuration pages.
+2. **Electorate and access (complete)** — add member management, eligibility
+   snapshots, revocable member links, electorate selection, and ballot preview.
+3. **Phase 3A: Ballot domain and submission integrity** — add Ballot and
+   Selection resources, transactional single-choice submission, cross-poll
+   validation, finality, and concurrency protection.
+4. **Phase 3B: Public voting experience and cutover** — add the token-based
+   public route, responsive ballot and review UI, confirmation, and denied or
+   duplicate-submission states.
 5. **Results and operations** — add turnout, poll-scoped results and PubSub,
    closing, publication, and member result views.
 6. **Hardening** — verify concurrency, authorization, token handling, logging,
    deployment, and operator documentation.
 
-Phases 0 and 1 are complete. The protected administrator area now supports
-creating and editing draft polls and managing ordered text options. Poll
-lifecycle actions enforce forward-only transitions and freeze poll options once
-voting opens. Electorate selection and member access grants begin in Phase 2.
+Phases 0 through 2 are complete. The protected administrator area supports
+member management, draft poll and option configuration, electorate snapshots,
+and revocable poll-and-member-specific access links. Phase 3A introduces the
+ballot domain and secures submission before Phase 3B exposes the public voting
+experience.
 
 ## Development
 
