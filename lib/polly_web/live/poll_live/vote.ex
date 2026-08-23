@@ -3,12 +3,16 @@ defmodule PollyWeb.PollLive.Vote do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Ballot, Ballots}
+  alias Polly.Polls.{AccessGrant, Ballot, Ballots, Events}
+  alias Polly.Polls.Results, as: PollResults
 
   @impl true
   def mount(%{"poll_id" => poll_id, "token" => token}, _session, socket) do
+    if connected?(socket), do: Events.subscribe(poll_id)
+
     {:ok,
      socket
+     |> stream_configure(:published_results, dom_id: &"published-result-#{&1.option.id}")
      |> assign(:page_title, "Vote")
      |> assign(:poll_id, poll_id)
      |> assign(:token, token)
@@ -146,6 +150,41 @@ defmodule PollyWeb.PollLive.Vote do
                 Voting for {@poll.title} has closed. Results aren't published yet—check back soon.
               </p>
             </div>
+
+            <div :if={@state == :published} id="published-results">
+              <div class="m-eyebrow">
+                Results published · {format_date(@poll.results_published_at)}
+              </div>
+              <div class="m-results-hero">
+                <div class="k">{@poll.title}</div>
+                <div id="published-winner" class="v">{@winner_summary}</div>
+                <div class="laneline results-laneline"></div>
+                <div class="published-turnout">
+                  {@result.ballot_count} of {@result.eligible_count} members voted · {format_percentage(
+                    @result.turnout_percentage
+                  )} turnout
+                </div>
+              </div>
+
+              <div id="member-results" phx-update="stream">
+                <div id="member-results-empty" class="empty-state hidden only:block">
+                  <h2>No results available</h2>
+                </div>
+                <div
+                  :for={{id, row} <- @streams.published_results}
+                  id={id}
+                  class={["m-result-row", row.winner? && "win"]}
+                >
+                  <div class="m-result-top">
+                    <b>{row.option.label}</b>
+                    <span>{row.votes} · {format_percentage(row.percentage)}</span>
+                  </div>
+                  <div class="m-result-track">
+                    <div class="m-result-fill" style={"width: #{row.percentage}%"}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -181,6 +220,19 @@ defmodule PollyWeb.PollLive.Vote do
         submit(socket, option)
     end
   end
+
+  @impl true
+  def handle_info({:poll_status_changed, poll_id, _status, _published_at}, socket)
+      when poll_id == socket.assigns.poll_id do
+    {:noreply, load_access(socket)}
+  end
+
+  def handle_info({:poll_results_changed, poll_id}, %{assigns: %{state: :published}} = socket)
+      when poll_id == socket.assigns.poll_id do
+    {:noreply, load_access(socket)}
+  end
+
+  def handle_info({:poll_results_changed, _poll_id}, socket), do: {:noreply, socket}
 
   defp submit(socket, option) do
     case Ballots.submit(socket.assigns.poll.id, socket.assigns.token, option.id) do
@@ -224,10 +276,20 @@ defmodule PollyWeb.PollLive.Vote do
 
   defp assign_ballot_state(socket, ballot) do
     case socket.assigns.poll.status do
-      :draft -> assign(socket, :state, :draft)
-      :closed -> socket |> assign(:ballot, ballot) |> assign(:state, :closed)
-      :open when not is_nil(ballot) -> assign_existing_ballot(socket, ballot)
-      :open -> socket |> assign(:state, :voting) |> assign_form()
+      :draft ->
+        assign(socket, :state, :draft)
+
+      :closed when not is_nil(socket.assigns.poll.results_published_at) ->
+        assign_published_results(socket)
+
+      :closed ->
+        socket |> assign(:ballot, ballot) |> assign(:state, :closed)
+
+      :open when not is_nil(ballot) ->
+        assign_existing_ballot(socket, ballot)
+
+      :open ->
+        socket |> assign(:state, :voting) |> assign_form()
     end
   end
 
@@ -240,6 +302,16 @@ defmodule PollyWeb.PollLive.Vote do
     |> assign(:selected_option, selection && selection.option)
     |> assign(:selected_option_id, selection && selection.option_id)
     |> assign(:state, :already_submitted)
+  end
+
+  defp assign_published_results(socket) do
+    result = PollResults.for_poll(socket.assigns.poll)
+
+    socket
+    |> assign(:result, result)
+    |> assign(:winner_summary, published_winner_summary(result))
+    |> assign(:state, :published)
+    |> stream(:published_results, result.options, reset: true)
   end
 
   defp existing_ballot(poll_id, member_id) do
@@ -268,4 +340,13 @@ defmodule PollyWeb.PollLive.Vote do
   defp format_datetime(datetime) do
     Calendar.strftime(datetime, "%b %-d, %Y %-I:%M %p UTC")
   end
+
+  defp format_date(datetime), do: Calendar.strftime(datetime, "%b %-d, %Y")
+  defp format_percentage(value), do: :erlang.float_to_binary(value, decimals: 1) <> "%"
+
+  defp published_winner_summary(%{ballot_count: 0}), do: "No ballots submitted"
+  defp published_winner_summary(%{winner_labels: [winner]}), do: winner
+
+  defp published_winner_summary(%{winner_labels: winners}),
+    do: "Tie: #{Enum.join(winners, " · ")}"
 end

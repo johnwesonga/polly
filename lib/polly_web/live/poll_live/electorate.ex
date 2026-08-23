@@ -46,7 +46,7 @@ defmodule PollyWeb.PollLive.Electorate do
           <.link navigate={~p"/admin/polls/#{@poll.id}/options"} class="phase-tab">Options</.link>
           <span class="phase-tab current">Electorate</span>
           <.link navigate={~p"/admin/polls/#{@poll.id}/access"} class="phase-tab">Access links</.link>
-          <span class="phase-tab">Results · Phase 4</span>
+          <.link navigate={~p"/admin/polls/#{@poll.id}/results"} class="phase-tab">Results</.link>
         </div>
 
         <div :if={@poll.status != :draft} id="electorate-frozen-notice" class="callout amber">

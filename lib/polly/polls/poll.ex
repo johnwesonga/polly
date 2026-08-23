@@ -38,13 +38,28 @@ defmodule Polly.Polls.Poll do
       validate Polly.Polls.Validations.HasEligibleMembers
       change set_attribute(:status, :open)
       change set_attribute(:opened_at, &DateTime.utc_now/0)
+      change after_transaction(&__MODULE__.broadcast_status/3)
     end
 
     update :close do
       accept []
+      require_atomic? false
       validate attribute_equals(:status, :open), message: "must be open to close"
       change set_attribute(:status, :closed)
       change set_attribute(:closed_at, &DateTime.utc_now/0)
+      change after_transaction(&__MODULE__.broadcast_status/3)
+    end
+
+    update :publish_results do
+      accept []
+      require_atomic? false
+      validate attribute_equals(:status, :closed), message: "must be closed to publish results"
+
+      validate attribute_equals(:results_published_at, nil),
+        message: "results have already been published"
+
+      change set_attribute(:results_published_at, &DateTime.utc_now/0)
+      change after_transaction(&__MODULE__.broadcast_status/3)
     end
   end
 
@@ -116,4 +131,11 @@ defmodule Polly.Polls.Poll do
   identities do
     identity :unique_slug, [:slug]
   end
+
+  def broadcast_status(_changeset, {:ok, poll}, _context) do
+    Polly.Polls.Events.broadcast_status(poll)
+    {:ok, poll}
+  end
+
+  def broadcast_status(_changeset, {:error, reason}, _context), do: {:error, reason}
 end

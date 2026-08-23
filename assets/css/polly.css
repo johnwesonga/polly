@@ -907,6 +907,70 @@
      background: var(--slate-light);
  }
 
+ .lifecycle-card {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 24px;
+     margin-bottom: 18px;
+ }
+
+ .lifecycle-card h3 {
+     margin-bottom: 5px;
+ }
+
+ .lifecycle-copy {
+     margin: 0;
+ }
+
+ .close-poll-button {
+     color: var(--coral-dark);
+     border-color: var(--coral);
+ }
+
+ .result-metrics {
+     display: grid;
+     grid-template-columns: repeat(3, 1fr);
+     gap: 12px;
+     margin-bottom: 18px;
+ }
+
+ .metric-card {
+     display: flex;
+     flex-direction: column;
+     gap: 5px;
+ }
+
+ .metric-card span {
+     color: var(--slate);
+     font-size: 11px;
+     font-weight: 700;
+     letter-spacing: .06em;
+     text-transform: uppercase;
+ }
+
+ .metric-card strong {
+     font-family: 'Bebas Neue', sans-serif;
+     font-size: 28px;
+     font-weight: 400;
+     letter-spacing: .03em;
+ }
+
+ .results-heading {
+     display: flex;
+     align-items: baseline;
+     justify-content: space-between;
+     gap: 16px;
+ }
+
+ .result-rank {
+     display: inline-flex;
+     width: 22px;
+     color: var(--slate);
+     font-family: 'IBM Plex Mono', monospace;
+     font-size: 10px;
+ }
+
  .callout {
      border-radius: 10px;
      padding: 12px 14px;
@@ -1152,6 +1216,17 @@
      background: var(--coral-wash);
      color: var(--coral-dark);
      font-size: 12.5px;
+ }
+
+ .results-laneline {
+     width: 120px;
+     margin: 10px auto;
+ }
+
+ .published-turnout {
+     color: var(--slate);
+     font-family: 'IBM Plex Mono', monospace;
+     font-size: 11.5px;
  }
 
  .review-card {
@@ -1442,6 +1517,19 @@
      .detail-header {
          flex-direction: column;
          gap: 10px;
+     }
+
+     .lifecycle-card {
+         align-items: stretch;
+         flex-direction: column;
+     }
+
+     .lifecycle-card .btn {
+         width: 100%;
+     }
+
+     .result-metrics {
+         grid-template-columns: 1fr;
      }
 
      .access-row {

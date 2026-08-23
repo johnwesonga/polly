@@ -22,8 +22,12 @@ defmodule Polly.Polls.Ballots do
           {:ok, Ballot.t()} | {:error, submission_error() | term()}
   def submit(poll_id, token, option_id) do
     case Polly.Repo.transaction(fn -> submit_in_transaction(poll_id, token, option_id) end) do
-      {:ok, ballot} -> {:ok, ballot}
-      {:error, reason} -> {:error, normalize_error(reason)}
+      {:ok, ballot} ->
+        Polly.Polls.Events.broadcast_results(poll_id)
+        {:ok, ballot}
+
+      {:error, reason} ->
+        {:error, normalize_error(reason)}
     end
   end
 

@@ -90,6 +90,42 @@ defmodule PollyWeb.PublicVoteLiveTest do
     refute has_element?(view, "#ballot-form")
   end
 
+  test "published results are visible through a still-valid member link", %{
+    conn: conn,
+    actor: actor
+  } do
+    fixture = open_poll!(actor, "Published vote")
+
+    assert {:ok, _ballot} =
+             Ballots.submit(fixture.poll.id, fixture.grant.token, fixture.option.id)
+
+    fixture.poll
+    |> Ash.update!(%{}, action: :close, actor: actor)
+    |> Ash.update!(%{}, action: :publish_results, actor: actor)
+
+    {:ok, view, _html} = live(conn, vote_path(fixture))
+
+    assert has_element?(view, "#published-results")
+    assert has_element?(view, "#published-winner")
+    assert has_element?(view, "#member-results")
+    refute has_element?(view, "#poll-closed")
+  end
+
+  test "a revoked grant cannot view published results", %{conn: conn, actor: actor} do
+    fixture = open_poll!(actor, "Revoked results")
+
+    fixture.poll
+    |> Ash.update!(%{}, action: :close, actor: actor)
+    |> Ash.update!(%{}, action: :publish_results, actor: actor)
+
+    Ash.update!(fixture.grant, %{}, action: :revoke, actor: actor)
+
+    {:ok, view, _html} = live(conn, vote_path(fixture))
+
+    assert has_element?(view, "#invalid-voting-link")
+    refute has_element?(view, "#published-results")
+  end
+
   defp open_poll!(actor, title) do
     fixture = draft_poll!(actor, title)
     %{fixture | poll: Ash.update!(fixture.poll, %{}, action: :open, actor: actor)}
