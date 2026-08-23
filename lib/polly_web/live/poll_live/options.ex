@@ -34,7 +34,7 @@ defmodule PollyWeb.PollLive.Options do
         </div>
         <div class="detail-header">
           <div>
-            <div class="admin-h1">{String.upcase(@poll.title)}</div>
+            <div class="admin-h2">{String.upcase(@poll.title)}</div>
             <p class="admin-sub" style="margin:4px 0 0;">
               Add and order the choices members will see.
             </p>

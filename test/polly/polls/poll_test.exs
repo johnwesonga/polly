@@ -89,6 +89,30 @@ defmodule Polly.Polls.PollTest do
     assert Exception.message(create_error) =~ "options are frozen"
   end
 
+  test "regenerates the slug only when a draft title changes", %{actor: actor} do
+    poll = create_poll!(actor, "Original Title")
+
+    description_update =
+      Ash.update!(
+        poll,
+        %{description: "A new description"},
+        action: :update_draft,
+        actor: actor
+      )
+
+    assert description_update.slug == "original-title"
+
+    title_update =
+      Ash.update!(
+        description_update,
+        %{title: "Final Title"},
+        action: :update_draft,
+        actor: actor
+      )
+
+    assert title_update.slug == "final-title"
+  end
+
   test "requires an authenticated actor", %{actor: actor} do
     poll = create_poll!(actor, "Team Theme")
 

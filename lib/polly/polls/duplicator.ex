@@ -3,10 +3,9 @@ defmodule Polly.Polls.Duplicator do
 
   require Ash.Query
 
-  alias Polly.Polls.Poll
+  alias Polly.Polls.{Poll, Slug}
 
   @title_limit 160
-  @slug_limit 180
   @max_slug_attempts 100
 
   @type result :: %{
@@ -48,19 +47,19 @@ defmodule Polly.Polls.Duplicator do
       selection_mode: source.selection_mode
     }
 
-    create_with_unique_slug(source.slug, attributes, actor, 1)
+    create_with_unique_slug(attributes.title, attributes, actor, 1)
   end
 
-  defp create_with_unique_slug(_source_slug, _attributes, _actor, attempt)
+  defp create_with_unique_slug(_title, _attributes, _actor, attempt)
        when attempt > @max_slug_attempts do
     Polly.Repo.rollback(:slug_generation_exhausted)
   end
 
-  defp create_with_unique_slug(source_slug, attributes, actor, attempt) do
-    slug = copy_slug(source_slug, attempt)
+  defp create_with_unique_slug(title, attributes, actor, attempt) do
+    slug = Slug.candidate_for_title(title, attempt)
 
     if slug_exists?(slug, actor) do
-      create_with_unique_slug(source_slug, attributes, actor, attempt + 1)
+      create_with_unique_slug(title, attributes, actor, attempt + 1)
     else
       case Ash.create(Poll, Map.put(attributes, :slug, slug), actor: actor) do
         {:ok, duplicate} ->
@@ -68,7 +67,7 @@ defmodule Polly.Polls.Duplicator do
 
         {:error, error} ->
           if unique_slug_error?(error) do
-            create_with_unique_slug(source_slug, attributes, actor, attempt + 1)
+            create_with_unique_slug(title, attributes, actor, attempt + 1)
           else
             Polly.Repo.rollback(error)
           end
@@ -84,16 +83,9 @@ defmodule Polly.Polls.Duplicator do
 
   defp copy_title(title) do
     prefix = "Copy of "
-    prefix <> String.slice(title, 0, @title_limit - String.length(prefix))
-  end
+    base_title = Regex.replace(~r/^(?:Copy of )+/i, title, "")
 
-  defp copy_slug(source_slug, attempt) do
-    suffix = if attempt == 1, do: "-copy", else: "-copy-#{attempt}"
-
-    source_slug
-    |> String.slice(0, @slug_limit - String.length(suffix))
-    |> String.trim_trailing("-")
-    |> Kernel.<>(suffix)
+    prefix <> String.slice(base_title, 0, @title_limit - String.length(prefix))
   end
 
   defp unique_slug_error?(error), do: Exception.message(error) =~ "has already been taken"

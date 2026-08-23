@@ -110,19 +110,25 @@ the normal draft form immediately after duplication.
 
 ### Slug generation
 
-The new slug is based on the source slug:
+The new slug is generated from the normalized duplicate title:
 
 ```text
-<source-slug>-copy
-<source-slug>-copy-2
-<source-slug>-copy-3
+copy-of-<source-title>
+copy-of-<source-title>-2
+copy-of-<source-title>-3
 ```
 
-Slug generation must respect the 180-character limit. The base is truncated as
-needed before adding the suffix. The database unique identity remains the final
-concurrency guard. If another request claims the same slug, the operation
-retries with the next suffix rather than exposing a uniqueness error to the
-administrator.
+Repeated `Copy of ` prefixes are removed before building the duplicate title,
+so duplicating a duplicate does not produce `Copy of Copy of ...` or a
+`-copy-copy` slug. Slug generation must respect the 180-character limit. The
+base is truncated as needed before adding the numeric suffix. The database
+unique identity remains the final concurrency guard. If another request claims
+the same slug, the operation retries with the next suffix rather than exposing
+a uniqueness error to the administrator.
+
+When an administrator later changes a draft poll title, the slug is regenerated
+from that title and receives the first available numeric suffix. Once a poll is
+open, both title and slug remain frozen.
 
 ### Administrator workflow
 

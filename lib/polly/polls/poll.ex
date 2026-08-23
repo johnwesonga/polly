@@ -27,7 +27,9 @@ defmodule Polly.Polls.Poll do
 
     update :update_draft do
       accept [:title, :description]
+      require_atomic? false
       validate attribute_equals(:status, :draft), message: "can only be edited while in draft"
+      change Polly.Polls.Changes.SetSlugFromTitle
     end
 
     update :open do

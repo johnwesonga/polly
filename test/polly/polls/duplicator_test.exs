@@ -52,7 +52,7 @@ defmodule Polly.Polls.DuplicatorTest do
     assert duplicate.title == "Copy of Annual Theme"
     assert duplicate.description == source.description
     assert duplicate.selection_mode == source.selection_mode
-    assert duplicate.slug == "annual-theme-copy"
+    assert duplicate.slug == "copy-of-annual-theme"
     assert duplicate.status == :draft
     refute duplicate.opened_at
     refute duplicate.closed_at
@@ -89,10 +89,21 @@ defmodule Polly.Polls.DuplicatorTest do
     assert {:ok, %{poll: third}} = Duplicator.duplicate(source, actor)
 
     assert [first.slug, second.slug, third.slug] == [
-             "repeatable-copy",
-             "repeatable-copy-2",
-             "repeatable-copy-3"
+             "copy-of-repeatable",
+             "copy-of-repeatable-2",
+             "copy-of-repeatable-3"
            ]
+  end
+
+  test "duplicating a duplicate normalizes its title and slug", %{actor: actor} do
+    source = configured_poll!(actor, "For One").poll
+    assert {:ok, %{poll: first}} = Duplicator.duplicate(source, actor)
+    assert {:ok, %{poll: second}} = Duplicator.duplicate(first, actor)
+
+    assert first.title == "Copy of For One"
+    assert second.title == "Copy of For One"
+    assert first.slug == "copy-of-for-one"
+    assert second.slug == "copy-of-for-one-2"
   end
 
   test "concurrent copies receive distinct slugs", %{actor: actor} do
@@ -109,8 +120,8 @@ defmodule Polly.Polls.DuplicatorTest do
       |> Enum.map(fn {:ok, {:ok, %{poll: duplicate}}} -> duplicate end)
 
     assert duplicates |> Enum.map(& &1.slug) |> Enum.sort() == [
-             "concurrent-copy-copy",
-             "concurrent-copy-copy-2"
+             "copy-of-concurrent-copy",
+             "copy-of-concurrent-copy-2"
            ]
   end
 
@@ -129,8 +140,8 @@ defmodule Polly.Polls.DuplicatorTest do
     assert {:ok, %{poll: duplicate}} = Duplicator.duplicate(source, actor)
     assert String.length(duplicate.title) == 160
     assert String.starts_with?(duplicate.title, "Copy of ")
-    assert String.length(duplicate.slug) == 180
-    assert String.ends_with?(duplicate.slug, "-copy")
+    assert duplicate.slug == Polly.Polls.Slug.from_title(duplicate.title)
+    assert String.length(duplicate.slug) <= 180
   end
 
   test "requires an authenticated actor", %{actor: actor} do

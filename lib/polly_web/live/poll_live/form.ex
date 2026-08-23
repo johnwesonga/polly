@@ -108,6 +108,10 @@ defmodule PollyWeb.PollLive.Form do
     assign(socket, :form, to_form(form))
   end
 
-  defp add_slug(params, nil), do: Map.put(params, "slug", Slug.from_title(params["title"] || ""))
+  defp add_slug(params, nil) do
+    title = params["title"] || ""
+    Map.put(params, "slug", Slug.unique_from_title(title) || Slug.from_title(title))
+  end
+
   defp add_slug(params, _poll), do: params
 end

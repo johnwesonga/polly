@@ -47,7 +47,28 @@ defmodule PollyWeb.PollLiveTest do
 
     updated = Ash.get!(Poll, poll.id, actor: actor)
     assert updated.title == "Updated Team Theme"
-    assert updated.slug == poll.slug
+    assert updated.slug == "updated-team-theme"
+  end
+
+  test "regenerates a unique slug when a draft title changes", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    poll = create_poll!(actor)
+
+    Ash.create!(
+      Poll,
+      %{title: "Existing Title", slug: "existing-title"},
+      actor: actor
+    )
+
+    {:ok, edit, _html} = live(conn, ~p"/admin/polls/#{poll.id}/edit")
+
+    edit
+    |> form("#poll-form", poll: %{title: "Existing Title", description: "Changed"})
+    |> render_submit()
+
+    updated = Ash.get!(Poll, poll.id, actor: actor)
+    assert updated.title == "Existing Title"
+    assert updated.slug == "existing-title-2"
   end
 
   test "duplicates poll details from the poll list and opens the new draft editor", %{conn: conn} do
@@ -65,7 +86,7 @@ defmodule PollyWeb.PollLiveTest do
 
     duplicate =
       Poll
-      |> Ash.Query.filter(slug == "team-theme-copy")
+      |> Ash.Query.filter(slug == "copy-of-team-theme")
       |> Ash.read_one!(actor: actor)
 
     assert duplicate.title == "Copy of Team Theme"
