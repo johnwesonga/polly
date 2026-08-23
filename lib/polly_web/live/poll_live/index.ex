@@ -1,7 +1,7 @@
 defmodule PollyWeb.PollLive.Index do
   use PollyWeb, :live_view
 
-  alias Polly.Polls.Poll
+  alias Polly.Polls.{Duplicator, Poll}
 
   on_mount {PollyWeb.LiveUserAuth, :live_user_required}
 
@@ -78,12 +78,39 @@ defmodule PollyWeb.PollLive.Index do
               >
                 Edit
               </.link>
+              <button
+                id={"poll-duplicate-#{poll.id}"}
+                type="button"
+                phx-click="duplicate"
+                phx-value-id={poll.id}
+                data-confirm={
+                  "Duplicate #{poll.title}? Only its title, description, and selection mode will be copied into a new draft."
+                }
+                class="btn btn-outline btn-sm"
+                aria-label={"Duplicate #{poll.title}"}
+              >
+                Duplicate
+              </button>
             </div>
           </article>
         </div>
       </section>
     </Layouts.app>
     """
+  end
+
+  @impl true
+  def handle_event("duplicate", %{"id" => id}, socket) do
+    case Duplicator.duplicate(id, socket.assigns.current_user) do
+      {:ok, %{poll: duplicate, source_title: source_title}} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Draft duplicated from #{source_title}")
+         |> push_navigate(to: ~p"/admin/polls/#{duplicate.id}/edit")}
+
+      {:error, error} ->
+        {:noreply, put_flash(socket, :error, duplicate_error(error))}
+    end
   end
 
   defp list_polls(actor) do
@@ -97,4 +124,8 @@ defmodule PollyWeb.PollLive.Index do
   defp status_class(:draft), do: "pill draft"
   defp status_class(:open), do: "pill open"
   defp status_class(:closed), do: "pill closed"
+
+  defp duplicate_error(:actor_required), do: "You must sign in to duplicate a poll"
+  defp duplicate_error(:slug_generation_exhausted), do: "Could not generate a unique poll slug"
+  defp duplicate_error(error), do: Exception.message(error)
 end

@@ -50,6 +50,28 @@ defmodule PollyWeb.PollLiveTest do
     assert updated.slug == poll.slug
   end
 
+  test "duplicates poll details from the poll list and opens the new draft editor", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    poll = create_poll!(actor)
+    create_option!(poll, actor, "Under the Sea", 1)
+
+    {:ok, index, _html} = live(conn, ~p"/admin/polls")
+    assert has_element?(index, "#poll-duplicate-#{poll.id}")
+
+    result = index |> element("#poll-duplicate-#{poll.id}") |> render_click()
+
+    assert {:error, {:live_redirect, %{to: path}}} = result
+    assert path =~ ~r{/admin/polls/.+/edit$}
+
+    duplicate =
+      Poll
+      |> Ash.Query.filter(slug == "team-theme-copy")
+      |> Ash.read_one!(actor: actor)
+
+    assert duplicate.title == "Copy of Team Theme"
+    assert list_options(duplicate, actor) == []
+  end
+
   test "adds, renames, moves, and deletes options", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)

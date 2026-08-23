@@ -22,7 +22,7 @@ defmodule Polly.Polls.Poll do
 
     create :create_draft do
       primary? true
-      accept [:title, :description, :slug]
+      accept [:title, :description, :slug, :selection_mode]
     end
 
     update :update_draft do
