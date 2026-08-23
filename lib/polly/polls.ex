@@ -1,6 +1,6 @@
 defmodule Polly.Polls do
   @moduledoc """
-  Provides poll configuration, lifecycle, electorate, and access management.
+  Provides poll configuration, lifecycle, electorate, access, and voting.
 
   The domain owns polls and their options, eligibility snapshots, and revocable
   member access grants.
@@ -11,8 +11,10 @@ defmodule Polly.Polls do
 
   resources do
     resource Polly.Polls.AccessGrant
+    resource Polly.Polls.Ballot
     resource Polly.Polls.Eligibility
     resource Polly.Polls.Option
     resource Polly.Polls.Poll
+    resource Polly.Polls.Selection
   end
 end

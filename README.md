@@ -55,9 +55,9 @@ poll.
    actions, and authenticated configuration pages.
 2. **Electorate and access (complete)** — add member management, eligibility
    snapshots, revocable member links, electorate selection, and ballot preview.
-3. **Phase 3A: Ballot domain and submission integrity** — add Ballot and
+3. **Phase 3A: Ballot domain and submission integrity (complete)** — Ballot and
    Selection resources, transactional single-choice submission, cross-poll
-   validation, finality, and concurrency protection.
+   validation, finality, and concurrency protection are implemented.
 4. **Phase 3B: Public voting experience and cutover** — add the token-based
    public route, responsive ballot and review UI, confirmation, and denied or
    duplicate-submission states.
@@ -66,11 +66,11 @@ poll.
 6. **Hardening** — verify concurrency, authorization, token handling, logging,
    deployment, and operator documentation.
 
-Phases 0 through 2 are complete. The protected administrator area supports
+Phases 0 through 3A are complete. The protected administrator area supports
 member management, draft poll and option configuration, electorate snapshots,
-and revocable poll-and-member-specific access links. Phase 3A introduces the
-ballot domain and secures submission before Phase 3B exposes the public voting
-experience.
+and revocable poll-and-member-specific access links. The ballot domain now
+secures final, single-choice submissions through a transactional token-based
+API. Phase 3B will expose that API through the public voting experience.
 
 ## Development
 

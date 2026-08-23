@@ -60,4 +60,10 @@ defmodule Polly.Members.Member do
     create_timestamp :inserted_at
     update_timestamp :updated_at
   end
+
+  relationships do
+    has_many :ballots, Polly.Polls.Ballot do
+      destination_attribute :member_id
+    end
+  end
 end

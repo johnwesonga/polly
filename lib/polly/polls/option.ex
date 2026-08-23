@@ -76,6 +76,10 @@ defmodule Polly.Polls.Option do
       allow_nil? false
       public? true
     end
+
+    has_many :selections, Polly.Polls.Selection do
+      destination_attribute :option_id
+    end
   end
 
   identities do
