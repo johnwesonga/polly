@@ -13,7 +13,9 @@ See [the configurable polls proposal](docs/configurable-polls-proposal.md) for
 the full product and domain design. The decisions made during bootstrap are in
 [the first-release decision record](docs/first-release-decisions.md). The
 planned bulk roster workflow is described in the
-[CSV member upload specification](docs/csv-member-upload-spec.md).
+[CSV member upload specification](docs/csv-member-upload-spec.md). Reusing poll
+configuration is planned in the
+[poll duplication specification](docs/poll-duplication-spec.md).
 
 ## First-release rules
 
