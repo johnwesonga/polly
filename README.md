@@ -11,7 +11,9 @@ audience segments are intentionally deferred.
 
 See [the configurable polls proposal](docs/configurable-polls-proposal.md) for
 the full product and domain design. The decisions made during bootstrap are in
-[the first-release decision record](docs/first-release-decisions.md).
+[the first-release decision record](docs/first-release-decisions.md). The
+planned bulk roster workflow is described in the
+[CSV member upload specification](docs/csv-member-upload-spec.md).
 
 ## First-release rules
 
