@@ -40,6 +40,7 @@ defmodule PollyWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    live "/polls/:poll_id/vote/:token", PollLive.Vote, :show
     auth_routes AuthController, Polly.Accounts.User, path: "/auth"
     sign_out_route AuthController
 

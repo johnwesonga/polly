@@ -1084,6 +1084,76 @@
      font-size: 14.5px;
  }
 
+ .public-vote-page {
+     padding: 4px 0 32px;
+ }
+
+ .vote-card {
+     width: min(100%, 430px);
+ }
+
+ .vote-card .phone-screen {
+     min-height: 590px;
+ }
+
+ .vote-options {
+     border: 0;
+     padding: 0;
+     margin: 0;
+ }
+
+ .m-submit:disabled {
+     opacity: 0.45;
+     cursor: not-allowed;
+ }
+
+ .vote-live-dot {
+     color: var(--coral);
+ }
+
+ .review-title,
+ .state-title {
+     font-size: 26px;
+ }
+
+ .state-copy,
+ .waiting p {
+     max-width: 280px;
+     color: var(--slate);
+     font-size: 13px;
+     line-height: 1.6;
+ }
+
+ .waiting h1,
+ .m-confirm h1 {
+     margin: 0 0 8px;
+     font-family: 'Bebas Neue', sans-serif;
+     font-size: 26px;
+     letter-spacing: .03em;
+ }
+
+ .ring.paused {
+     border-color: var(--line-strong);
+ }
+
+ .stamp.denied {
+     border-color: var(--slate-light);
+     color: var(--slate);
+     transform: none;
+ }
+
+ .denied-state {
+     padding-top: 64px;
+ }
+
+ .vote-error {
+     padding: 10px 12px;
+     border-radius: 8px;
+     background: var(--coral-wash);
+     color: var(--coral-dark);
+     font-size: 12.5px;
+ }
+
  .review-card {
      border: 2px solid var(--coral);
      background: var(--coral-wash);
