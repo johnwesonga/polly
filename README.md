@@ -15,7 +15,9 @@ the full product and domain design. The decisions made during bootstrap are in
 planned bulk roster workflow is described in the
 [CSV member upload specification](docs/csv-member-upload-spec.md). Reusing poll
 configuration is planned in the
-[poll duplication specification](docs/poll-duplication-spec.md).
+[poll duplication specification](docs/poll-duplication-spec.md). Administrator
+accountability and change history are defined in the
+[administrator audit trail specification](docs/admin-audit-trail-spec.md).
 
 ## First-release rules
 
