@@ -23,11 +23,14 @@ defmodule Polly.Members.Member do
     create :create do
       primary? true
       accept [:name, :email]
+      change Polly.Members.Changes.NormalizeEmail
     end
 
     update :update do
       primary? true
       accept [:name, :email, :active]
+      require_atomic? false
+      change Polly.Members.Changes.NormalizeEmail
     end
   end
 
@@ -65,5 +68,9 @@ defmodule Polly.Members.Member do
     has_many :ballots, Polly.Polls.Ballot do
       destination_attribute :member_id
     end
+  end
+
+  identities do
+    identity :unique_email, [:email]
   end
 end

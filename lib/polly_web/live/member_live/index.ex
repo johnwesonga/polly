@@ -31,7 +31,12 @@ defmodule PollyWeb.MemberLive.Index do
             <div class="admin-h1">Members</div>
             <p class="admin-sub">Manage the roster used to build each poll's electorate.</p>
           </div>
-          <span id="member-count" class="pill draft">{@member_count} members</span>
+          <div class="flex items-center gap-3">
+            <span id="member-count" class="pill draft">{@member_count} members</span>
+            <.link id="import-members-link" navigate={~p"/admin/members/import"} class="btn btn-coral">
+              Import CSV
+            </.link>
+          </div>
         </div>
         <div class="laneline" style="margin-bottom:20px;"></div>
 
