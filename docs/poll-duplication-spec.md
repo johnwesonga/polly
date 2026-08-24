@@ -17,7 +17,7 @@ The feature is deliberately split into two iterations:
 The operation is called **Duplicate poll** in the interface. “Clone” may be
 used informally, but the product copy should consistently use “duplicate.”
 
-Implementation status: iteration 1 is complete. Iteration 2 remains planned.
+Implementation status: iterations 1 and 2 are complete.
 
 ## Complexity assessment
 

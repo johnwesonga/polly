@@ -147,12 +147,13 @@ defmodule PollyWeb.PollLive.Vote do
               <div class="ring" aria-hidden="true"></div>
               <h1>RESULTS NOT YET AVAILABLE</h1>
               <p>
-                Voting for {@poll.title} has closed. Results aren't published yet—check back soon.
+                Voting for <b>{@poll.title}</b>
+                has closed. Results aren't published yet—check back soon.
               </p>
             </div>
 
             <div :if={@state == :published} id="published-results">
-              <div class="m-eyebrow">
+              <div class="m-eyebrow published-results-eyebrow">
                 Results published · {format_date(@poll.results_published_at)}
               </div>
               <div class="m-results-hero">

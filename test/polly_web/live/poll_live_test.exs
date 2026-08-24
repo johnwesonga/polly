@@ -9,6 +9,9 @@ defmodule PollyWeb.PollLiveTest do
   test "protects poll management routes", %{conn: conn} do
     assert {:error, {:redirect, %{to: "/sign-in"}}} = live(conn, ~p"/admin/polls")
     assert {:error, {:redirect, %{to: "/sign-in"}}} = live(conn, ~p"/admin/polls/new")
+
+    assert {:error, {:redirect, %{to: "/sign-in"}}} =
+             live(conn, ~p"/admin/polls/#{Ecto.UUID.generate()}/duplicate")
   end
 
   test "creates a draft and navigates to option management", %{conn: conn} do
@@ -71,10 +74,17 @@ defmodule PollyWeb.PollLiveTest do
     assert updated.slug == "existing-title-2"
   end
 
-  test "duplicates poll details from the poll list and opens the new draft editor", %{conn: conn} do
+  test "configures a duplicate from the poll list and opens the new draft editor", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)
     create_option!(poll, actor, "Under the Sea", 1)
+
+    active_member = Ash.create!(Member, %{name: "Active copy member"}, actor: actor)
+    Ash.create!(Eligibility, %{poll_id: poll.id, member_id: active_member.id}, actor: actor)
+
+    inactive_member = Ash.create!(Member, %{name: "Inactive copy member"}, actor: actor)
+    Ash.create!(Eligibility, %{poll_id: poll.id, member_id: inactive_member.id}, actor: actor)
+    Ash.update!(inactive_member, %{active: false}, actor: actor)
 
     {:ok, index, _html} = live(conn, ~p"/admin/polls")
     assert has_element?(index, "#poll-duplicate-#{poll.id}")
@@ -82,7 +92,33 @@ defmodule PollyWeb.PollLiveTest do
     result = index |> element("#poll-duplicate-#{poll.id}") |> render_click()
 
     assert {:error, {:live_redirect, %{to: path}}} = result
-    assert path =~ ~r{/admin/polls/.+/edit$}
+    assert path == ~p"/admin/polls/#{poll.id}/duplicate"
+
+    {:ok, duplicate_view, _html} = live(conn, path)
+    assert has_element?(duplicate_view, "#duplicate-poll-form")
+    assert has_element?(duplicate_view, "#duplicate_copy_options[checked]")
+    refute has_element?(duplicate_view, "#duplicate_copy_electorate[checked]")
+    assert has_element?(duplicate_view, "#preview-option-count", "1")
+    assert has_element?(duplicate_view, "#preview-member-count", "0")
+
+    duplicate_view
+    |> form("#duplicate-poll-form",
+      duplicate: %{copy_options: "true", copy_electorate: "true"}
+    )
+    |> render_change()
+
+    assert has_element?(duplicate_view, "#preview-member-count", "1")
+    assert has_element?(duplicate_view, "#skipped-members-warning")
+
+    submit_result =
+      duplicate_view
+      |> form("#duplicate-poll-form",
+        duplicate: %{copy_options: "true", copy_electorate: "false"}
+      )
+      |> render_submit()
+
+    assert {:error, {:live_redirect, %{to: edit_path}}} = submit_result
+    assert edit_path =~ ~r{/admin/polls/.+/edit$}
 
     duplicate =
       Poll
@@ -90,7 +126,7 @@ defmodule PollyWeb.PollLiveTest do
       |> Ash.read_one!(actor: actor)
 
     assert duplicate.title == "Copy of Team Theme"
-    assert list_options(duplicate, actor) == []
+    assert Enum.map(list_options(duplicate, actor), & &1.label) == ["Under the Sea"]
   end
 
   test "adds, renames, moves, and deletes options", %{conn: conn} do

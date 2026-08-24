@@ -1,9 +1,9 @@
 defmodule Polly.Polls.Duplicator do
-  @moduledoc "Creates an independent draft containing only a source poll's details."
+  @moduledoc "Creates an independent draft from selected source poll configuration."
 
   require Ash.Query
 
-  alias Polly.Polls.{Poll, Slug}
+  alias Polly.Polls.{AccessGrant, Eligibility, Option, Poll, Slug}
 
   @title_limit 160
   @max_slug_attempts 100
@@ -11,32 +11,80 @@ defmodule Polly.Polls.Duplicator do
   @type result :: %{
           poll: Poll.t(),
           source_title: String.t(),
-          options_copied: 0,
-          members_copied: 0,
-          members_skipped: 0
+          options_copied: non_neg_integer(),
+          members_copied: non_neg_integer(),
+          members_skipped: non_neg_integer()
         }
 
   @spec duplicate(Poll.t() | Ecto.UUID.t(), term()) :: {:ok, result()} | {:error, term()}
-  def duplicate(_source, nil), do: {:error, :actor_required}
+  def duplicate(source, actor), do: duplicate(source, %{}, actor)
 
-  def duplicate(source, actor) do
+  @spec duplicate(Poll.t() | Ecto.UUID.t(), map(), term()) ::
+          {:ok, result()} | {:error, term()}
+  def duplicate(_source, _options, nil), do: {:error, :actor_required}
+
+  def duplicate(source, options, actor) do
+    source_id = if is_struct(source, Poll), do: source.id, else: source
+
+    case Polly.Repo.transaction(fn -> duplicate_in_transaction(source_id, options, actor) end) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @spec preview(Poll.t() | Ecto.UUID.t(), term()) :: {:ok, map()} | {:error, term()}
+  def preview(_source, nil), do: {:error, :actor_required}
+
+  def preview(source, actor) do
     source_id = if is_struct(source, Poll), do: source.id, else: source
 
     with {:ok, source_poll} <- Ash.get(Poll, source_id, actor: actor) do
-      case Polly.Repo.transaction(fn -> create_duplicate(source_poll, actor) end) do
-        {:ok, duplicate} ->
-          {:ok,
-           %{
-             poll: duplicate,
-             source_title: source_poll.title,
-             options_copied: 0,
-             members_copied: 0,
-             members_skipped: 0
-           }}
+      {active_eligibilities, skipped_eligibilities} = eligibility_snapshot(source_poll.id, actor)
+      duplicate_title = copy_title(source_poll.title)
 
-        {:error, reason} ->
-          {:error, reason}
+      {:ok,
+       %{
+         source: source_poll,
+         proposed_title: duplicate_title,
+         proposed_slug: Slug.unique_from_title(duplicate_title),
+         active_option_count: length(active_options(source_poll.id, actor)),
+         active_member_count: length(active_eligibilities),
+         skipped_member_count: length(skipped_eligibilities)
+       }}
+    end
+  end
+
+  defp duplicate_in_transaction(source_id, options, actor) do
+    source = get_source_or_rollback(source_id, actor)
+    duplicate = create_duplicate(source, actor)
+
+    options_copied =
+      if Map.get(options, :copy_options?, false) do
+        copy_options(source.id, duplicate.id, actor)
+      else
+        0
       end
+
+    {members_copied, members_skipped} =
+      if Map.get(options, :copy_electorate?, false) do
+        copy_electorate(source.id, duplicate.id, actor)
+      else
+        {0, 0}
+      end
+
+    %{
+      poll: duplicate,
+      source_title: source.title,
+      options_copied: options_copied,
+      members_copied: members_copied,
+      members_skipped: members_skipped
+    }
+  end
+
+  defp get_source_or_rollback(source_id, actor) do
+    case Ash.get(Poll, source_id, actor: actor) do
+      {:ok, source} -> source
+      {:error, error} -> Polly.Repo.rollback(error)
     end
   end
 
@@ -79,6 +127,65 @@ defmodule Polly.Polls.Duplicator do
     Poll
     |> Ash.Query.filter(slug == ^slug)
     |> Ash.exists?(actor: actor)
+  end
+
+  defp copy_options(source_id, duplicate_id, actor) do
+    options = active_options(source_id, actor)
+
+    Enum.each(options, fn option ->
+      create_or_rollback(
+        Option,
+        %{poll_id: duplicate_id, label: option.label, position: option.position},
+        actor
+      )
+    end)
+
+    length(options)
+  end
+
+  defp active_options(poll_id, actor) do
+    Option
+    |> Ash.Query.filter(poll_id == ^poll_id and active == true)
+    |> Ash.Query.sort(position: :asc)
+    |> Ash.read!(actor: actor)
+  end
+
+  defp copy_electorate(source_id, duplicate_id, actor) do
+    {active_eligibilities, skipped_eligibilities} = eligibility_snapshot(source_id, actor)
+
+    Enum.each(active_eligibilities, fn eligibility ->
+      create_or_rollback(
+        Eligibility,
+        %{poll_id: duplicate_id, member_id: eligibility.member_id},
+        actor
+      )
+
+      create_or_rollback(
+        AccessGrant,
+        %{poll_id: duplicate_id, member_id: eligibility.member_id},
+        actor
+      )
+    end)
+
+    {length(active_eligibilities), length(skipped_eligibilities)}
+  end
+
+  defp eligibility_snapshot(poll_id, actor) do
+    poll_id
+    |> then(fn id ->
+      Eligibility
+      |> Ash.Query.filter(poll_id == ^id)
+      |> Ash.Query.load(:member)
+      |> Ash.read!(actor: actor)
+    end)
+    |> Enum.split_with(& &1.member.active)
+  end
+
+  defp create_or_rollback(resource, attributes, actor) do
+    case Ash.create(resource, attributes, actor: actor) do
+      {:ok, record} -> record
+      {:error, error} -> Polly.Repo.rollback(error)
+    end
   end
 
   defp copy_title(title) do

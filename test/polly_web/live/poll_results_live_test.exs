@@ -44,7 +44,7 @@ defmodule PollyWeb.PollResultsLiveTest do
     assert has_element?(view, "#winner-summary", "Leading: Under the Sea")
   end
 
-  test "duplicates poll details from the results page", %{conn: conn} do
+  test "links to duplication configuration from the results page", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     fixture = draft_poll!(actor, "Reusable results poll")
 
@@ -54,7 +54,7 @@ defmodule PollyWeb.PollResultsLiveTest do
     result = view |> element("#duplicate-poll-button") |> render_click()
 
     assert {:error, {:live_redirect, %{to: path}}} = result
-    assert path =~ ~r{/admin/polls/.+/edit$}
+    assert path == ~p"/admin/polls/#{fixture.poll.id}/duplicate"
   end
 
   defp draft_poll!(actor, title) do

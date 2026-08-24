@@ -30,6 +30,7 @@ defmodule PollyWeb.Router do
       live "/admin/polls", PollLive.Index, :index
       live "/admin/polls/new", PollLive.Form, :new
       live "/admin/polls/:id/edit", PollLive.Form, :edit
+      live "/admin/polls/:id/duplicate", PollLive.Duplicate, :new
       live "/admin/polls/:id/options", PollLive.Options, :index
       live "/admin/polls/:id/electorate", PollLive.Electorate, :index
       live "/admin/polls/:id/access", PollLive.Access, :index

@@ -149,6 +149,59 @@ defmodule Polly.Polls.DuplicatorTest do
     assert {:error, :actor_required} = Duplicator.duplicate(source, nil)
   end
 
+  test "option copying preserves active labels and positions with new IDs", %{actor: actor} do
+    fixture = configured_poll!(actor, "Option Template")
+
+    assert {:ok, result} =
+             Duplicator.duplicate(fixture.poll, %{copy_options?: true}, actor)
+
+    copied_options = list_options(result.poll.id, actor)
+
+    assert result.options_copied == 2
+    assert Enum.map(copied_options, &{&1.label, &1.position}) == [{"Alpha", 1}, {"Beta", 2}]
+    refute Enum.any?(copied_options, &(&1.id in [fixture.option.id, fixture.second_option.id]))
+    assert count_for(Eligibility, result.poll.id) == 0
+  end
+
+  test "electorate copying skips inactive members and issues fresh grants", %{actor: actor} do
+    fixture = configured_poll!(actor, "Electorate Template")
+
+    inactive_member =
+      Ash.create!(Member, %{name: "Inactive template member"}, actor: actor)
+
+    {_eligibility, inactive_grant} =
+      Electorate.include_member(fixture.poll, inactive_member, actor)
+
+    Ash.update!(inactive_member, %{active: false}, actor: actor)
+    Ash.update!(fixture.second_option, %{active: false}, actor: actor)
+
+    assert {:ok, preview} = Duplicator.preview(fixture.poll, actor)
+    assert preview.active_option_count == 1
+    assert preview.active_member_count == 1
+    assert preview.skipped_member_count == 1
+
+    assert {:ok, result} =
+             Duplicator.duplicate(
+               fixture.poll,
+               %{copy_options?: true, copy_electorate?: true},
+               actor
+             )
+
+    assert result.options_copied == 1
+    assert result.members_copied == 1
+    assert result.members_skipped == 1
+
+    copied_eligibilities = list_eligibilities(result.poll.id, actor)
+    assert Enum.map(copied_eligibilities, & &1.member_id) == [fixture.member.id]
+
+    [copied_grant] = list_grants(result.poll.id, actor)
+    assert copied_grant.member_id == fixture.member.id
+    assert copied_grant.token != fixture.grant.token
+    assert copied_grant.token != inactive_grant.token
+    assert count_for(Ballot, result.poll.id) == 0
+    assert count_selections(result.poll.id) == 0
+  end
+
   defp configured_poll!(actor, title) do
     poll =
       Ash.create!(
@@ -158,16 +211,44 @@ defmodule Polly.Polls.DuplicatorTest do
       )
 
     option = Ash.create!(Option, %{poll_id: poll.id, label: "Alpha", position: 1}, actor: actor)
-    Ash.create!(Option, %{poll_id: poll.id, label: "Beta", position: 2}, actor: actor)
+
+    second_option =
+      Ash.create!(Option, %{poll_id: poll.id, label: "Beta", position: 2}, actor: actor)
+
     member = Ash.create!(Member, %{name: "Eligible member #{title}"}, actor: actor)
     {_eligibility, grant} = Electorate.include_member(poll, member, actor)
 
-    %{poll: poll, option: option, grant: grant}
+    %{poll: poll, option: option, second_option: second_option, member: member, grant: grant}
   end
 
   defp count_for(resource, poll_id) do
     resource
     |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.count!(authorize?: false)
+  end
+
+  defp list_options(poll_id, actor) do
+    Option
+    |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.Query.sort(position: :asc)
+    |> Ash.read!(actor: actor)
+  end
+
+  defp list_eligibilities(poll_id, actor) do
+    Eligibility
+    |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.read!(actor: actor)
+  end
+
+  defp list_grants(poll_id, actor) do
+    AccessGrant
+    |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.read!(actor: actor)
+  end
+
+  defp count_selections(poll_id) do
+    Selection
+    |> Ash.Query.filter(ballot.poll_id == ^poll_id)
     |> Ash.count!(authorize?: false)
   end
 

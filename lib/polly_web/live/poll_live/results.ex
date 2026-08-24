@@ -1,7 +1,7 @@
 defmodule PollyWeb.PollLive.Results do
   use PollyWeb, :live_view
 
-  alias Polly.Polls.{Duplicator, Events, Poll}
+  alias Polly.Polls.{Events, Poll}
   alias Polly.Polls.Results, as: PollResults
 
   on_mount {PollyWeb.LiveUserAuth, :live_user_required}
@@ -92,17 +92,13 @@ defmodule PollyWeb.PollLive.Results do
           >
             Published
           </span>
-          <button
+          <.link
             id="duplicate-poll-button"
-            type="button"
-            phx-click="duplicate"
-            data-confirm={
-              "Duplicate #{@poll.title}? Only its title, description, and selection mode will be copied into a new draft."
-            }
+            navigate={~p"/admin/polls/#{@poll.id}/duplicate"}
             class="btn btn-outline"
           >
             Duplicate poll
-          </button>
+          </.link>
         </div>
 
         <div class="result-metrics">
@@ -164,19 +160,6 @@ defmodule PollyWeb.PollLive.Results do
   def handle_event("publish", _params, socket),
     do: transition(socket, :publish_results, "Results published")
 
-  def handle_event("duplicate", _params, socket) do
-    case Duplicator.duplicate(socket.assigns.poll, socket.assigns.current_user) do
-      {:ok, %{poll: duplicate}} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Draft duplicated from #{socket.assigns.poll.title}")
-         |> push_navigate(to: ~p"/admin/polls/#{duplicate.id}/edit")}
-
-      {:error, error} ->
-        {:noreply, put_flash(socket, :error, duplicate_error(error))}
-    end
-  end
-
   @impl true
   def handle_info({:poll_results_changed, poll_id}, %{assigns: %{poll: %{id: poll_id}}} = socket) do
     {:noreply, load_results(socket)}
@@ -234,8 +217,4 @@ defmodule PollyWeb.PollLive.Results do
     do: "Voting is closed. Review the final totals before publishing them to members."
 
   defp format_percentage(value), do: :erlang.float_to_binary(value, decimals: 1) <> "%"
-
-  defp duplicate_error(:actor_required), do: "You must sign in to duplicate a poll"
-  defp duplicate_error(:slug_generation_exhausted), do: "Could not generate a unique poll slug"
-  defp duplicate_error(error), do: Exception.message(error)
 end
