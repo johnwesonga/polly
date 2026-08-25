@@ -1,7 +1,7 @@
 High-value next features
 - CSV member upload — bulk-create member rosters using the existing specification. [DONE]
 - Poll duplication iteration 2 — optionally copy options and electorate. [DONE]
-- Administrator audit trail — record lifecycle, electorate, access, and configuration changes.
+- Administrator audit trail — record lifecycle, electorate, access, and configuration changes. [DONE]
 - Email invitation delivery — send private voting links directly to eligible members.
 - Access-link CSV export — export member names, emails, link status, and private URLs for controlled distribution.
 - Scheduled opening and closing — configure lifecycle timestamps instead of requiring manual actions.

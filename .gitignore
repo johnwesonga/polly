@@ -38,3 +38,6 @@ npm-debug.log
 # Local AshSqlite databases and sidecar files.
 /polly_test*
 /polly_dev*
+
+*.env
+*.envrc
