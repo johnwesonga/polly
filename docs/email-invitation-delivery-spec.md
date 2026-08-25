@@ -479,6 +479,29 @@ Logs should identify a delivery by delivery ID and operation ID. They must not c
 
 Administrator-visible errors should be actionable but sanitized, for example “Email provider authentication is not configured” or “The provider temporarily rejected this request.”
 
+### Oban Web dashboard
+
+The next operational-hardening iteration will add the open-source `oban_web` package and mount its dashboard at:
+
+```text
+/admin/oban
+```
+
+Oban Web complements Polly's recipient-level invitation status. The poll access page remains the administration interface for sending invitations and reviewing member outcomes; Oban Web is the operational interface for inspecting queues, retries, execution failures, and worker health.
+
+Dashboard requirements:
+
+- require an authenticated Polly administrator;
+- deny access to unauthenticated visitors;
+- use an `Oban.Web.Resolver` that returns `:read_only` by default;
+- do not allow retry, cancellation, deletion, queue pausing, queue scaling, or job insertion until Polly has explicit operational roles and authorization rules;
+- mount the dashboard in production as well as development, subject to the same administrator authentication boundary;
+- add a discoverable administration link labelled **Background jobs** or **Email jobs**;
+- verify that job arguments contain only `delivery_id` and no email address, member name, token, or voting URL; and
+- treat stack traces and recorded errors as administrator-sensitive operational information.
+
+If mutable job controls are enabled in a later iteration, every permitted action must be deliberately authorized. Retrying an invitation job can cause an external email side effect, so dashboard write access must not inherit automatically from ordinary poll-management access.
+
 ## Testing strategy
 
 ### Domain tests
@@ -519,6 +542,14 @@ Administrator-visible errors should be actionable but sanitized, for example “
 - Uses stable DOM IDs for the invitation section, confirmation form, bulk action, and member actions.
 - Preserves filters and expanded details after status refreshes.
 
+### Oban Web tests
+
+- Redirects or forbids unauthenticated dashboard requests.
+- Allows authenticated administrators to view `/admin/oban`.
+- Configures the initial dashboard resolver as read-only.
+- Prevents retry, cancel, delete, insert, pause, scale, and stop operations.
+- Confirms that invitation job arguments expose only the delivery ID.
+
 ### Configuration tests
 
 - Development uses the local adapter.
@@ -538,6 +569,7 @@ Administrator-visible errors should be actionable but sanitized, for example “
 8. Verify Resend delivery in a non-production environment using a restricted API key.
 9. Verify Polly's sender domain in Resend and publish the required DNS records.
 10. Enable production sending with conservative queue concurrency and monitor failure rates.
+11. In the operational-hardening iteration, install Oban Web, mount `/admin/oban`, and enforce read-only administrator access.
 
 If a background-job dependency is deliberately deferred, the feature should remain disabled rather than fall back to non-durable sending.
 
@@ -560,6 +592,7 @@ If a background-job dependency is deliberately deferred, the feature should rema
 
 Likely follow-up work includes:
 
+- an authenticated, read-only Oban Web dashboard for queue and worker diagnostics;
 - scheduled sends;
 - reminders limited to members who have not voted;
 - configurable reminder cadence and suppression;
@@ -589,3 +622,5 @@ Likely follow-up work includes:
 - [Resend domain verification](https://resend.com/docs/dashboard/domains/introduction)
 - [Oban documentation](https://hexdocs.pm/oban/Oban.html)
 - [Oban installation and SQLite engine requirements](https://hexdocs.pm/oban/installation.html)
+- [Oban Web installation](https://oban-web.hexdocs.pm/installation.html)
+- [Oban Web access controls](https://hexdocs.pm/oban_web/Oban.Web.Resolver.html)
