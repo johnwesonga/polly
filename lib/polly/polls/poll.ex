@@ -18,7 +18,15 @@ defmodule Polly.Polls.Poll do
   end
 
   actions do
-    defaults [:read]
+    read :read do
+      primary? true
+
+      pagination do
+        keyset? true
+        required? false
+        default_limit 25
+      end
+    end
 
     create :create_draft do
       primary? true

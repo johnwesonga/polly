@@ -53,6 +53,42 @@ defmodule PollyWeb.PollLiveTest do
     assert updated.slug == "updated-team-theme"
   end
 
+  test "paginates the poll index with keyset cursors", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    polls =
+      for number <- 1..26 do
+        Ash.create!(
+          Poll,
+          %{title: "Paginated Poll #{number}", slug: "paginated-poll-#{number}"},
+          actor: actor
+        )
+      end
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls")
+
+    assert has_element?(view, "#polls > article.poll-card:nth-of-type(25)")
+    refute has_element?(view, "#polls > article.poll-card:nth-of-type(26)")
+    assert has_element?(view, "#next-polls-page")
+    refute has_element?(view, "#previous-polls-page")
+
+    view |> element("#next-polls-page") |> render_click()
+
+    assert has_element?(view, "#polls > article.poll-card:first-of-type")
+    refute has_element?(view, "#polls > article.poll-card:nth-of-type(2)")
+
+    assert has_element?(view, "#previous-polls-page")
+    refute has_element?(view, "#next-polls-page")
+    assert Enum.any?(polls, &has_element?(view, "#polls-#{&1.id}"))
+
+    view |> element("#previous-polls-page") |> render_click()
+
+    assert has_element?(view, "#polls > article.poll-card:nth-of-type(25)")
+    refute has_element?(view, "#polls > article.poll-card:nth-of-type(26)")
+    refute has_element?(view, "#previous-polls-page")
+    assert has_element?(view, "#next-polls-page")
+  end
+
   test "regenerates a unique slug when a draft title changes", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)

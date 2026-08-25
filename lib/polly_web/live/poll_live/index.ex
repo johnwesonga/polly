@@ -3,17 +3,35 @@ defmodule PollyWeb.PollLive.Index do
 
   alias Polly.Polls.Poll
 
+  @page_size 25
+
   on_mount {PollyWeb.LiveUserAuth, :live_user_required}
 
   @impl true
   def mount(_params, _session, socket) do
-    polls = list_polls(socket.assigns.current_user)
-
     {:ok,
      socket
      |> assign(:page_title, "Polls")
-     |> assign(:polls_empty?, polls == [])
-     |> stream(:polls, polls)}
+     |> assign(:polls, [])
+     |> assign(:polls_empty?, true)
+     |> assign(:previous_cursor, nil)
+     |> assign(:next_cursor, nil)}
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    case list_polls(socket.assigns.current_user, params) do
+      {:ok, page} ->
+        {:noreply,
+         socket
+         |> assign(:polls, page.results)
+         |> assign(:polls_empty?, page.results == [])
+         |> assign(:previous_cursor, previous_cursor(page))
+         |> assign(:next_cursor, next_cursor(page))}
+
+      {:error, _error} ->
+        {:noreply, push_patch(socket, to: ~p"/admin/polls")}
+    end
   end
 
   @impl true
@@ -30,17 +48,18 @@ defmodule PollyWeb.PollLive.Index do
         <p class="admin-sub">Every poll owns its options, electorate, lifecycle, and results.</p>
         <div class="laneline" style="margin-bottom:20px;"></div>
 
-        <div id="polls" phx-update="stream" class="poll-list">
+        <div id="polls" class="poll-list">
           <div
+            :if={@polls_empty?}
             id="polls-empty"
-            class="empty-state hidden only:block"
+            class="empty-state"
           >
             <h2>No polls yet</h2>
             <p>Create the first draft to begin configuring options.</p>
           </div>
           <article
-            :for={{id, poll} <- @streams.polls}
-            id={id}
+            :for={poll <- @polls}
+            id={"polls-#{poll.id}"}
             class="poll-card"
           >
             <.link
@@ -89,16 +108,73 @@ defmodule PollyWeb.PollLive.Index do
             </div>
           </article>
         </div>
+
+        <nav
+          :if={@previous_cursor || @next_cursor}
+          id="poll-pagination"
+          class="poll-actions"
+          aria-label="Poll pages"
+        >
+          <.link
+            :if={@previous_cursor}
+            id="previous-polls-page"
+            patch={~p"/admin/polls?before=#{@previous_cursor}"}
+            class="btn btn-outline btn-sm"
+          >
+            Previous
+          </.link>
+          <.link
+            :if={@next_cursor}
+            id="next-polls-page"
+            patch={~p"/admin/polls?after=#{@next_cursor}"}
+            class="btn btn-outline btn-sm"
+          >
+            Next
+          </.link>
+        </nav>
       </section>
     </Layouts.app>
     """
   end
 
-  defp list_polls(actor) do
+  defp list_polls(actor, params) do
     Poll
-    |> Ash.Query.sort(updated_at: :desc)
-    |> Ash.read!(actor: actor)
+    |> Ash.Query.sort(updated_at: :desc, id: :desc)
+    |> Ash.read(actor: actor, page: page_options(params))
   end
+
+  defp page_options(%{"after" => cursor}) when is_binary(cursor) and cursor != "",
+    do: [limit: @page_size, after: cursor]
+
+  defp page_options(%{"before" => cursor}) when is_binary(cursor) and cursor != "",
+    do: [limit: @page_size, before: cursor]
+
+  defp page_options(_params), do: [limit: @page_size]
+
+  defp previous_cursor(%Ash.Page.Keyset{results: []}), do: nil
+
+  defp previous_cursor(%Ash.Page.Keyset{results: results, after: after_cursor})
+       when not is_nil(after_cursor),
+       do: keyset(List.first(results))
+
+  defp previous_cursor(%Ash.Page.Keyset{results: results, before: before_cursor, more?: true})
+       when not is_nil(before_cursor),
+       do: keyset(List.first(results))
+
+  defp previous_cursor(_page), do: nil
+
+  defp next_cursor(%Ash.Page.Keyset{results: []}), do: nil
+
+  defp next_cursor(%Ash.Page.Keyset{results: results, before: before_cursor})
+       when not is_nil(before_cursor),
+       do: keyset(List.last(results))
+
+  defp next_cursor(%Ash.Page.Keyset{results: results, more?: true}),
+    do: keyset(List.last(results))
+
+  defp next_cursor(_page), do: nil
+
+  defp keyset(record), do: record.__metadata__.keyset
 
   defp status_label(status), do: status |> to_string() |> String.capitalize()
 
