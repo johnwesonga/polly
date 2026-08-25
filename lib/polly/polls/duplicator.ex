@@ -72,13 +72,29 @@ defmodule Polly.Polls.Duplicator do
         {0, 0}
       end
 
-    %{
+    result = %{
       poll: duplicate,
       source_title: source.title,
       options_copied: options_copied,
       members_copied: members_copied,
       members_skipped: members_skipped
     }
+
+    Polly.Audit.append!(%{
+      action: "poll.duplicated",
+      actor: actor,
+      target: %{type: "poll", id: duplicate.id, label: duplicate.title},
+      poll_id: duplicate.id,
+      metadata: %{
+        source_poll_id: source.id,
+        source_poll_label: source.title,
+        options_copied: options_copied,
+        members_copied: members_copied,
+        members_skipped: members_skipped
+      }
+    })
+
+    result
   end
 
   defp get_source_or_rollback(source_id, actor) do
@@ -109,7 +125,10 @@ defmodule Polly.Polls.Duplicator do
     if slug_exists?(slug, actor) do
       create_with_unique_slug(title, attributes, actor, attempt + 1)
     else
-      case Ash.create(Poll, Map.put(attributes, :slug, slug), actor: actor) do
+      case Ash.create(Poll, Map.put(attributes, :slug, slug),
+             actor: actor,
+             context: %{audit: :skip}
+           ) do
         {:ok, duplicate} ->
           duplicate
 

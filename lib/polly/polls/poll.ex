@@ -23,6 +23,7 @@ defmodule Polly.Polls.Poll do
     create :create_draft do
       primary? true
       accept [:title, :description, :slug, :selection_mode]
+      change {Polly.Audit.Changes.AppendPollEvent, action: "poll.created"}
     end
 
     update :update_draft do
@@ -30,6 +31,7 @@ defmodule Polly.Polls.Poll do
       require_atomic? false
       validate attribute_equals(:status, :draft), message: "can only be edited while in draft"
       change Polly.Polls.Changes.SetSlugFromTitle
+      change {Polly.Audit.Changes.AppendPollEvent, action: "poll.updated"}
     end
 
     update :open do
@@ -40,6 +42,7 @@ defmodule Polly.Polls.Poll do
       validate Polly.Polls.Validations.HasEligibleMembers
       change set_attribute(:status, :open)
       change set_attribute(:opened_at, &DateTime.utc_now/0)
+      change {Polly.Audit.Changes.AppendPollEvent, action: "poll.opened"}
       change after_transaction(&__MODULE__.broadcast_status/3)
     end
 
@@ -49,6 +52,7 @@ defmodule Polly.Polls.Poll do
       validate attribute_equals(:status, :open), message: "must be open to close"
       change set_attribute(:status, :closed)
       change set_attribute(:closed_at, &DateTime.utc_now/0)
+      change {Polly.Audit.Changes.AppendPollEvent, action: "poll.closed"}
       change after_transaction(&__MODULE__.broadcast_status/3)
     end
 
@@ -61,6 +65,7 @@ defmodule Polly.Polls.Poll do
         message: "results have already been published"
 
       change set_attribute(:results_published_at, &DateTime.utc_now/0)
+      change {Polly.Audit.Changes.AppendPollEvent, action: "poll.results_published"}
       change after_transaction(&__MODULE__.broadcast_status/3)
     end
   end

@@ -33,7 +33,7 @@ defmodule PollyWeb.Layouts do
 
   attr :active_nav, :atom,
     default: nil,
-    values: [nil, :overview, :members, :polls],
+    values: [nil, :overview, :members, :polls, :audit],
     doc: "the active administrator navigation item"
 
   slot :inner_block, required: true
@@ -67,6 +67,13 @@ defmodule PollyWeb.Layouts do
             class={if(@active_nav == :polls, do: "current", else: nil)}
           >
             Polls
+          </.link>
+          <.link
+            id="admin-nav-audit"
+            navigate={~p"/admin/audit"}
+            class={if(@active_nav == :audit, do: "current", else: nil)}
+          >
+            Audit trail
           </.link>
           <div class="navfoot">
             Signed in as<br />

@@ -161,7 +161,7 @@ defmodule PollyWeb.PollLive.Access do
   @impl true
   def handle_event("revoke", %{"id" => id}, socket) do
     grant = Ash.get!(AccessGrant, id, actor: socket.assigns.current_user)
-    Ash.update!(grant, %{}, action: :revoke, actor: socket.assigns.current_user)
+    Electorate.revoke(grant, socket.assigns.current_user)
     {:noreply, socket |> put_flash(:info, "Access link revoked") |> load_access()}
   end
 
@@ -172,11 +172,7 @@ defmodule PollyWeb.PollLive.Access do
   end
 
   def handle_event("issue", %{"member-id" => member_id}, socket) do
-    Ash.create!(
-      AccessGrant,
-      %{poll_id: socket.assigns.poll.id, member_id: member_id},
-      actor: socket.assigns.current_user
-    )
+    Electorate.issue(socket.assigns.poll.id, member_id, socket.assigns.current_user)
 
     {:noreply, socket |> put_flash(:info, "Access link issued") |> load_access()}
   end
