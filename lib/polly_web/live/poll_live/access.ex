@@ -3,7 +3,7 @@ defmodule PollyWeb.PollLive.Access do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Eligibility, Electorate, Poll}
+  alias Polly.Polls.{AccessGrant, Eligibility, Electorate, Invitations, Poll}
 
   on_mount {PollyWeb.LiveUserAuth, :live_user_required}
 
@@ -53,6 +53,35 @@ defmodule PollyWeb.PollLive.Access do
           <span>Each link is a credential for one member and one poll. Share it privately.</span>
         </div>
 
+        <div id="email-invitations" class="card card-pad" style="margin-bottom:16px;">
+          <div class="detail-header">
+            <div>
+              <div class="admin-h3">Email invitations</div>
+              <p class="admin-sub" style="margin:4px 0 0;">
+                Send each ready member their private voting link.
+              </p>
+            </div>
+            <button
+              id="send-email-invitations"
+              type="button"
+              phx-click="send-invitations"
+              data-confirm={
+                "Queue #{@invitation_preview.ready_count} private email invitation(s)?"
+              }
+              disabled={@poll.status != :open || @invitation_preview.ready_count == 0}
+              class="btn btn-coral btn-sm"
+            >
+              Send invitations
+            </button>
+          </div>
+          <div id="invitation-readiness" class="poll-meta">
+            {@invitation_preview.ready_count} ready · {@invitation_preview.skipped_count} skipped
+            <%= if @poll.status != :open do %>
+              · Open the poll before sending invitations
+            <% end %>
+          </div>
+        </div>
+
         <div class="card card-pad">
           <div id="access-members" phx-update="stream">
             <div id="access-members-empty" class="empty-state hidden only:block">
@@ -88,6 +117,12 @@ defmodule PollyWeb.PollLive.Access do
                     else: "Revoked"
                   )}
                 </span>
+                <span
+                  id={"invitation-status-#{eligibility.member_id}"}
+                  class="pill"
+                >
+                  {invitation_state_label(Map.fetch!(@invitation_recipients, eligibility.member_id))}
+                </span>
               </div>
               <div
                 :if={grant = Map.get(@grants_by_member, eligibility.member_id)}
@@ -112,6 +147,28 @@ defmodule PollyWeb.PollLive.Access do
                   Copy
                 </button>
                 <div class="access-actions">
+                  <% recipient = Map.fetch!(@invitation_recipients, eligibility.member_id) %>
+                  <button
+                    :if={recipient.state == :ready}
+                    id={"send-invitation-#{eligibility.member_id}"}
+                    type="button"
+                    phx-click="send-invitation"
+                    phx-value-id={grant.id}
+                    class="btn btn-outline btn-sm"
+                  >
+                    Email link
+                  </button>
+                  <button
+                    :if={recipient.state == :already_invited}
+                    id={"resend-invitation-#{eligibility.member_id}"}
+                    type="button"
+                    phx-click="resend-invitation"
+                    phx-value-id={grant.id}
+                    data-confirm="Queue another invitation for this member?"
+                    class="btn btn-outline btn-sm"
+                  >
+                    Resend email
+                  </button>
                   <button
                     id={"revoke-access-link-#{eligibility.member_id}"}
                     type="button"
@@ -177,6 +234,30 @@ defmodule PollyWeb.PollLive.Access do
     {:noreply, socket |> put_flash(:info, "Access link issued") |> load_access()}
   end
 
+  def handle_event("send-invitations", _params, socket) do
+    case Invitations.enqueue_bulk(socket.assigns.poll, socket.assigns.current_user) do
+      {:ok, deliveries} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Queued #{length(deliveries)} email invitation(s)")
+         |> load_access()}
+
+      {:error, :poll_not_open} ->
+        {:noreply, put_flash(socket, :error, "Open the poll before sending invitations")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Invitations could not be queued")}
+    end
+  end
+
+  def handle_event("send-invitation", %{"id" => id}, socket) do
+    enqueue_one(socket, id, :initial)
+  end
+
+  def handle_event("resend-invitation", %{"id" => id}, socket) do
+    enqueue_one(socket, id, :resend)
+  end
+
   defp load_access(socket) do
     actor = socket.assigns.current_user
     poll = socket.assigns.poll
@@ -195,13 +276,57 @@ defmodule PollyWeb.PollLive.Access do
       |> Ash.read!(actor: actor)
 
     grants_by_member = Map.new(grants, &{&1.member_id, &1})
+    invitation_preview = Invitations.preview(poll, actor)
+
+    invitation_recipients =
+      Map.new(invitation_preview.recipients, &{&1.member.id, &1})
 
     socket
     |> assign(:grants_by_member, grants_by_member)
     |> assign(:active_grant_count, map_size(grants_by_member))
     |> assign(:eligible_count, length(eligibilities))
+    |> assign(:invitation_preview, invitation_preview)
+    |> assign(:invitation_recipients, invitation_recipients)
     |> stream(:eligibilities, eligibilities, reset: true)
   end
+
+  defp enqueue_one(socket, grant_id, kind) do
+    grant = Ash.get!(AccessGrant, grant_id, actor: socket.assigns.current_user)
+
+    case Invitations.enqueue_one(grant, socket.assigns.current_user, kind) do
+      {:ok, _delivery} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Email invitation queued")
+         |> load_access()}
+
+      {:error, reason} when is_atom(reason) ->
+        {:noreply, put_flash(socket, :error, "Invitation unavailable: #{state_label(reason)}")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Invitation could not be queued")}
+    end
+  end
+
+  defp invitation_state_label(%{delivery: %{status: status}}), do: delivery_status_label(status)
+  defp invitation_state_label(%{state: state}), do: state_label(state)
+
+  defp delivery_status_label(:queued), do: "Queued"
+  defp delivery_status_label(:sending), do: "Sending"
+  defp delivery_status_label(:accepted), do: "Sent"
+  defp delivery_status_label(:failed), do: "Failed"
+  defp delivery_status_label(:cancelled), do: "Cancelled"
+
+  defp state_label(:ready), do: "Ready to email"
+  defp state_label(:poll_not_open), do: "Poll not open"
+  defp state_label(:missing_email), do: "Missing email"
+  defp state_label(:inactive_member), do: "Inactive member"
+  defp state_label(:already_voted), do: "Already voted"
+  defp state_label(:missing_grant), do: "Missing grant"
+  defp state_label(:revoked_grant), do: "Revoked grant"
+  defp state_label(:expired_grant), do: "Expired grant"
+  defp state_label(:already_invited), do: "Already invited"
+  defp state_label(:not_eligible), do: "Not eligible"
 
   defp access_url(poll, grant) do
     PollyWeb.Endpoint.url() <> "/polls/#{poll.id}/vote/#{grant.token}"

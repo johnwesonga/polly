@@ -35,7 +35,8 @@ defmodule Polly.Audit do
     "poll_electorate.member_removed" => [:member_id],
     "poll_access_grant.issued" => [:member_id, :grant_id],
     "poll_access_grant.revoked" => [:member_id, :grant_id],
-    "poll_access_grant.reissued" => [:member_id, :old_grant_id, :new_grant_id]
+    "poll_access_grant.reissued" => [:member_id, :old_grant_id, :new_grant_id],
+    "poll.invitations_enqueued" => [:queued_count, :skipped_count, :request_kind]
   }
 
   @forbidden_fragments ~w(token password secret url csv ballot selection email)
@@ -136,6 +137,7 @@ defmodule Polly.Audit do
       "poll_access_grant.issued" -> "issued access for “#{event.target_label}”"
       "poll_access_grant.revoked" -> "revoked access for “#{event.target_label}”"
       "poll_access_grant.reissued" -> "reissued access for “#{event.target_label}”"
+      "poll.invitations_enqueued" -> "queued email invitations for “#{event.target_label}”"
       _unknown -> event.action <> " on “#{event.target_label}”"
     end
   end

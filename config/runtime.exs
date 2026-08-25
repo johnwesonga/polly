@@ -20,6 +20,32 @@ if System.get_env("PHX_SERVER") do
   config :polly, PollyWeb.Endpoint, server: true
 end
 
+resend_api_key = System.get_env("RESEND_API_KEY")
+
+if config_env() == :prod && is_nil(resend_api_key) do
+  raise "Missing environment variable `RESEND_API_KEY`!"
+end
+
+if config_env() != :test && resend_api_key do
+  from_email =
+    System.get_env("POLLY_FROM_EMAIL") ||
+      if config_env() == :prod do
+        raise "Missing environment variable `POLLY_FROM_EMAIL`!"
+      else
+        "onboarding@resend.dev"
+      end
+
+  config :polly, Polly.Mailer,
+    adapter: Swoosh.Adapters.Resend,
+    api_key: resend_api_key
+
+  config :polly,
+         :invitation_from,
+         {System.get_env("POLLY_FROM_NAME") || "Polly", from_email}
+
+  config :swoosh, :api_client, Swoosh.ApiClient.Req
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

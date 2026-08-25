@@ -818,7 +818,7 @@
      display: inline-flex;
      width: 100%;
      min-width: 0;
-     max-width: min(100%, 820px);
+     max-width: min(100%, 420px);
      overflow: hidden;
      text-overflow: ellipsis;
      white-space: nowrap;

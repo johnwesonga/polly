@@ -82,6 +82,10 @@ defmodule Polly.Polls.AccessGrant do
       allow_nil? false
       public? true
     end
+
+    has_many :invitation_deliveries, Polly.Polls.InvitationDelivery do
+      destination_attribute :access_grant_id
+    end
   end
 
   identities do

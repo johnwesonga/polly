@@ -13,6 +13,7 @@ defmodule Polly.Polls do
     resource Polly.Polls.AccessGrant
     resource Polly.Polls.Ballot
     resource Polly.Polls.Eligibility
+    resource Polly.Polls.InvitationDelivery
     resource Polly.Polls.Option
     resource Polly.Polls.Poll
     resource Polly.Polls.Selection

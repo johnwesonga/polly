@@ -55,7 +55,8 @@ defmodule PollyWeb.PollLive.Vote do
               </div>
               <h1 class="m-title">{@poll.title}</h1>
               <p class="m-desc">
-                {@poll.description || "Choose one option below."} One vote per member—you won't be
+                {@poll.description || "Choose one option below."}
+                <br />One vote per member—you won't be
                 able to change it after you submit.
               </p>
 

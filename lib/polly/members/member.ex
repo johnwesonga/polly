@@ -70,6 +70,10 @@ defmodule Polly.Members.Member do
     has_many :ballots, Polly.Polls.Ballot do
       destination_attribute :member_id
     end
+
+    has_many :invitation_deliveries, Polly.Polls.InvitationDelivery do
+      destination_attribute :member_id
+    end
   end
 
   identities do

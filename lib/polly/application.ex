@@ -10,6 +10,7 @@ defmodule Polly.Application do
     children = [
       PollyWeb.Telemetry,
       Polly.Repo,
+      {Oban, Application.fetch_env!(:polly, Oban)},
       {DNSCluster, query: Application.get_env(:polly, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Polly.PubSub},
       # Start a worker by calling: Polly.Worker.start_link(arg)

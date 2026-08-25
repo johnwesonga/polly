@@ -78,6 +78,13 @@ config :polly, PollyWeb.Endpoint,
 # at the `config/runtime.exs`.
 config :polly, Polly.Mailer, adapter: Swoosh.Adapters.Local
 
+config :polly, :invitation_from, {"Polly", "onboarding@resend.dev"}
+
+config :polly, Oban,
+  engine: Oban.Engines.Lite,
+  repo: Polly.Repo,
+  queues: [mailers: 5]
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
