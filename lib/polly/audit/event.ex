@@ -13,7 +13,16 @@ defmodule Polly.Audit.Event do
   end
 
   actions do
-    defaults [:read]
+    read :read do
+      primary? true
+
+      pagination do
+        keyset? true
+        required? false
+        default_limit 25
+        countable true
+      end
+    end
 
     create :append do
       public? false

@@ -4,10 +4,17 @@ defmodule Polly.Audit do
   use Ash.Domain,
     otp_app: :polly
 
+  import Ecto.Query, only: [from: 2]
+
   alias Polly.Accounts.User
   alias Polly.Audit.Event
 
   @definitions %{
+    "member.created" => [],
+    "member.updated" => [:changed_fields],
+    "member.activated" => [:changed_fields],
+    "member.deactivated" => [:changed_fields],
+    "member_import.completed" => [:created_count, :skipped_count],
     "poll.created" => [],
     "poll.updated" => [:changed_fields],
     "poll.duplicated" => [
@@ -20,6 +27,10 @@ defmodule Polly.Audit do
     "poll.opened" => [:old_status, :new_status],
     "poll.closed" => [:old_status, :new_status],
     "poll.results_published" => [],
+    "poll_option.created" => [:position],
+    "poll_option.updated" => [:changed_fields],
+    "poll_option.reordered" => [:old_position, :new_position],
+    "poll_option.deleted" => [:position],
     "poll_electorate.member_added" => [:member_id],
     "poll_electorate.member_removed" => [:member_id],
     "poll_access_grant.issued" => [:member_id, :grant_id],
@@ -36,7 +47,32 @@ defmodule Polly.Audit do
 
   def actions, do: Map.keys(@definitions)
 
+  def actor_options(%User{}) do
+    Polly.Repo.all(
+      from event in "audit_events",
+        distinct: true,
+        order_by: [asc: event.actor_label],
+        select: {event.actor_label, event.actor_id}
+    )
+  end
+
   def append(attributes) when is_map(attributes) do
+    started_at = System.monotonic_time()
+    result = do_append(attributes)
+
+    :telemetry.execute(
+      [:polly, :audit, :append],
+      %{duration: System.monotonic_time() - started_at, count: 1},
+      %{
+        action: Map.get(attributes, :action),
+        status: if(match?({:ok, _event}, result), do: :ok, else: :error)
+      }
+    )
+
+    result
+  end
+
+  defp do_append(attributes) do
     with %User{} = actor <- Map.get(attributes, :actor),
          action when is_binary(action) <- Map.get(attributes, :action),
          {:ok, allowed_keys} <- fetch_definition(action),
@@ -86,6 +122,15 @@ defmodule Polly.Audit do
       "poll.opened" -> "opened “#{event.target_label}”"
       "poll.closed" -> "closed “#{event.target_label}”"
       "poll.results_published" -> "published results for “#{event.target_label}”"
+      "member.created" -> "created member “#{event.target_label}”"
+      "member.updated" -> "updated member “#{event.target_label}”"
+      "member.activated" -> "activated member “#{event.target_label}”"
+      "member.deactivated" -> "deactivated member “#{event.target_label}”"
+      "member_import.completed" -> "completed a member import"
+      "poll_option.created" -> "created option “#{event.target_label}”"
+      "poll_option.updated" -> "updated option “#{event.target_label}”"
+      "poll_option.reordered" -> "reordered option “#{event.target_label}”"
+      "poll_option.deleted" -> "deleted option “#{event.target_label}”"
       "poll_electorate.member_added" -> "added “#{event.target_label}” to an electorate"
       "poll_electorate.member_removed" -> "removed “#{event.target_label}” from an electorate"
       "poll_access_grant.issued" -> "issued access for “#{event.target_label}”"

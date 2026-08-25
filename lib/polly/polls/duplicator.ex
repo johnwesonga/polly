@@ -201,7 +201,7 @@ defmodule Polly.Polls.Duplicator do
   end
 
   defp create_or_rollback(resource, attributes, actor) do
-    case Ash.create(resource, attributes, actor: actor) do
+    case Ash.create(resource, attributes, actor: actor, context: %{audit: :skip}) do
       {:ok, record} -> record
       {:error, error} -> Polly.Repo.rollback(error)
     end

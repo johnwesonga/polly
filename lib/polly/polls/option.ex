@@ -24,6 +24,7 @@ defmodule Polly.Polls.Option do
       primary? true
       accept [:poll_id, :label, :position]
       validate Polly.Polls.Validations.PollIsDraft
+      change {Polly.Audit.Changes.AppendOptionEvent, action: "poll_option.created"}
     end
 
     update :update do
@@ -31,12 +32,14 @@ defmodule Polly.Polls.Option do
       accept [:label, :position, :active]
       require_atomic? false
       validate Polly.Polls.Validations.PollIsDraft
+      change {Polly.Audit.Changes.AppendOptionEvent, action: "poll_option.updated"}
     end
 
     destroy :destroy do
       primary? true
       require_atomic? false
       validate Polly.Polls.Validations.PollIsDraft
+      change {Polly.Audit.Changes.AppendOptionEvent, action: "poll_option.deleted"}
     end
   end
 

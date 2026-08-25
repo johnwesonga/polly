@@ -6,6 +6,8 @@ Add an append-only audit trail for consequential administrator actions. The
 trail answers who changed what, when it changed, which record was affected, and
 the safe operational context surrounding the change.
 
+Implementation status: iterations 1 and 2 are complete.
+
 Audit events are application records, not ordinary logs. Administrators may
 search and inspect them, but application code exposes no update or delete
 actions for audit records.

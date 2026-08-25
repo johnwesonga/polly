@@ -4,6 +4,7 @@ defmodule PollyWeb.PollLive.Options do
   require Ash.Query
 
   alias Polly.Polls.{Option, Poll}
+  alias Polly.Polls.Options, as: PollOptions
 
   on_mount {PollyWeb.LiveUserAuth, :live_user_required}
 
@@ -286,7 +287,7 @@ defmodule PollyWeb.PollLive.Options do
 
     with %Option{} = option <- Enum.at(options, index),
          %Option{} = neighbor <- Enum.at(options, neighbor_index) do
-      swap_positions(option, neighbor, length(options) + 1, actor)
+      PollOptions.reorder(option, neighbor, length(options) + 1, actor)
     end
 
     {:noreply, reload_options(socket)}
@@ -329,16 +330,5 @@ defmodule PollyWeb.PollLive.Options do
     |> Ash.Query.filter(poll_id == ^poll.id)
     |> Ash.Query.sort(position: :asc)
     |> Ash.read!(actor: actor)
-  end
-
-  defp swap_positions(option, neighbor, temporary_position, actor) do
-    option_position = option.position
-    neighbor_position = neighbor.position
-
-    Polly.Repo.transaction(fn ->
-      option = Ash.update!(option, %{position: temporary_position}, actor: actor)
-      Ash.update!(neighbor, %{position: option_position}, actor: actor)
-      Ash.update!(option, %{position: neighbor_position}, actor: actor)
-    end)
   end
 end

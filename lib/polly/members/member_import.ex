@@ -30,7 +30,7 @@ defmodule Polly.Members.MemberImport do
     with true <- Preview.valid?(preview),
          refreshed <- classify(Enum.map(preview.rows, &reset_row/1)),
          true <- Preview.valid?(refreshed) do
-      case Polly.Repo.transaction(fn -> create_new_rows(refreshed.rows, actor) end) do
+      case Polly.Repo.transaction(fn -> commit_rows(refreshed, actor) end) do
         {:ok, created_count} ->
           {:ok, %{created_count: created_count, skipped_count: refreshed.existing_count}}
 
@@ -187,10 +187,26 @@ defmodule Polly.Members.MemberImport do
     rows
     |> Enum.filter(&(&1.classification == :new))
     |> Enum.reduce_while(0, fn row, count ->
-      case Ash.create(Member, %{name: row.name, email: row.email}, actor: actor) do
+      case Ash.create(Member, %{name: row.name, email: row.email},
+             actor: actor,
+             context: %{audit: :skip}
+           ) do
         {:ok, _member} -> {:cont, count + 1}
         {:error, error} -> Polly.Repo.rollback(error)
       end
     end)
+  end
+
+  defp commit_rows(preview, actor) do
+    created_count = create_new_rows(preview.rows, actor)
+
+    Polly.Audit.append!(%{
+      action: "member_import.completed",
+      actor: actor,
+      target: %{type: "member_import", id: nil, label: "Member CSV import"},
+      metadata: %{created_count: created_count, skipped_count: preview.existing_count}
+    })
+
+    created_count
   end
 end

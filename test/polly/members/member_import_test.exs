@@ -1,7 +1,10 @@
 defmodule Polly.Members.MemberImportTest do
   use Polly.DataCase
 
+  require Ash.Query
+
   alias Polly.Accounts.User
+  alias Polly.Audit.Event
   alias Polly.Members.{Member, MemberImport}
 
   setup do
@@ -62,6 +65,13 @@ defmodule Polly.Members.MemberImportTest do
 
     assert {:ok, %{created_count: 1, skipped_count: 1}} = MemberImport.commit(preview, actor)
     assert Ash.count!(Member, authorize?: false) == 2
+
+    import_event =
+      Event
+      |> Ash.Query.filter(action == "member_import.completed")
+      |> Ash.read_one!(actor: actor)
+
+    assert import_event.metadata == %{"created_count" => 1, "skipped_count" => 1}
 
     assert {:ok, repeated_preview} = MemberImport.preview(csv)
 

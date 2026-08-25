@@ -24,6 +24,7 @@ defmodule Polly.Members.Member do
       primary? true
       accept [:name, :email]
       change Polly.Members.Changes.NormalizeEmail
+      change {Polly.Audit.Changes.AppendMemberEvent, action: "member.created"}
     end
 
     update :update do
@@ -31,6 +32,7 @@ defmodule Polly.Members.Member do
       accept [:name, :email, :active]
       require_atomic? false
       change Polly.Members.Changes.NormalizeEmail
+      change {Polly.Audit.Changes.AppendMemberEvent, action: "member.updated"}
     end
   end
 
