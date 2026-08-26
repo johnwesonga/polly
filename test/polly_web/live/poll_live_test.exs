@@ -89,6 +89,37 @@ defmodule PollyWeb.PollLiveTest do
     assert has_element?(view, "#next-polls-page")
   end
 
+  test "filters polls by lifecycle status before pagination", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    draft =
+      Ash.create!(Poll, %{title: "Draft Listing", slug: "draft-listing"}, actor: actor)
+
+    open = create_poll_with_status!(actor, "Open Listing", "open-listing", :open)
+    closed = create_poll_with_status!(actor, "Closed Listing", "closed-listing", :closed)
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls")
+
+    assert has_element?(view, "#poll-filter-all.current")
+    assert has_element?(view, "#polls-#{draft.id}")
+    assert has_element?(view, "#polls-#{open.id}")
+    assert has_element?(view, "#polls-#{closed.id}")
+
+    view |> element("#poll-filter-draft") |> render_click()
+
+    assert has_element?(view, "#poll-filter-draft.current")
+    assert has_element?(view, "#polls-#{draft.id}")
+    refute has_element?(view, "#polls-#{open.id}")
+    refute has_element?(view, "#polls-#{closed.id}")
+
+    view |> element("#poll-filter-open") |> render_click()
+
+    assert has_element?(view, "#poll-filter-open.current")
+    assert has_element?(view, "#polls-#{open.id}")
+    refute has_element?(view, "#polls-#{draft.id}")
+    refute has_element?(view, "#polls-#{closed.id}")
+  end
+
   test "regenerates a unique slug when a draft title changes", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)
@@ -228,6 +259,23 @@ defmodule PollyWeb.PollLiveTest do
 
   defp create_option!(poll, actor, label, position) do
     Ash.create!(Option, %{poll_id: poll.id, label: label, position: position}, actor: actor)
+  end
+
+  defp create_poll_with_status!(actor, title, slug, status) do
+    poll = Ash.create!(Poll, %{title: title, slug: slug}, actor: actor)
+    create_option!(poll, actor, "One", 1)
+    create_option!(poll, actor, "Two", 2)
+
+    member = Ash.create!(Member, %{name: "#{title} Member"}, actor: actor)
+    Ash.create!(Eligibility, %{poll_id: poll.id, member_id: member.id}, actor: actor)
+
+    poll = Ash.update!(poll, %{}, action: :open, actor: actor)
+
+    if status == :closed do
+      Ash.update!(poll, %{}, action: :close, actor: actor)
+    else
+      poll
+    end
   end
 
   defp list_options(poll, actor) do

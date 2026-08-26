@@ -1,6 +1,8 @@
 defmodule PollyWeb.PollLive.Index do
   use PollyWeb, :live_view
 
+  require Ash.Query
+
   alias Polly.Polls.Poll
 
   @page_size 25
@@ -20,12 +22,15 @@ defmodule PollyWeb.PollLive.Index do
 
   @impl true
   def handle_params(params, _uri, socket) do
+    status_filter = status_filter(params)
+
     case list_polls(socket.assigns.current_user, params) do
       {:ok, page} ->
         {:noreply,
          socket
          |> assign(:polls, page.results)
          |> assign(:polls_empty?, page.results == [])
+         |> assign(:status_filter, status_filter)
          |> assign(:previous_cursor, previous_cursor(page))
          |> assign(:next_cursor, next_cursor(page))}
 
@@ -48,14 +53,25 @@ defmodule PollyWeb.PollLive.Index do
         <p class="admin-sub">Every poll owns its options, electorate, lifecycle, and results.</p>
         <div class="laneline" style="margin-bottom:20px;"></div>
 
+        <nav id="poll-status-filters" class="detail-tabs" aria-label="Filter polls by status">
+          <.link
+            :for={{label, status} <- status_filters()}
+            id={"poll-filter-#{status}"}
+            patch={status_filter_path(status)}
+            class={["phase-tab", @status_filter == status && "current"]}
+          >
+            {label}
+          </.link>
+        </nav>
+
         <div id="polls" class="poll-list">
           <div
             :if={@polls_empty?}
             id="polls-empty"
             class="empty-state"
           >
-            <h2>No polls yet</h2>
-            <p>Create the first draft to begin configuring options.</p>
+            <h2>{empty_title(@status_filter)}</h2>
+            <p>{empty_message(@status_filter)}</p>
           </div>
           <article
             :for={poll <- @polls}
@@ -118,7 +134,7 @@ defmodule PollyWeb.PollLive.Index do
           <.link
             :if={@previous_cursor}
             id="previous-polls-page"
-            patch={~p"/admin/polls?before=#{@previous_cursor}"}
+            patch={pagination_path(@status_filter, :before, @previous_cursor)}
             class="btn btn-outline btn-sm"
           >
             Previous
@@ -126,7 +142,7 @@ defmodule PollyWeb.PollLive.Index do
           <.link
             :if={@next_cursor}
             id="next-polls-page"
-            patch={~p"/admin/polls?after=#{@next_cursor}"}
+            patch={pagination_path(@status_filter, :after, @next_cursor)}
             class="btn btn-outline btn-sm"
           >
             Next
@@ -140,7 +156,28 @@ defmodule PollyWeb.PollLive.Index do
   defp list_polls(actor, params) do
     Poll
     |> Ash.Query.sort(updated_at: :desc, id: :desc)
+    |> apply_status_filter(status_filter(params))
     |> Ash.read(actor: actor, page: page_options(params))
+  end
+
+  defp apply_status_filter(query, :all), do: query
+  defp apply_status_filter(query, status), do: Ash.Query.filter(query, status == ^status)
+
+  defp status_filter(%{"status" => "draft"}), do: :draft
+  defp status_filter(%{"status" => "open"}), do: :open
+  defp status_filter(%{"status" => "closed"}), do: :closed
+  defp status_filter(_params), do: :all
+
+  defp status_filters,
+    do: [{"All", :all}, {"Drafts", :draft}, {"Open", :open}, {"Closed", :closed}]
+
+  defp status_filter_path(:all), do: ~p"/admin/polls"
+  defp status_filter_path(status), do: ~p"/admin/polls?status=#{status}"
+
+  defp pagination_path(status, direction, cursor) do
+    params = %{Atom.to_string(direction) => cursor}
+    params = if status == :all, do: params, else: Map.put(params, "status", status)
+    ~p"/admin/polls?#{params}"
   end
 
   defp page_options(%{"after" => cursor}) when is_binary(cursor) and cursor != "",
@@ -175,6 +212,14 @@ defmodule PollyWeb.PollLive.Index do
   defp next_cursor(_page), do: nil
 
   defp keyset(record), do: record.__metadata__.keyset
+
+  defp empty_title(:all), do: "No polls yet"
+  defp empty_title(:draft), do: "No draft polls"
+  defp empty_title(:open), do: "No open polls"
+  defp empty_title(:closed), do: "No closed polls"
+
+  defp empty_message(:all), do: "Create the first draft to begin configuring options."
+  defp empty_message(_status), do: "Choose another status to view more polls."
 
   defp status_label(status), do: status |> to_string() |> String.capitalize()
 

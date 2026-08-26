@@ -131,7 +131,8 @@ defmodule PollyWeb.PollLive.Vote do
               <div class="stamp"><.icon name="hero-check" class="size-8" /></div>
               <h1>VOTE RECORDED</h1>
               <p>
-                Your ballot for {@poll.title} is final. Results will be visible here after the poll
+                Your ballot for <b>{@poll.title}</b>
+                is final. Results will be visible here after the poll
                 closes and the administrator publishes them.
               </p>
               <div class="receipt">
