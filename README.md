@@ -1,104 +1,78 @@
 # Polly
 
-Polly is a Phoenix and Ash application for running configurable polls. It is the
-greenfield successor to Nominator, a swimmer-award proof of concept, and is
-designed around generic members, poll-scoped access, and independently managed
-poll lifecycles.
+Polly is a Phoenix and Ash application for running private, configurable polls. Its Touchpad interface gives administrators a complete workflow for managing members, configuring polls, distributing private voting links, monitoring participation, and publishing results.
 
-The initial product is a complete single-choice polling flow. Broader platform
-features such as ranked voting, write-ins, public results, scheduling, and
-audience segments are intentionally deferred.
+Polly is the successor to Nominator, a swimmer-award proof of concept. The current application generalizes that model around reusable members, poll-scoped eligibility, independently managed poll lifecycles, and one final single-choice ballot per voter.
 
-See [the configurable polls proposal](docs/configurable-polls-proposal.md) for
-the full product and domain design. The decisions made during bootstrap are in
-[the first-release decision record](docs/first-release-decisions.md). The
-planned bulk roster workflow is described in the
-[CSV member upload specification](docs/csv-member-upload-spec.md). Reusing poll
-configuration is planned in the
-[poll duplication specification](docs/poll-duplication-spec.md). Administrator
-accountability and change history are defined in the
-[administrator audit trail specification](docs/admin-audit-trail-spec.md).
+## Current capabilities
 
-## First-release rules
+- Administrator authentication with confirmation and password reset.
+- Member management and CSV member import with validation and preview.
+- Draft poll configuration with title-derived slugs and text options.
+- Poll duplication, optionally including options and the electorate.
+- Electorate snapshots with unique, revocable, and reissuable access grants.
+- Draft, open, and closed poll lifecycle controls.
+- Token-based public voting with review and final submission states.
+- Poll-scoped turnout and results with explicit result publication.
+- Individual and bulk email invitation delivery through durable Oban jobs.
+- Touchpad-styled multipart invitation emails with HTML and plain-text bodies.
+- Per-member invitation status, explicit resends, and safe failure categories.
+- Administrator audit history for poll, option, member, import, and invitation actions.
+- Read-only Oban Web diagnostics for authenticated administrators.
+- SQLite-backed single-machine deployment support for Fly.io.
 
-- An administrator creates a draft poll with at least two text options.
-- The administrator explicitly selects the eligible members for each poll.
-- Each eligible member receives a unique, revocable link for that poll.
-- Each member may submit one single-choice ballot per poll.
+## Polling rules
+
+- A poll starts as a draft and requires at least two options before opening.
+- The administrator explicitly selects eligible members for each poll.
+- Each eligible member receives a private credential scoped to that member and poll.
+- A member may submit one single-choice ballot per poll.
 - Submitted ballots are final and cannot be edited or resubmitted.
 - Options and eligibility are frozen when voting opens.
-- Polls are opened and closed manually.
-- Results remain private while voting is open and after closing until an
-  administrator explicitly publishes them.
+- Polls are opened and closed manually; lifecycle changes move forward only.
+- Results remain private until an administrator explicitly publishes them.
 - Published results are visible to members whose access grants remain valid.
 
-Access links are credentials and must be distributed privately. The server must
-derive the member from the access grant rather than trust a member ID supplied
-by the browser.
+Access links are bearer credentials and must be distributed privately. Polly derives voter identity from the access grant and never trusts a member ID supplied by the browser.
 
-## Proposed domain
+## Architecture
 
-The polling domain consists of:
+Polly uses:
+
+- Phoenix 1.8 and LiveView for the web interface;
+- Ash Framework resources, actions, policies, and Ash SQLite persistence;
+- SQLite for application data;
+- Oban with its SQLite engine for durable invitation jobs;
+- Swoosh for multipart email construction;
+- Resend for production email delivery; and
+- Phoenix PubSub for live poll and result updates.
+
+The core polling resources are:
 
 - `Member` — a person who may be eligible to vote;
 - `Poll` — the configuration and lifecycle of one poll;
-- `Option` — an administrator-defined text choice belonging to a poll;
-- `Eligibility` — a snapshot of a poll's electorate;
-- `AccessGrant` — a revocable, poll-and-member-specific credential;
-- `Ballot` — one member's submission state for one poll; and
-- `Selection` — a choice recorded against a ballot.
-
-Ballot submission will be a single transactional domain action that validates
-the poll, option, eligibility, access grant, and duplicate-submission rules
-together. Results and real-time events will also be scoped to an individual
-poll.
-
-## Delivery plan
-
-0. **Bootstrap (complete)** — establish the new project, administrator
-   authentication, test foundation, and remaining product decisions.
-1. **Poll foundation (complete)** — implement polls, text options, lifecycle
-   actions, and authenticated configuration pages.
-2. **Electorate and access (complete)** — add member management, eligibility
-   snapshots, revocable member links, electorate selection, and ballot preview.
-3. **Phase 3A: Ballot domain and submission integrity (complete)** — Ballot and
-   Selection resources, transactional single-choice submission, cross-poll
-   validation, finality, and concurrency protection are implemented.
-4. **Phase 3B: Public voting experience and cutover (complete)** — the
-   token-based public route provides a responsive ballot and review UI,
-   confirmation, and denied or duplicate-submission states.
-5. **Phase 4: Results and operations (complete)** — turnout, poll-scoped
-   results and PubSub, lifecycle controls, publication, and member result views
-   are implemented.
-6. **Hardening** — verify concurrency, authorization, token handling, logging,
-   deployment, and operator documentation.
-
-Phases 0 through 4 are complete. The protected administrator area supports
-member management, draft poll and option configuration, electorate snapshots,
-revocable poll-and-member-specific access links, lifecycle operations, turnout,
-and final results. Eligible members can use private links to submit one final
-ballot and view results after explicit publication. The remaining delivery work
-is hardening and deployment readiness.
+- `Option` — an administrator-defined choice belonging to a poll;
+- `Eligibility` — membership in a poll's electorate;
+- `AccessGrant` — a revocable poll-and-member-specific credential;
+- `Ballot` — one member's final submission for one poll;
+- `Selection` — the option recorded against a ballot; and
+- `InvitationDelivery` — durable, token-free email delivery history.
 
 ## Development
 
-Requirements include Elixir, Erlang/OTP, and the database configured for the
-current environment.
-
-Install dependencies, create the database, run migrations and seeds, and build
-the assets:
+Install Elixir, Erlang/OTP, and SQLite, then install dependencies, prepare the database, seed it, and build assets:
 
 ```sh
 mix setup
 ```
 
-Start the Phoenix endpoint:
+Start Phoenix:
 
 ```sh
 mix phx.server
 ```
 
-Alternatively, start it inside IEx:
+Or start it inside IEx:
 
 ```sh
 iex -S mix phx.server
@@ -108,29 +82,101 @@ Visit [http://localhost:4000](http://localhost:4000).
 
 ### Create an administrator
 
-Public account registration is disabled. Provision an administrator from a
-trusted shell:
+Public account registration is disabled. Provision an administrator from a trusted shell:
 
 ```sh
 POLLY_ADMIN_PASSWORD="a secure password" mix polly.admin.create admin@example.com
 ```
 
-In development, open [http://localhost:4000/dev/mailbox](http://localhost:4000/dev/mailbox)
-to retrieve the account confirmation message.
+In development, retrieve the confirmation message from the local mailbox at [http://localhost:4000/dev/mailbox](http://localhost:4000/dev/mailbox).
+
+### Local email testing
+
+Development uses `Swoosh.Adapters.Local`, so messages are captured rather than sent over the internet. The local mailbox renders the HTML invitation and retains its plain-text alternative:
+
+```text
+http://localhost:4000/dev/mailbox
+```
+
+To exercise the invitation flow:
+
+1. Create or import a member with an email address.
+2. Create a poll with at least two options.
+3. Add the member to its electorate.
+4. Open the poll.
+5. Visit the poll's **Access links** page and send the invitation.
+6. Open the message in the local mailbox.
+
+### Background-job diagnostics
+
+Authenticated administrators can inspect queues, attempts, and worker errors at:
+
+```text
+http://localhost:4000/admin/oban
+```
+
+The embedded Oban Web dashboard is intentionally read-only. Retrying, cancelling, deleting, inserting, pausing, and scaling jobs are disabled until Polly has dedicated operational roles and auditing for those actions.
+
+Phoenix LiveDashboard remains available in development at [http://localhost:4000/dev/dashboard](http://localhost:4000/dev/dashboard).
+
+## Production email configuration
+
+Production uses Resend through `Swoosh.Adapters.Resend`. Configure these secrets and runtime values:
+
+- `RESEND_API_KEY` — Resend API key;
+- `POLLY_FROM_EMAIL` — sender address on a Resend-verified domain; and
+- `POLLY_FROM_NAME` — sender display name, defaulting to `Polly`.
+
+Never commit these values. A local ignored `.envrc` may be used during development, while hosted environments should use their secret manager. Resend accepting a message means “sent” in Polly; it does not prove inbox delivery or that the recipient read it.
+
+## Fly.io deployment
+
+The initial Fly.io architecture runs a single application Machine with Phoenix, Oban Lite, and a SQLite database on the `/data` volume. Do not horizontally scale this configuration: Fly Volumes are local to one Machine, and a second independently mounted volume would contain a different database.
+
+Required production settings include:
+
+- `DATABASE_PATH=/data/polly.db`;
+- `MIGRATE_ON_START=true`;
+- `PHX_HOST` and `PHX_SERVER=true`;
+- `SECRET_KEY_BASE`;
+- `TOKEN_SIGNING_SECRET`;
+- the Resend settings above; and
+- a persistent volume mounted at `/data`.
+
+The unauthenticated `GET /health` endpoint is used for Fly health checks. See the [Fly.io deployment guide](docs/flyio-deployment.md) for provisioning, GitHub Actions, secrets, backups, rollback, and troubleshooting.
 
 ## Quality checks
 
-Run the project's full pre-commit checks before submitting changes:
+Run the full pre-commit suite before submitting changes:
 
 ```sh
 mix precommit
 ```
 
-This compiles with warnings treated as errors, removes unused dependency locks,
-formats the code, and runs the test suite.
+This compiles with warnings treated as errors, removes unused dependency locks, formats the code, and runs the test suite.
 
-## Further reading
+For a focused test file:
 
-- [Phoenix documentation](https://hexdocs.pm/phoenix)
-- [Ash documentation](https://hexdocs.pm/ash)
-- [Phoenix deployment guide](https://hexdocs.pm/phoenix/deployment.html)
+```sh
+mix test test/polly/polls/invitations_test.exs
+```
+
+## Product and technical documentation
+
+- [Feature roadmap](docs/features-roadmap.md)
+- [Configurable polls proposal](docs/configurable-polls-proposal.md)
+- [First-release decisions](docs/first-release-decisions.md)
+- [CSV member upload specification](docs/csv-member-upload-spec.md)
+- [Poll duplication specification](docs/poll-duplication-spec.md)
+- [Email invitation delivery specification](docs/email-invitation-delivery-spec.md)
+- [Administrator audit trail specification](docs/admin-audit-trail-spec.md)
+- [Anonymous choices specification](docs/anonymous-choices-spec.md)
+- [Poll archiving specification](docs/poll-archiving-spec.md)
+- [Access-link CSV export specification](docs/access-link-csv-export-spec.md)
+
+## Framework documentation
+
+- [Phoenix](https://hexdocs.pm/phoenix)
+- [Ash Framework](https://hexdocs.pm/ash)
+- [Oban](https://hexdocs.pm/oban)
+- [Swoosh](https://hexdocs.pm/swoosh)
