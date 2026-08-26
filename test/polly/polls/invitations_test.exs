@@ -83,6 +83,11 @@ defmodule Polly.Polls.InvitationsTest do
       assert email.to == [{member.name, member.email}]
       assert email.subject == "Voting is open: #{poll.title}"
       assert email.text_body =~ grant.token
+      assert email.html_body =~ "Touchpad"
+      assert email.html_body =~ "Private poll invitation"
+      assert email.html_body =~ "Cast your vote"
+      assert email.html_body =~ "Keep this link private."
+      assert email.html_body =~ grant.token
     end)
   end
 
