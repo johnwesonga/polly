@@ -12,9 +12,11 @@ defmodule Polly.Accounts.User.Senders.SendPasswordResetEmail do
 
   @impl true
   def send(user, token, _) do
+    from = Application.fetch_env!(:polly, :invitation_from)
+
     new()
     # TODO: Replace with your email
-    |> from({"noreply", "noreply@example.com"})
+    |> from(from)
     |> to(to_string(user.email))
     |> subject("Reset your password")
     |> html_body(body(token: token))
