@@ -137,13 +137,15 @@ defmodule Polly.Polls.Invitations do
     |> Enum.map(fn eligibility ->
       member = eligibility.member
       grant = Map.get(grants_by_member, member.id)
-      delivery = grant && Map.get(deliveries_by_grant, grant.id)
+      delivery_info = grant && Map.get(deliveries_by_grant, grant.id)
+      delivery = delivery_info && delivery_info.latest
 
       %{
         eligibility: eligibility,
         member: member,
         grant: grant,
         delivery: delivery,
+        latest_accepted_at: delivery_info && delivery_info.latest_accepted_at,
         state: state(poll, member, grant, delivery, ballots)
       }
     end)
@@ -183,7 +185,16 @@ defmodule Polly.Polls.Invitations do
     |> Ash.Query.filter(poll_id == ^poll_id)
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.read!(actor: actor)
-    |> Enum.reduce(%{}, &Map.put_new(&2, &1.access_grant_id, &1))
+    |> Enum.reduce(%{}, fn delivery, deliveries ->
+      Map.update(
+        deliveries,
+        delivery.access_grant_id,
+        %{latest: delivery, latest_accepted_at: delivery.accepted_at},
+        fn info ->
+          %{info | latest_accepted_at: info.latest_accepted_at || delivery.accepted_at}
+        end
+      )
+    end)
   end
 
   defp ballot_member_ids(poll_id, actor) do
