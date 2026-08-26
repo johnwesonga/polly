@@ -1,0 +1,49 @@
+# fly.toml app configuration file generated for polly-withered-glitter-9457 on 2026-08-25T20:47:43-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'polly-withered-glitter-9457'
+primary_region = 'lax'
+kill_signal = 'SIGTERM'
+
+[build]
+
+
+[env]
+PHX_HOST = 'polly-withered-glitter-9457.fly.dev'
+PHX_SERVER = "true"
+PORT = '4000'
+DATABASE_PATH = "/data/polly.db"
+MIGRATE_ON_START = "true"
+POOL_SIZE = "5"
+POLLY_FROM_NAME = "Polly"
+
+[mounts]
+source = "polly_data"
+destination = "/data"
+snapshot_retention = 14
+
+[http_service]
+internal_port = 4000
+force_https = true
+auto_stop_machines = 'off'
+auto_start_machines = true
+processes = ['app']
+
+[http_service.concurrency]
+type = 'requests'
+hard_limit = 250
+soft_limit = 200
+
+[[http_service.checks]]
+interval = "15s"
+timeout = "2s"
+grace_period = "10s"
+method = "GET"
+path = "/health"
+
+[[vm]]
+memory = "1gb"
+cpu_kind = "shared"
+cpus = 1

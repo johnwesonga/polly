@@ -221,7 +221,7 @@ primary_region = "<region>"
 [http_service]
   internal_port = 4000
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = "off"
   auto_start_machines = true
   min_machines_running = 1
 
@@ -540,4 +540,3 @@ PostgreSQL is the lower-risk path when Polly needs conventional multi-node deplo
 - [Fly.io volume snapshots](https://fly.io/docs/volumes/snapshots/)
 - [AshSqlite deployment guidance](https://hexdocs.pm/ash_sqlite/getting-started-with-ash-sqlite.html)
 - [Ecto SQLite configuration](https://ecto-sqlite3.hexdocs.pm/)
-

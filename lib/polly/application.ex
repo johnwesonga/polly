@@ -7,6 +7,10 @@ defmodule Polly.Application do
 
   @impl true
   def start(_type, _args) do
+    if System.get_env("MIGRATE_ON_START") == "true" do
+      Polly.Release.migrate()
+    end
+
     children = [
       PollyWeb.Telemetry,
       Polly.Repo,
