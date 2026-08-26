@@ -38,10 +38,10 @@ soft_limit = 200
 
 [[http_service.checks]]
 interval = "15s"
-timeout = "2s"
-grace_period = "10s"
+timeout = "5s"
+grace_period = "30s"
 method = "GET"
-path = "/health"
+path = "/"
 
 [[vm]]
 memory = "1gb"
