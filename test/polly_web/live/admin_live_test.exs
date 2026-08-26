@@ -30,6 +30,7 @@ defmodule PollyWeb.AdminLiveTest do
     assert has_element?(view, "#admin-overview")
     assert has_element?(view, "#poll-management-card")
     assert has_element?(view, "#manage-polls-link")
+    assert has_element?(view, "#admin-nav-background-jobs[href='/admin/oban']")
   end
 
   test "does not expose public administrator registration", %{conn: conn} do

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented, including the operational-hardening iteration.
 
 ## Summary
 
@@ -592,7 +592,6 @@ If a background-job dependency is deliberately deferred, the feature should rema
 
 Likely follow-up work includes:
 
-- an authenticated, read-only Oban Web dashboard for queue and worker diagnostics;
 - scheduled sends;
 - reminders limited to members who have not voted;
 - configurable reminder cadence and suppression;

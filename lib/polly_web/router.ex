@@ -4,6 +4,7 @@ defmodule PollyWeb.Router do
   use AshAuthentication.Phoenix.Router
 
   import AshAuthentication.Plug.Helpers
+  import Oban.Web.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -39,6 +40,16 @@ defmodule PollyWeb.Router do
       live "/admin/polls/:id/access", PollLive.Access, :index
       live "/admin/polls/:id/results", PollLive.Results, :index
     end
+  end
+
+  scope "/admin" do
+    pipe_through :browser
+
+    oban_dashboard("/oban",
+      resolver: PollyWeb.ObanWebResolver,
+      logo_path: "/admin",
+      as: :admin_oban_dashboard
+    )
   end
 
   scope "/", PollyWeb do
