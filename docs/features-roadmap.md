@@ -1,57 +1,89 @@
-High-value next features
-- CSV member upload — bulk-create member rosters using the existing specification. [DONE]
-- Poll duplication iteration 2 — optionally copy options and electorate. [DONE]
-- Administrator audit trail — record lifecycle, electorate, access, and configuration changes. [DONE]
-- Email invitation delivery — send private voting links directly to eligible members.
-- Access-link CSV export — export member names, emails, link status, and private URLs for controlled distribution.
-- Scheduled opening and closing — configure lifecycle timestamps instead of requiring manual actions.
-- Reminder emails — notify eligible members who have not voted without revealing their selections.
-- Poll archiving — hide completed polls from normal administration while retaining history.
-Poll configuration
-- Multiple-choice polls with configurable selection limits. [Technical specification](multiple-choice-polls-spec.md)
-- Ranked-choice voting.
-- Yes/no and approval voting templates.
-- Option descriptions or supporting links.
-- Option images, where appropriate.
-- Poll-level instructions and confirmation copy.
-- Anonymous polls that retain eligibility enforcement but separate ballots from member identities.
-- Reusable poll templates independent of historical polls.
-Electorate management
-- Member groups, teams, or segments.
-- Bulk electorate selection.
-- Saved electorate presets.
-- Member tags and filtering.
-- Electorate preview with active/inactive warnings.
-- Eligibility cutoff snapshots.
-- Waitlists or alternate voters.
-- Member self-service profile correction.
-Results and reporting
-- CSV result exports.
-- Turnout exports by poll.
-- Printable or PDF result summaries.
-- Result comparison across recurring polls.
-- Participation history without exposing individual selections.
-- Quorum requirements.
-- Configurable tie-handling rules.
-- Result publication notes.
-- Public result pages without voting credentials.
-- Embeddable result charts.
-Access and security
-- Expiring voting links.
-- Bulk link revocation and reissue.
-- One-time invitation delivery tracking.
-- Administrator roles and permissions.
-- Multi-factor authentication for administrators.
-- Rate limiting on public voting routes.
-- Suspicious link-use monitoring.
-- Configurable data-retention policies.
-- Stronger token-redaction and security-event logging.
-Operational improvements
-- Dashboard showing open polls requiring attention.
-- Poll readiness checklist.
-- Background jobs for email, schedules, and exports.
-- Database backup and recovery tooling.
-- Health and delivery-status monitoring.
-- Production deployment documentation.
-- PostgreSQL migration path for larger or multi-node installations.
-- Webhook or API integrations.
+# Polly feature roadmap
+
+This roadmap tracks shipped capabilities and possible future work. Features with a dedicated technical specification link directly to it.
+
+Status labels:
+
+- **Done** — implemented and available in the application.
+- **Specified** — design exists, but implementation is not complete.
+- **Proposed** — roadmap idea that still needs product and technical design.
+
+## Delivered features
+
+- **Done — [CSV member upload](csv-member-upload-spec.md):** bulk-create member rosters with validation, preview, and explicit confirmation.
+- **Done — [Poll duplication](poll-duplication-spec.md):** copy poll details and optionally copy active options and electorate members into a new draft.
+- **Done — [Administrator audit trail](admin-audit-trail-spec.md):** record and inspect consequential poll, option, electorate, access, member, import, and invitation actions.
+- **Done — [Email invitation delivery](email-invitation-delivery-spec.md):** send private voting links through durable Oban jobs with delivery status, explicit resend, and read-only operational diagnostics.
+
+## High-value next features
+
+- **Specified — [Access-link CSV export](access-link-csv-export-spec.md):** export member names, emails, link status, and private URLs for controlled distribution.
+- **Specified — [Poll archiving](poll-archiving-spec.md):** hide completed polls from normal administration while retaining their history.
+- **Proposed — Scheduled opening and closing:** configure lifecycle timestamps instead of requiring manual actions.
+- **Proposed — Reminder emails:** notify eligible members who have not voted without revealing their selections.
+
+## Poll configuration
+
+- **Specified — [Multiple-choice polls with configurable selection limits](multiple-choice-polls-spec.md):** support choose-up-to, exact-count, and minimum-to-maximum selection rules.
+- **Specified — [Anonymous choices with participation tracking](anonymous-choices-spec.md):** retain eligibility enforcement and participation records while separating ballots from member identities.
+- **Proposed — Ranked-choice voting.**
+- **Proposed — Yes/no and approval voting templates.**
+- **Proposed — Option descriptions or supporting links.**
+- **Proposed — Option images, where appropriate.**
+- **Proposed — Poll-level instructions and confirmation copy.**
+- **Proposed — Reusable poll templates independent of historical polls.**
+
+## Electorate management
+
+- **Proposed — Member groups, teams, or segments.**
+- **Proposed — Bulk electorate selection.**
+- **Proposed — Saved electorate presets.**
+- **Proposed — Member tags and filtering.**
+- **Proposed — Electorate preview with active/inactive warnings.**
+- **Proposed — Eligibility cutoff snapshots.**
+- **Proposed — Waitlists or alternate voters.**
+- **Proposed — Member self-service profile correction.**
+
+## Results and reporting
+
+- **Proposed — CSV result exports.**
+- **Proposed — Turnout exports by poll.**
+- **Proposed — Printable or PDF result summaries.**
+- **Proposed — Result comparison across recurring polls.**
+- **Proposed — Participation history without exposing individual selections.**
+- **Proposed — Quorum requirements.**
+- **Proposed — Configurable tie-handling rules.**
+- **Proposed — Result publication notes.**
+- **Proposed — Public result pages without voting credentials.**
+- **Proposed — Embeddable result charts.**
+
+## Access and security
+
+- **Done — [One-time invitation delivery tracking](email-invitation-delivery-spec.md):** retain safe per-attempt delivery state without persisting private URLs in jobs or audit metadata.
+- **Specified — [Access-link CSV export](access-link-csv-export-spec.md):** controlled export of credential-bearing private links.
+- **Proposed — Expiring voting links.**
+- **Proposed — Bulk link revocation and reissue.**
+- **Proposed — Administrator roles and permissions.**
+- **Proposed — Multi-factor authentication for administrators.**
+- **Proposed — Rate limiting on public voting routes.**
+- **Proposed — Suspicious link-use monitoring.**
+- **Proposed — Configurable data-retention policies.**
+- **Proposed — Stronger token-redaction and security-event logging.**
+
+## Operational improvements
+
+- **Done — [Background email jobs and diagnostics](email-invitation-delivery-spec.md):** durable Oban processing with an authenticated, read-only Oban Web dashboard.
+- **Done — [Fly.io production deployment documentation](flyio-deployment.md):** single-machine SQLite deployment with GitHub Actions, persistent storage, health checks, and Resend configuration.
+- **Proposed — Dashboard showing open polls requiring attention.**
+- **Proposed — Poll readiness checklist.**
+- **Proposed — Background jobs for schedules and exports.**
+- **Proposed — Database backup and recovery tooling.**
+- **Proposed — Expanded health and delivery monitoring.**
+- **Proposed — PostgreSQL migration path for larger or multi-node installations.**
+- **Proposed — Webhook or API integrations.**
+
+## Supporting design documents
+
+- [Configurable polls proposal](configurable-polls-proposal.md)
+- [First-release decisions](first-release-decisions.md)
+- [Fly.io deployment guide](flyio-deployment.md)
