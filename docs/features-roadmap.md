@@ -63,7 +63,7 @@ Status labels:
 - **Specified — [Access-link CSV export](access-link-csv-export-spec.md):** controlled export of credential-bearing private links.
 - **Proposed — Expiring voting links.**
 - **Proposed — Bulk link revocation and reissue.**
-- **Proposed — Administrator roles and permissions.**
+- **Specified — [Administrator user management and roles](administrator-user-management-spec.md):** owner-managed invitations, account lifecycle controls, final-owner protection, and role-based authorization.
 - **Proposed — Multi-factor authentication for administrators.**
 - **Proposed — Rate limiting on public voting routes.**
 - **Proposed — Suspicious link-use monitoring.**

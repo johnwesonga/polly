@@ -171,6 +171,7 @@ mix test test/polly/polls/invitations_test.exs
 - [Poll duplication specification](docs/poll-duplication-spec.md)
 - [Email invitation delivery specification](docs/email-invitation-delivery-spec.md)
 - [Administrator audit trail specification](docs/admin-audit-trail-spec.md)
+- [Administrator user management specification](docs/administrator-user-management-spec.md)
 - [Anonymous choices specification](docs/anonymous-choices-spec.md)
 - [Poll archiving specification](docs/poll-archiving-spec.md)
 - [Access-link CSV export specification](docs/access-link-csv-export-spec.md)
