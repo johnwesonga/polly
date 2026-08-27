@@ -89,7 +89,30 @@ Public account registration is disabled. Provision an administrator from a trust
 POLLY_ADMIN_PASSWORD="a secure password" mix polly.admin.create admin@example.com
 ```
 
+Bootstrap accounts default to the `owner` role. To create a less-privileged
+account ahead of role enforcement, pass `--role administrator`, `auditor`, or
+`operator`:
+
+```sh
+POLLY_ADMIN_PASSWORD="a secure password" mix polly.admin.create admin@example.com --role administrator
+```
+
 In development, retrieve the confirmation message from the local mailbox at [http://localhost:4000/dev/mailbox](http://localhost:4000/dev/mailbox).
+
+From a trusted release shell, recover ownership for an existing confirmed,
+active account with:
+
+```sh
+mix polly.admin.promote_owner admin@example.com
+```
+
+Inspect account lifecycle fields in IEx without changing state:
+
+```elixir
+Polly.Accounts.User
+|> Ash.read!(authorize?: false)
+|> Enum.map(&Map.take(&1, [:id, :email, :role, :status, :confirmed_at]))
+```
 
 ### Local email testing
 

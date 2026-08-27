@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 0 complete; phases 1–7 proposed.
+Phase 0 complete. Phase 1 implemented; production deployment verification pending. Phases 2–7 proposed.
 
 ## Summary
 
@@ -599,6 +599,8 @@ From that shell, use the documented account-creation procedure if no usable acco
 
 ### Phase 1 — Lockout-safe user schema and bootstrap
 
+**Status:** Implemented; production migration and sign-in smoke test pending.
+
 #### Purpose
 
 Introduce role and account status data without changing what existing users can do.
@@ -612,6 +614,14 @@ Introduce role and account status data without changing what existing users can 
 - Update `mix polly.admin.create` with an explicit role option and owner-safe default.
 - Add a trusted recovery task for promoting an existing confirmed, active user to owner.
 - Display role/status in IEx inspection and documentation, but do not yet restrict application behavior by role.
+
+#### Implementation notes
+
+- Existing SQLite user rows are copied into the expanded schema as active owners before the original table is replaced.
+- New registrations default to active administrators; the trusted `mix polly.admin.create` bootstrap command deliberately defaults to owner and accepts `--role`.
+- `mix polly.admin.promote_owner EMAIL` promotes only an existing confirmed, active account and never creates credentials.
+- The migration is intentionally irreversible because rolling it back would discard ownership and account-lifecycle history.
+- No route, policy, navigation, or session behavior changes in this phase.
 
 #### Explicitly deferred
 

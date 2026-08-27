@@ -63,7 +63,8 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         register_with_password: {:trusted, "bootstrap and invitation acceptance only"},
         request_password_reset_token: {:trusted, "non-enumerating authentication entry point"},
         get_by_email: {:trusted, "authentication and administrator lifecycle lookup"},
-        reset_password_with_token: {:trusted, "signed password-reset credential"}
+        reset_password_with_token: {:trusted, "signed password-reset credential"},
+        recover_owner: {:trusted, "release-shell final-owner recovery"}
       },
       Polly.Accounts.Token => %{
         store_confirmation_changes: {:trusted, "authentication token storage"},
@@ -160,6 +161,10 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       "lib/mix/tasks/polly.admin.create.ex" => %{
         count: 1,
         reason: "trusted release-shell administrator bootstrap"
+      },
+      "lib/mix/tasks/polly.admin.promote_owner.ex" => %{
+        count: 2,
+        reason: "trusted release-shell final-owner recovery"
       },
       "lib/polly/members/member_import.ex" => %{
         count: 1,

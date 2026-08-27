@@ -162,8 +162,14 @@ defmodule Polly.Accounts.User do
         sensitive? true
       end
 
+      argument :role, Polly.Accounts.User.Role do
+        allow_nil? false
+        default :administrator
+      end
+
       # Sets the email from the argument
       change set_attribute(:email, arg(:email))
+      change set_attribute(:role, arg(:role))
 
       # Hashes the provided password
       change AshAuthentication.Strategy.Password.HashPasswordChange
@@ -227,6 +233,20 @@ defmodule Polly.Accounts.User do
       # Generates an authentication token for the user
       change AshAuthentication.GenerateTokenChange
     end
+
+    update :recover_owner do
+      description "Promotes a confirmed active user to owner from a trusted release shell."
+      accept []
+      require_atomic? false
+
+      validate attribute_does_not_equal(:confirmed_at, nil),
+        message: "must be confirmed before being promoted to owner"
+
+      validate attribute_equals(:status, :active),
+        message: "must be active before being promoted to owner"
+
+      change set_attribute(:role, :owner)
+    end
   end
 
   policies do
@@ -249,6 +269,28 @@ defmodule Polly.Accounts.User do
     end
 
     attribute :confirmed_at, :utc_datetime_usec
+
+    attribute :role, Polly.Accounts.User.Role do
+      allow_nil? false
+      public? true
+      default :administrator
+    end
+
+    attribute :status, Polly.Accounts.User.Status do
+      allow_nil? false
+      public? true
+      default :active
+    end
+
+    attribute :disabled_at, :utc_datetime_usec do
+      public? true
+    end
+
+    attribute :last_signed_in_at, :utc_datetime_usec do
+      public? true
+    end
+
+    timestamps()
   end
 
   identities do
