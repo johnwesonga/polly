@@ -15,6 +15,9 @@ defmodule Polly.Audit do
     "member.activated" => [:changed_fields],
     "member.deactivated" => [:changed_fields],
     "member_import.completed" => [:created_count, :skipped_count],
+    "administrator.enabled" => [],
+    "administrator.disabled" => [],
+    "administrator.role_changed" => [:old_role, :new_role],
     "poll.created" => [],
     "poll.updated" => [:changed_fields],
     "poll.duplicated" => [
@@ -137,6 +140,9 @@ defmodule Polly.Audit do
       "member.activated" -> "activated member “#{event.target_label}”"
       "member.deactivated" -> "deactivated member “#{event.target_label}”"
       "member_import.completed" -> "completed a member import"
+      "administrator.enabled" -> "enabled administrator “#{event.target_label}”"
+      "administrator.disabled" -> "disabled administrator “#{event.target_label}”"
+      "administrator.role_changed" -> "changed the role for “#{event.target_label}”"
       "poll_option.created" -> "created option “#{event.target_label}”"
       "poll_option.updated" -> "updated option “#{event.target_label}”"
       "poll_option.reordered" -> "reordered option “#{event.target_label}”"

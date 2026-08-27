@@ -44,7 +44,12 @@ defmodule PollyWeb.ConnCase do
     administrator =
       Ash.create!(
         Polly.Accounts.User,
-        %{email: email, password: password, password_confirmation: password},
+        %{
+          email: email,
+          password: password,
+          password_confirmation: password,
+          role: Map.get(attributes, :role, :administrator)
+        },
         action: :register_with_password,
         authorize?: false
       )

@@ -2,8 +2,12 @@ defmodule PollyWeb.AuthController do
   use PollyWeb, :controller
   use AshAuthentication.Phoenix.Controller
 
-  def success(conn, activity, user, _token) do
+  alias Polly.Accounts.{Administrators, User}
+
+  def success(conn, activity, %User{status: :active} = user, token) do
     return_to = get_session(conn, :return_to) || ~p"/admin"
+    {:ok, user} = Administrators.record_sign_in(user)
+    user = Ash.Resource.put_metadata(user, :token, token)
 
     message =
       case activity do
@@ -19,6 +23,13 @@ defmodule PollyWeb.AuthController do
     |> assign(:current_user, user)
     |> put_flash(:info, message)
     |> redirect(to: return_to)
+  end
+
+  def success(conn, _activity, %User{}, _token) do
+    conn
+    |> clear_session(:polly)
+    |> put_flash(:error, "This administrator account is disabled")
+    |> redirect(to: ~p"/sign-in")
   end
 
   def failure(conn, activity, reason) do

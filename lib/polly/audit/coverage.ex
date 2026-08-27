@@ -19,7 +19,10 @@ defmodule Polly.Audit.Coverage do
     {Polly.Polls.AccessGrant, :revoke} =>
       "poll_access_grant.revoked/poll_access_grant.reissued/poll_electorate.member_removed",
     {Polly.Members.MemberImport, :commit} => "member_import.completed",
-    {Polly.Polls.Duplicator, :duplicate} => "poll.duplicated"
+    {Polly.Polls.Duplicator, :duplicate} => "poll.duplicated",
+    {Polly.Accounts.Administrators, :disable} => "administrator.disabled",
+    {Polly.Accounts.Administrators, :enable} => "administrator.enabled",
+    {Polly.Accounts.Administrators, :change_role} => "administrator.role_changed"
   }
 
   @exemptions %{

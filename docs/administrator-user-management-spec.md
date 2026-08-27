@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 0 complete. Phase 1 implemented; production deployment verification pending. Phases 2–7 proposed.
+Phases 0–2 implemented; production deployment verification remains pending. Phases 3–7 proposed.
 
 ## Summary
 
@@ -646,6 +646,8 @@ Introduce role and account status data without changing what existing users can 
 
 ### Phase 2 — Account lifecycle and session safety
 
+**Status:** Implemented; production migration and session smoke tests pending.
+
 #### Purpose
 
 Make account status authoritative and add safe domain operations before exposing management controls.
@@ -661,6 +663,18 @@ Make account status authoritative and add safe domain operations before exposing
 - Require active status during password, magic-link, remember-me, session subject, and reset-token authentication flows.
 - Make controller and LiveView authentication reject a disabled user on the next interaction.
 - Record `administrator.enabled`, `administrator.disabled`, and `administrator.role_changed` audit events.
+
+#### Implementation notes
+
+- `Polly.Accounts.Administrators` is the only lifecycle mutation boundary and already requires an active owner actor.
+- Disable, enable, and role changes reload the actor and target inside one SQLite write transaction before checking invariants.
+- An SQLite trigger independently rejects any racing update that would remove the final active owner.
+- Disabling an account and changing its role revoke all stored session and remember-me tokens for that subject.
+- Password, sign-in-token, remember-me, session-subject, password-reset lookup, and reset completion actions require an active account.
+- Polly does not currently configure a magic-link authentication strategy; if one is added later, its sign-in action must use the same active-account filter.
+- Controller sessions are rejected after deactivation, and authenticated LiveViews reload the user before handling each client event.
+- Successful interactive authentication records `last_signed_in_at`; enabling an account never creates a session.
+- Lifecycle calls are idempotent: repeating an already-completed state change does not append another audit event.
 
 #### Explicitly deferred
 

@@ -64,7 +64,8 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         request_password_reset_token: {:trusted, "non-enumerating authentication entry point"},
         get_by_email: {:trusted, "authentication and administrator lifecycle lookup"},
         reset_password_with_token: {:trusted, "signed password-reset credential"},
-        recover_owner: {:trusted, "release-shell final-owner recovery"}
+        recover_owner: {:trusted, "release-shell final-owner recovery"},
+        update_account_lifecycle: {:trusted, "owner-authorized lifecycle service"}
       },
       Polly.Accounts.Token => %{
         store_confirmation_changes: {:trusted, "authentication token storage"},
@@ -137,6 +138,9 @@ defmodule Polly.Accounts.AuthorizationCoverage do
   def service_boundaries do
     %{
       {Polly.Members.MemberImport, :preview} => {:permission, :manage_members},
+      {Polly.Accounts.Administrators, :disable} => {:permission, :manage_administrators},
+      {Polly.Accounts.Administrators, :enable} => {:permission, :manage_administrators},
+      {Polly.Accounts.Administrators, :change_role} => {:permission, :manage_administrators},
       {Polly.Members.MemberImport, :commit} => {:permission, :manage_members},
       {Polly.Polls.Options, :reorder} => {:permission, :manage_polls},
       {Polly.Polls.Invitations, :preview} => {:permission, :send_invitations},
@@ -165,6 +169,10 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       "lib/mix/tasks/polly.admin.promote_owner.ex" => %{
         count: 2,
         reason: "trusted release-shell final-owner recovery"
+      },
+      "lib/polly/accounts/administrators.ex" => %{
+        count: 5,
+        reason: "owner-authorized lifecycle transaction, token revocation, and session checks"
       },
       "lib/polly/members/member_import.ex" => %{
         count: 1,

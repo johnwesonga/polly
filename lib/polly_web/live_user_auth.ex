@@ -4,7 +4,10 @@ defmodule PollyWeb.LiveUserAuth do
   """
 
   import Phoenix.Component
+  import Phoenix.LiveView, only: [attach_hook: 4, put_flash: 3, redirect: 2]
   use PollyWeb, :verified_routes
+
+  alias Polly.Accounts.Administrators
 
   # This is used for nested liveviews to fetch the current user.
   # To use, place the following at the top of that liveview:
@@ -23,10 +26,17 @@ defmodule PollyWeb.LiveUserAuth do
   end
 
   def on_mount(:live_user_required, _params, _session, socket) do
-    if socket.assigns[:current_user] do
-      {:cont, assign(socket, :current_scope, current_scope(socket.assigns.current_user))}
-    else
-      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/sign-in")}
+    case socket.assigns[:current_user] do
+      %{status: :active} = user ->
+        socket =
+          socket
+          |> assign(:current_scope, current_scope(user))
+          |> attach_hook(:active_administrator, :handle_event, &ensure_active/3)
+
+        {:cont, socket}
+
+      _ ->
+        {:halt, redirect(socket, to: ~p"/sign-in")}
     end
   end
 
@@ -40,4 +50,20 @@ defmodule PollyWeb.LiveUserAuth do
 
   defp current_scope(nil), do: nil
   defp current_scope(user), do: %{user: user}
+
+  defp ensure_active(_event, _params, socket) do
+    case Administrators.fetch_active(socket.assigns.current_user) do
+      {:ok, user} ->
+        {:cont,
+         socket
+         |> assign(:current_user, user)
+         |> assign(:current_scope, current_scope(user))}
+
+      {:error, :inactive} ->
+        {:halt,
+         socket
+         |> put_flash(:error, "This administrator account is disabled")
+         |> redirect(to: ~p"/sign-in")}
+    end
+  end
 end

@@ -66,6 +66,7 @@ defmodule Polly.Accounts.User do
       argument :subject, :string, allow_nil?: false
       get? true
       prepare AshAuthentication.Preparations.FilterBySubject
+      prepare build(filter: [status: :active])
     end
 
     update :change_password do
@@ -108,6 +109,7 @@ defmodule Polly.Accounts.User do
 
       # validates the provided email and password and generates a token
       prepare AshAuthentication.Strategy.Password.SignInPreparation
+      prepare build(filter: [status: :active])
 
       metadata :token, :string do
         description "A JWT that can be used to authenticate the user."
@@ -135,6 +137,7 @@ defmodule Polly.Accounts.User do
 
       # validates the provided sign in token and generates a token
       prepare AshAuthentication.Strategy.Password.SignInWithTokenPreparation
+      prepare build(filter: [status: :active])
 
       metadata :token, :string do
         description "A JWT that can be used to authenticate the user."
@@ -200,6 +203,7 @@ defmodule Polly.Accounts.User do
     read :get_by_email do
       description "Looks up a user by their email"
       get_by :email
+      prepare build(filter: [status: :active])
     end
 
     update :reset_password_with_token do
@@ -222,6 +226,7 @@ defmodule Polly.Accounts.User do
       end
 
       # validates the provided reset token
+      validate attribute_equals(:status, :active), message: "account is disabled"
       validate AshAuthentication.Strategy.Password.ResetTokenValidation
 
       # validates that the password matches the confirmation
@@ -246,6 +251,29 @@ defmodule Polly.Accounts.User do
         message: "must be active before being promoted to owner"
 
       change set_attribute(:role, :owner)
+    end
+
+    read :sign_in_with_remember_me do
+      description "Attempt to sign in using a remember-me token."
+      get? true
+
+      argument :token, :string do
+        allow_nil? false
+        sensitive? true
+      end
+
+      prepare AshAuthentication.Strategy.RememberMe.SignInPreparation
+      prepare build(filter: [status: :active])
+
+      metadata :token, :string do
+        allow_nil? false
+      end
+    end
+
+    update :update_account_lifecycle do
+      description "Internal action used by the administrator lifecycle service."
+      accept [:role, :status, :disabled_at, :last_signed_in_at]
+      require_atomic? false
     end
   end
 

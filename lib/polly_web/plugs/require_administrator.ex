@@ -8,7 +8,15 @@ defmodule PollyWeb.Plugs.RequireAdministrator do
 
   def init(opts), do: opts
 
-  def call(%Plug.Conn{assigns: %{current_user: %User{}}} = conn, _opts), do: conn
+  def call(%Plug.Conn{assigns: %{current_user: %User{status: :active}}} = conn, _opts), do: conn
+
+  def call(%Plug.Conn{assigns: %{current_user: %User{status: :disabled}}} = conn, _opts) do
+    conn
+    |> clear_session()
+    |> put_flash(:error, "This administrator account is disabled")
+    |> redirect(to: "/sign-in")
+    |> halt()
+  end
 
   def call(conn, _opts) do
     conn
