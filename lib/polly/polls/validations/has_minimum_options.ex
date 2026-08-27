@@ -1,4 +1,11 @@
 defmodule Polly.Polls.Validations.HasMinimumOptions do
+  @moduledoc """
+  Prevents a poll from opening without enough active choices.
+
+  A poll must have at least two active options before its status may transition
+  to `:open`, ensuring that voters are presented with a meaningful choice.
+  """
+
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute

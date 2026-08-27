@@ -1,4 +1,12 @@
 defmodule Polly.Polls.Validations.MemberIsEligible do
+  @moduledoc """
+  Ensures that a poll-scoped record references an eligible member.
+
+  The validation verifies that an eligibility record exists for the supplied
+  `poll_id` and `member_id` pair. It protects operations such as issuing access
+  grants or recording participation from crossing electorate boundaries.
+  """
+
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute

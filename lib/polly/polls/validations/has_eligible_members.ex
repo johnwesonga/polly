@@ -1,4 +1,11 @@
 defmodule Polly.Polls.Validations.HasEligibleMembers do
+  @moduledoc """
+  Prevents a poll from opening without an electorate.
+
+  The validation checks for at least one eligibility record belonging to the
+  poll and reports the failure against its `status` transition to `:open`.
+  """
+
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute

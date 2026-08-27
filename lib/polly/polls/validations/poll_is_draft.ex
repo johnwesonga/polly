@@ -1,4 +1,12 @@
 defmodule Polly.Polls.Validations.PollIsDraft do
+  @moduledoc """
+  Restricts poll configuration changes to draft polls.
+
+  The validation loads the referenced poll and permits the operation only while
+  its status is `:draft`. Once voting has opened, the poll's options are frozen;
+  an unknown poll ID is reported separately from a non-draft poll.
+  """
+
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
