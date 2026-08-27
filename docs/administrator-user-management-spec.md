@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Phase 0 complete; phases 1–7 proposed.
 
 ## Summary
 
@@ -529,6 +529,8 @@ Each phase must pass `mix precommit` and its phase-specific tests before the nex
 
 ### Phase 0 — Decisions and authorization inventory
 
+**Status:** Complete.
+
 #### Purpose
 
 Resolve the product choices that affect schema or authorization and establish a regression baseline before changing access rules.
@@ -542,6 +544,46 @@ Resolve the product choices that affect schema or authorization and establish a 
 - Inventory every protected LiveView, controller, Ash action, context service, Oban dashboard route, and `authorize?: false` call.
 - Map each boundary to one permission or a documented trusted-system exemption.
 - Capture the current owner account IDs and verify at least one can authenticate in the target environment.
+
+#### Decisions
+
+- The initial role matrix above is accepted as the implementation baseline.
+- Audit history is visible to owners and auditors, not administrators or operators.
+- Operators may see delivery IDs, timestamps, queue state, attempt counts, and safe error codes. They may not see member names, recipient email addresses, message bodies, private access URLs, or provider payloads.
+- Administrator invitations expire after seven days. Resending does not extend the expiry; renewing creates a new invitation.
+- Invitation acceptance commits the new confirmed account and accepted invitation before immediately signing the recipient in.
+- Password-reset requests for disabled accounts remain non-enumerating and do not send an email.
+- Polly encourages two owners for operational recovery but enforces only one active owner as the invariant.
+- Oban Web remains read-only. `:operate_jobs` stays in the vocabulary as an explicitly deferred permission and is granted to no role.
+
+#### Maintained inventory
+
+`Polly.Accounts.AuthorizationCoverage` records the intended permission or trusted-system exemption for current web entry points, Ash actions, context services, and authorization bypasses. `Polly.Accounts.AuthorizationCoverageTest` fails when an Ash action or literal `authorize?: false` call is added or removed without reviewing the inventory.
+
+The inventory describes the destination for phase 3; it does not change current authorization behavior.
+
+#### Production account capture and recovery verification
+
+Account IDs are environment data and must not be committed to this repository. Before phase 1 is deployed, an infrastructure operator should open a remote IEx shell and perform the following read-only query:
+
+```elixir
+alias Polly.Accounts.User
+
+User
+|> Ash.Query.load([])
+|> Ash.read!(authorize?: false)
+|> Enum.map(&%{id: &1.id, email: to_string(&1.email), confirmed_at: &1.confirmed_at})
+```
+
+Record the confirmed account IDs in the deployment runbook or password manager, then verify that at least one of those accounts can sign in. Do not paste this output into source control or CI logs.
+
+Until phase 1 adds role and status fields, every existing `User` is effectively an administrator and there is no owner record to promote. The existing trusted recovery boundary is:
+
+```sh
+fly ssh console -a <app-name> -C "/app/bin/polly remote"
+```
+
+From that shell, use the documented account-creation procedure if no usable account remains. Phase 1 must add and test the dedicated owner promotion task before role enforcement can ship. Phase 0 recovery verification is intentionally read-only and does not authorize changing production account state.
 
 #### Tests and verification
 
