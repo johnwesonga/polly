@@ -8,7 +8,7 @@ High-value next features
 - Reminder emails — notify eligible members who have not voted without revealing their selections.
 - Poll archiving — hide completed polls from normal administration while retaining history.
 Poll configuration
-- Multiple-choice polls with configurable selection limits.
+- Multiple-choice polls with configurable selection limits. [Technical specification](multiple-choice-polls-spec.md)
 - Ranked-choice voting.
 - Yes/no and approval voting templates.
 - Option descriptions or supporting links.
