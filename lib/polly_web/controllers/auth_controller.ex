@@ -54,7 +54,7 @@ defmodule PollyWeb.AuthController do
   end
 
   def sign_out(conn, _params) do
-    return_to = get_session(conn, :return_to) || ~p"/"
+    return_to = get_session(conn, :return_to) || ~p"/sign-in"
 
     conn
     |> clear_session(:polly)
