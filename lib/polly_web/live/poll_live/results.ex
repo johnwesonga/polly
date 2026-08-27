@@ -18,6 +18,7 @@ defmodule PollyWeb.PollLive.Results do
      |> stream_configure(:results, dom_id: &"result-#{&1.option.id}")
      |> assign(:page_title, "#{poll.title} results")
      |> assign(:poll, poll)
+     |> assign(:confirming_export?, false)
      |> load_results()}
   end
 
@@ -99,6 +100,86 @@ defmodule PollyWeb.PollLive.Results do
           >
             Duplicate poll
           </.link>
+          <button
+            id="export-results-button"
+            type="button"
+            phx-click="prepare-export"
+            disabled={@poll.status == :draft || @result.options == []}
+            class="btn btn-outline"
+          >
+            Export results CSV
+          </button>
+        </div>
+
+        <p :if={@poll.status == :draft} id="results-export-unavailable" class="poll-meta">
+          Open the poll before exporting results.
+        </p>
+
+        <div
+          :if={@confirming_export?}
+          id="results-export-confirmation-overlay"
+          class="invitation-confirmation-overlay"
+          phx-window-keydown="cancel-export"
+          phx-key="escape"
+        >
+          <section
+            id="results-export-confirmation"
+            class="card card-pad invitation-confirmation"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="results-export-confirmation-title"
+          >
+            <div class="m-eyebrow">CSV results export</div>
+            <h2 id="results-export-confirmation-title" class="admin-h2">
+              Confirm results download
+            </h2>
+            <p class="admin-sub">
+              Download the {result_state_label(@poll)} aggregate results for <strong>{@poll.title}</strong>.
+            </p>
+            <dl class="invitation-confirmation-counts">
+              <div>
+                <dt>Ballots</dt>
+                <dd>{@result.ballot_count}</dd>
+              </div>
+              <div>
+                <dt>Turnout</dt>
+                <dd>{format_percentage(@result.turnout_percentage)}</dd>
+              </div>
+              <div>
+                <dt>Eligible</dt>
+                <dd>{@result.eligible_count}</dd>
+              </div>
+              <div>
+                <dt>Options</dt>
+                <dd>{length(@result.options)}</dd>
+              </div>
+            </dl>
+            <div class="callout amber invitation-private-warning">
+              <.icon name="hero-exclamation-triangle" class="size-5" />
+              <span>
+                Aggregate results may still be sensitive for a small electorate. The file contains
+                no member identities, ballots, private links, or access tokens.
+              </span>
+            </div>
+            <div class="invitation-confirmation-actions">
+              <button
+                id="cancel-results-export"
+                type="button"
+                phx-click="cancel-export"
+                class="btn btn-outline"
+              >
+                Cancel
+              </button>
+              <.link
+                id="download-results-export"
+                href={~p"/admin/polls/#{@poll.id}/results.csv"}
+                download
+                class="btn btn-coral"
+              >
+                {download_label(@poll)}
+              </.link>
+            </div>
+          </section>
         </div>
 
         <div class="result-metrics">
@@ -160,6 +241,18 @@ defmodule PollyWeb.PollLive.Results do
   def handle_event("publish", _params, socket),
     do: transition(socket, :publish_results, "Results published")
 
+  def handle_event("prepare-export", _params, socket) do
+    if socket.assigns.poll.status != :draft && socket.assigns.result.options != [] do
+      {:noreply, assign(socket, :confirming_export?, true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("cancel-export", _params, socket) do
+    {:noreply, assign(socket, :confirming_export?, false)}
+  end
+
   @impl true
   def handle_info({:poll_results_changed, poll_id}, %{assigns: %{poll: %{id: poll_id}}} = socket) do
     {:noreply, load_results(socket)}
@@ -217,4 +310,11 @@ defmodule PollyWeb.PollLive.Results do
     do: "Voting is closed. Review the final totals before publishing them to members."
 
   defp format_percentage(value), do: :erlang.float_to_binary(value, decimals: 1) <> "%"
+
+  defp result_state_label(%Poll{status: :open}), do: "provisional"
+  defp result_state_label(%Poll{results_published_at: nil}), do: "final, unpublished"
+  defp result_state_label(%Poll{}), do: "final, published"
+
+  defp download_label(%Poll{status: :open}), do: "Download provisional results"
+  defp download_label(%Poll{}), do: "Download final results"
 end

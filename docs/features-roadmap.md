@@ -46,7 +46,7 @@ Status labels:
 
 ## Results and reporting
 
-- **Proposed — CSV result exports.**
+- **Done — [CSV result exports](csv-results-export-spec.md):** download aggregate, one-row-per-option results without member identities or ballot-level data.
 - **Proposed — Turnout exports by poll.**
 - **Proposed — Printable or PDF result summaries.**
 - **Proposed — Result comparison across recurring polls.**

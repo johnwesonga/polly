@@ -14,6 +14,7 @@ Polly is the successor to Nominator, a swimmer-award proof of concept. The curre
 - Draft, open, and closed poll lifecycle controls.
 - Token-based public voting with review and final submission states.
 - Poll-scoped turnout and results with explicit result publication.
+- Aggregate CSV result exports with no member identities or ballot-level data.
 - Individual and bulk email invitation delivery through durable Oban jobs.
 - Touchpad-styled multipart invitation emails with HTML and plain-text bodies.
 - Per-member invitation status, explicit resends, and safe failure categories.
@@ -173,6 +174,7 @@ mix test test/polly/polls/invitations_test.exs
 - [Anonymous choices specification](docs/anonymous-choices-spec.md)
 - [Poll archiving specification](docs/poll-archiving-spec.md)
 - [Access-link CSV export specification](docs/access-link-csv-export-spec.md)
+- [CSV results export specification](docs/csv-results-export-spec.md)
 
 ## Framework documentation
 

@@ -57,6 +57,39 @@ defmodule PollyWeb.PollResultsLiveTest do
     assert path == ~p"/admin/polls/#{fixture.poll.id}/duplicate"
   end
 
+  test "confirms provisional and final CSV result exports", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    fixture = draft_poll!(actor, "Exportable results")
+
+    {:ok, draft_view, _html} = live(conn, ~p"/admin/polls/#{fixture.poll.id}/results")
+    assert has_element?(draft_view, "#export-results-button[disabled]")
+    assert has_element?(draft_view, "#results-export-unavailable")
+
+    poll = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
+    {:ok, open_view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/results")
+
+    open_view |> element("#export-results-button") |> render_click()
+
+    assert has_element?(open_view, "#results-export-confirmation", "provisional")
+
+    assert has_element?(
+             open_view,
+             "#download-results-export[href='/admin/polls/#{poll.id}/results.csv']",
+             "Download provisional results"
+           )
+
+    open_view |> element("#cancel-results-export") |> render_click()
+    refute has_element?(open_view, "#results-export-confirmation")
+
+    closed = Ash.update!(poll, %{}, action: :close, actor: actor)
+    {:ok, closed_view, _html} = live(conn, ~p"/admin/polls/#{closed.id}/results")
+    closed_view |> element("#export-results-button") |> render_click()
+
+    assert has_element?(closed_view, "#results-export-confirmation", "final, unpublished")
+    assert has_element?(closed_view, "#download-results-export", "Download final results")
+    assert has_element?(closed_view, "#results-export-confirmation", "no member identities")
+  end
+
   defp draft_poll!(actor, title) do
     poll =
       Ash.create!(

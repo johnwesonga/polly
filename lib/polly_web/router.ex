@@ -22,8 +22,18 @@ defmodule PollyWeb.Router do
     plug :set_actor, :user
   end
 
+  pipeline :authenticated_administrator do
+    plug PollyWeb.Plugs.RequireAdministrator
+  end
+
   scope "/", PollyWeb do
     get "/health", HealthController, :show
+  end
+
+  scope "/admin", PollyWeb do
+    pipe_through [:browser, :authenticated_administrator]
+
+    get "/polls/:poll_id/results.csv", PollResultsExportController, :show
   end
 
   scope "/", PollyWeb do

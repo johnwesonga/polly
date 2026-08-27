@@ -27,6 +27,14 @@ defmodule Polly.Audit do
     "poll.opened" => [:old_status, :new_status],
     "poll.closed" => [:old_status, :new_status],
     "poll.results_published" => [],
+    "poll.results_exported" => [
+      :poll_status,
+      :result_state,
+      :option_count,
+      :submitted_count,
+      :eligible_count,
+      :provisional
+    ],
     "poll_option.created" => [:position],
     "poll_option.updated" => [:changed_fields],
     "poll_option.reordered" => [:old_position, :new_position],
@@ -123,6 +131,7 @@ defmodule Polly.Audit do
       "poll.opened" -> "opened “#{event.target_label}”"
       "poll.closed" -> "closed “#{event.target_label}”"
       "poll.results_published" -> "published results for “#{event.target_label}”"
+      "poll.results_exported" -> "exported results for “#{event.target_label}”"
       "member.created" -> "created member “#{event.target_label}”"
       "member.updated" -> "updated member “#{event.target_label}”"
       "member.activated" -> "activated member “#{event.target_label}”"
