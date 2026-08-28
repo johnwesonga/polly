@@ -1,7 +1,21 @@
 defmodule Polly.Accounts.Token do
   @moduledoc """
-  Stores authentication tokens used by the application's sign-in, confirmation,
-  and password-reset flows.
+  Persists tokens managed by `AshAuthentication` for administrator account
+  authentication and session lifecycle.
+
+  The resource supports sign-in and remember-me sessions, email confirmation,
+  password resets, token revocation, subject-wide sign-out, and expired-token
+  cleanup. Account disabling and role changes use the subject-wide revocation
+  action to invalidate an administrator's existing sessions.
+
+  This resource does not store poll access credentials or administrator
+  invitation credentials. Poll links are owned by the polls domain, while
+  administrator invitation credentials are deterministically signed and
+  verified by `Polly.Accounts.AdministratorInvitationToken`; only their
+  invitation state is persisted.
+
+  Token identifiers and token-bearing arguments are sensitive and should only
+  be accessed through trusted authentication and account-lifecycle boundaries.
   """
 
   use Ash.Resource,
