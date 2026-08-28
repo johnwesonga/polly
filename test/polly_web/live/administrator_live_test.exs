@@ -62,6 +62,12 @@ defmodule PollyWeb.AdministratorLiveTest do
     assert has_element?(view, "#administrator-action-confirmation-overlay")
     assert has_element?(view, "#confirm-administrator-action")
 
+    assert has_element?(
+             view,
+             "#administrator-action-confirmation",
+             "active sessions will be revoked"
+           )
+
     view
     |> element("#confirm-administrator-action")
     |> render_click()
@@ -85,7 +91,11 @@ defmodule PollyWeb.AdministratorLiveTest do
     |> form("#administrator-role-form-#{target.id}", account: %{role: "auditor"})
     |> render_submit()
 
-    assert has_element?(view, "#administrator-action-confirmation-overlay")
+    assert has_element?(
+             view,
+             "#administrator-action-confirmation",
+             "active sessions will be revoked"
+           )
 
     view
     |> element("#confirm-administrator-action")
@@ -127,6 +137,31 @@ defmodule PollyWeb.AdministratorLiveTest do
              "#administrator-owner-protection-#{owner.id}",
              "Add another active owner"
            )
+  end
+
+  test "surfaces stale final-owner errors and refreshes the account list", %{conn: conn} do
+    actor = create_user!(:owner, "stale-actor@example.com")
+    other_owner = create_user!(:owner, "stale-other-owner@example.com")
+    view = mount_as(conn, actor)
+
+    view
+    |> form("#administrator-role-form-#{actor.id}", account: %{role: "auditor"})
+    |> render_submit()
+
+    assert has_element?(view, "#administrator-action-confirmation-overlay")
+
+    assert {:ok, _updated} =
+             Administrators.change_role(other_owner, :administrator, actor)
+
+    view
+    |> element("#confirm-administrator-action")
+    |> render_click()
+
+    assert has_element?(view, "#flash-group", "Polly must retain at least one active owner")
+    assert Ash.get!(User, actor.id, authorize?: false).role == :owner
+    assert has_element?(view, "#administrator-account-role-#{actor.id}", "Owner")
+    assert has_element?(view, "#administrator-change-role-#{actor.id}[disabled]")
+    refute has_element?(view, "#administrator-action-confirmation-overlay")
   end
 
   defp create_user!(role, email) do

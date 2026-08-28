@@ -92,6 +92,31 @@ defmodule PollyWeb.RoleAuthorizationTest do
              |> live(~p"/admin/administrators")
   end
 
+  test "administrator management rejects every non-owner role", %{conn: conn} do
+    for role <- [:administrator, :auditor, :operator] do
+      assert {:error, {:redirect, %{to: "/admin"}}} =
+               conn
+               |> sign_in(create_user!(role))
+               |> live(~p"/admin/administrators")
+    end
+  end
+
+  test "administrator management rejects disabled and anonymous users", %{conn: conn} do
+    owner = create_user!(:owner)
+    disabled = create_user!(:administrator)
+    assert {:ok, _disabled} = Polly.Accounts.Administrators.disable(disabled, owner)
+
+    assert {:error, {:redirect, %{to: "/sign-in"}}} =
+             conn
+             |> sign_in(disabled)
+             |> live(~p"/admin/administrators")
+
+    assert {:error, {:redirect, %{to: "/sign-in"}}} =
+             build_conn()
+             |> init_test_session(%{})
+             |> live(~p"/admin/administrators")
+  end
+
   defp sign_in(conn, user) do
     conn
     |> init_test_session(%{})
