@@ -16,6 +16,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
   def web_boundaries do
     %{
       PollyWeb.AdminLive => {:any, @permissions -- [:operate_jobs]},
+      PollyWeb.AdministratorLive => {:permission, :manage_administrators},
       PollyWeb.AuditLive => {:permission, :view_audit},
       PollyWeb.MemberLive.Index => {:permission, :manage_members},
       PollyWeb.MemberLive.Import => {:permission, :manage_members},

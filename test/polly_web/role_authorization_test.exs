@@ -63,6 +63,28 @@ defmodule PollyWeb.RoleAuthorizationTest do
     assert PollyWeb.ObanWebResolver.resolve_access(nil) == {:forbidden, "/sign-in"}
   end
 
+  test "registers an owner-only administrator-management route", %{conn: conn} do
+    assert %{plug: Phoenix.LiveView.Plug, plug_opts: plug_opts} =
+             Phoenix.Router.route_info(
+               PollyWeb.Router,
+               "GET",
+               "/admin/administrators",
+               "localhost"
+             )
+
+    assert plug_opts == :index
+
+    {:ok, owner_view, _html} =
+      conn |> sign_in(create_user!(:owner)) |> live(~p"/admin/administrators")
+
+    assert has_element?(owner_view, "#administrator-management-page")
+
+    assert {:error, {:redirect, %{to: "/admin"}}} =
+             build_conn()
+             |> sign_in(create_user!(:administrator))
+             |> live(~p"/admin/administrators")
+  end
+
   defp sign_in(conn, user) do
     conn
     |> init_test_session(%{})

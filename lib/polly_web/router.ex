@@ -41,6 +41,7 @@ defmodule PollyWeb.Router do
 
     ash_authentication_live_session :authenticated_routes do
       live "/admin", AdminLive, :index
+      live "/admin/administrators", AdministratorLive, :index
       live "/admin/audit", AuditLive, :index
       live "/admin/audit/:id", AuditLive, :show
       live "/admin/members", MemberLive.Index, :index
