@@ -98,12 +98,18 @@ defmodule PollyWeb.PollLiveTest do
     open = create_poll_with_status!(actor, "Open Listing", "open-listing", :open)
     closed = create_poll_with_status!(actor, "Closed Listing", "closed-listing", :closed)
 
+    published =
+      create_poll_with_status!(actor, "Published Listing", "published-listing", :published)
+
     {:ok, view, _html} = live(conn, ~p"/admin/polls")
 
     assert has_element?(view, "#poll-filter-all.current")
     assert has_element?(view, "#polls-#{draft.id}")
     assert has_element?(view, "#polls-#{open.id}")
     assert has_element?(view, "#polls-#{closed.id}")
+    assert has_element?(view, "#polls-#{published.id}")
+    assert has_element?(view, "#poll-status-#{closed.id}", "Closed")
+    assert has_element?(view, "#poll-status-#{published.id}", "Published")
 
     view |> element("#poll-filter-draft") |> render_click()
 
@@ -111,12 +117,26 @@ defmodule PollyWeb.PollLiveTest do
     assert has_element?(view, "#polls-#{draft.id}")
     refute has_element?(view, "#polls-#{open.id}")
     refute has_element?(view, "#polls-#{closed.id}")
+    refute has_element?(view, "#polls-#{published.id}")
 
     view |> element("#poll-filter-open") |> render_click()
 
     assert has_element?(view, "#poll-filter-open.current")
     assert has_element?(view, "#polls-#{open.id}")
     refute has_element?(view, "#polls-#{draft.id}")
+    refute has_element?(view, "#polls-#{closed.id}")
+    refute has_element?(view, "#polls-#{published.id}")
+
+    view |> element("#poll-filter-closed") |> render_click()
+
+    assert has_element?(view, "#poll-filter-closed.current")
+    assert has_element?(view, "#polls-#{closed.id}")
+    refute has_element?(view, "#polls-#{published.id}")
+
+    view |> element("#poll-filter-published") |> render_click()
+
+    assert has_element?(view, "#poll-filter-published.current")
+    assert has_element?(view, "#polls-#{published.id}")
     refute has_element?(view, "#polls-#{closed.id}")
   end
 
@@ -271,10 +291,17 @@ defmodule PollyWeb.PollLiveTest do
 
     poll = Ash.update!(poll, %{}, action: :open, actor: actor)
 
-    if status == :closed do
-      Ash.update!(poll, %{}, action: :close, actor: actor)
-    else
-      poll
+    case status do
+      :closed ->
+        Ash.update!(poll, %{}, action: :close, actor: actor)
+
+      :published ->
+        poll
+        |> Ash.update!(%{}, action: :close, actor: actor)
+        |> Ash.update!(%{}, action: :publish_results, actor: actor)
+
+      :open ->
+        poll
     end
   end
 

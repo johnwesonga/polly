@@ -74,7 +74,7 @@ Status labels:
 
 - **Done — [Background email jobs and diagnostics](email-invitation-delivery-spec.md):** durable Oban processing with an authenticated, read-only Oban Web dashboard.
 - **Done — [Fly.io production deployment documentation](flyio-deployment.md):** single-machine SQLite deployment with GitHub Actions, persistent storage, health checks, and Resend configuration.
-- **Proposed — Dashboard showing open polls requiring attention.**
+- **Specified — [Role-aware administration dashboard](admin-dashboard-spec.md):** surface poll status, work requiring attention, active-poll turnout, account risks, recent activity, and delivery health according to administrator permissions.
 - **Proposed — Poll readiness checklist.**
 - **Proposed — Background jobs for schedules and exports.**
 - **Proposed — Database backup and recovery tooling.**

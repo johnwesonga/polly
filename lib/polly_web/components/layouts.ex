@@ -50,17 +50,17 @@ defmodule PollyWeb.Layouts do
           <.link
             id="admin-nav-overview"
             navigate={~p"/admin"}
-            class={if(@active_nav == :overview, do: "current", else: nil)}
+            class={["nav-item", @active_nav == :overview && "current"]}
           >
-            Overview
+            <.icon name="hero-chart-bar" class="nav-icon" /> Overview
           </.link>
           <.link
             :if={allowed?(@current_scope.user, :manage_members)}
             id="admin-nav-members"
             navigate={~p"/admin/members"}
-            class={if(@active_nav == :members, do: "current", else: nil)}
+            class={["nav-item", @active_nav == :members && "current"]}
           >
-            Members
+            <.icon name="hero-user-group" class="nav-icon" /> Members
           </.link>
           <.link
             :if={
@@ -69,37 +69,37 @@ defmodule PollyWeb.Layouts do
             }
             id="admin-nav-polls"
             navigate={~p"/admin/polls"}
-            class={if(@active_nav == :polls, do: "current", else: nil)}
+            class={["nav-item", @active_nav == :polls && "current"]}
           >
-            Polls
+            <.icon name="hero-list-bullet" class="nav-icon" /> Polls
           </.link>
           <.link
             :if={allowed?(@current_scope.user, :manage_administrators)}
             id="admin-nav-administrators"
             navigate={~p"/admin/administrators"}
-            class={if(@active_nav == :administrators, do: "current", else: nil)}
+            class={["nav-item", @active_nav == :administrators && "current"]}
           >
-            Administrators
+            <.icon name="hero-shield-check" class="nav-icon" /> Administrators
           </.link>
           <.link
             :if={allowed?(@current_scope.user, :view_audit)}
             id="admin-nav-audit"
             navigate={~p"/admin/audit"}
-            class={if(@active_nav == :audit, do: "current", else: nil)}
+            class={["nav-item", @active_nav == :audit && "current"]}
           >
-            Audit trail
+            <.icon name="hero-document-text" class="nav-icon" /> Audit trail
           </.link>
           <.link
             :if={allowed?(@current_scope.user, :view_jobs)}
             id="admin-nav-background-jobs"
             href={~p"/admin/oban"}
-            class={if(@active_nav == :jobs, do: "current", else: nil)}
+            class={["nav-item", @active_nav == :jobs && "current"]}
           >
-            Background jobs
+            <.icon name="hero-circle-stack" class="nav-icon" /> Background jobs
           </.link>
           <div class="navfoot">
-            Signed in as<br />
             <strong>{to_string(@current_scope.user.email)}</strong>
+            | <span>{role_label(@current_scope.user.role)}</span>
             <br />
             <.link href={~p"/sign-out"} class="mt-2 inline-block text-white underline">
               Sign out
@@ -136,6 +136,8 @@ defmodule PollyWeb.Layouts do
   end
 
   defp allowed?(user, permission), do: Polly.Accounts.Authorization.allowed?(user, permission)
+
+  defp role_label(role), do: role |> to_string() |> String.capitalize()
 
   @doc """
   Shows the flash group with standard titles and content.

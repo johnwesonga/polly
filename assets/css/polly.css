@@ -250,6 +250,22 @@
      opacity: 0.48;
  }
 
+ .admin-nav .nav-item {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+ }
+
+ .admin-nav .nav-icon {
+     width: 18px;
+     height: 18px;
+     flex: none;
+ }
+
+ .admin-nav .nav-item.current .nav-icon {
+     color: var(--coral);
+ }
+
  .admin-nav a.current {
      background: rgba(255, 255, 255, 0.08);
      color: #fff;
@@ -344,7 +360,7 @@
      border-radius: 12px;
      padding: 16px 18px;
      display: grid;
-     grid-template-columns: 1fr auto auto auto;
+     grid-template-columns: minmax(0, 1fr) auto auto;
      align-items: center;
      gap: 18px;
      cursor: pointer;
@@ -420,30 +436,6 @@
  .pill.published {
      background: var(--green-wash);
      color: var(--green);
- }
-
- .turnout {
-     width: 150px;
- }
-
- .turnout-num {
-     font-family: 'IBM Plex Mono', monospace;
-     font-size: 12px;
-     color: var(--ink);
-     margin-bottom: 5px;
- }
-
- .turnout-track {
-     height: 5px;
-     background: var(--paper-alt);
-     border-radius: 3px;
-     overflow: hidden;
- }
-
- .turnout-fill {
-     height: 100%;
-     background: var(--coral);
-     border-radius: 3px;
  }
 
  .arrow {
@@ -1811,28 +1803,22 @@
 
      .poll-card {
          grid-template-columns: 1fr auto;
-         grid-template-areas: "name status" "turnout turnout" "arrow arrow";
+         grid-template-areas: "name status" "actions actions";
          row-gap: 10px;
      }
 
      .poll-actions {
-         grid-area: arrow;
+         grid-area: actions;
          justify-content: flex-start;
      }
 
-     .poll-card .poll-name,
-     .poll-card .poll-meta {
+     .poll-card-link {
          grid-area: name;
      }
 
      .poll-card>span.pill {
          grid-area: status;
          justify-self: end;
-     }
-
-     .poll-card>.turnout {
-         grid-area: turnout;
-         width: 100%;
      }
 
      .poll-card>.arrow {

@@ -21,6 +21,7 @@ defmodule PollyWeb.RoleAuthorizationTest do
     {:ok, view, _html} = conn |> sign_in(operator) |> live(~p"/admin")
 
     assert has_element?(view, "#admin-nav-background-jobs")
+    assert has_element?(view, "#admin-nav-background-jobs .hero-circle-stack")
     assert has_element?(view, "#job-monitoring-card")
     refute has_element?(view, "#admin-nav-members")
     refute has_element?(view, "#admin-nav-polls")
@@ -80,6 +81,12 @@ defmodule PollyWeb.RoleAuthorizationTest do
 
     assert has_element?(owner_view, "#administrator-management-page")
     assert has_element?(owner_view, "#admin-nav-administrators.current", "Administrators")
+    assert has_element?(owner_view, "#admin-nav-overview .hero-chart-bar")
+    assert has_element?(owner_view, "#admin-nav-members .hero-user-group")
+    assert has_element?(owner_view, "#admin-nav-polls .hero-list-bullet")
+    assert has_element?(owner_view, "#admin-nav-administrators .hero-shield-check")
+    assert has_element?(owner_view, "#admin-nav-audit .hero-document-text")
+    assert has_element?(owner_view, ".navfoot", "Owner")
 
     {:ok, administrator_view, _html} =
       build_conn() |> sign_in(create_user!(:administrator)) |> live(~p"/admin")

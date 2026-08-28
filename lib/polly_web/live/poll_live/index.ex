@@ -94,18 +94,11 @@ defmodule PollyWeb.PollLive.Index do
               <div class="poll-name">{poll.title}</div>
               <div class="poll-meta">Single choice · {poll.slug}</div>
             </.link>
-            <span class={status_class(poll.status)}>
+            <span id={"poll-status-#{poll.id}"} class={status_class(poll)}>
               <span :if={poll.status == :open} class="dotlive"></span>
-              {status_label(poll.status)}
+              {status_label(poll)}
             </span>
-            <div class="turnout">
-              <div class="turnout-num">
-                {if(poll.status == :draft, do: "Options ready to configure", else: "Poll configured")}
-              </div>
-              <div class="turnout-track">
-                <div class="turnout-fill" style="width:0%"></div>
-              </div>
-            </div>
+
             <div class="poll-actions">
               <.link
                 :if={@manage_polls?}
@@ -172,15 +165,29 @@ defmodule PollyWeb.PollLive.Index do
   end
 
   defp apply_status_filter(query, :all), do: query
-  defp apply_status_filter(query, status), do: Ash.Query.filter(query, status == ^status)
+  defp apply_status_filter(query, :draft), do: Ash.Query.filter(query, status == :draft)
+  defp apply_status_filter(query, :open), do: Ash.Query.filter(query, status == :open)
+
+  defp apply_status_filter(query, :closed),
+    do: Ash.Query.filter(query, status == :closed and is_nil(results_published_at))
+
+  defp apply_status_filter(query, :published),
+    do: Ash.Query.filter(query, status == :closed and not is_nil(results_published_at))
 
   defp status_filter(%{"status" => "draft"}), do: :draft
   defp status_filter(%{"status" => "open"}), do: :open
   defp status_filter(%{"status" => "closed"}), do: :closed
+  defp status_filter(%{"status" => "published"}), do: :published
   defp status_filter(_params), do: :all
 
   defp status_filters,
-    do: [{"All", :all}, {"Drafts", :draft}, {"Open", :open}, {"Closed", :closed}]
+    do: [
+      {"All", :all},
+      {"Drafts", :draft},
+      {"Open", :open},
+      {"Closed", :closed},
+      {"Published", :published}
+    ]
 
   defp status_filter_path(:all), do: ~p"/admin/polls"
   defp status_filter_path(status), do: ~p"/admin/polls?status=#{status}"
@@ -231,13 +238,22 @@ defmodule PollyWeb.PollLive.Index do
   defp empty_title(:draft), do: "No draft polls"
   defp empty_title(:open), do: "No open polls"
   defp empty_title(:closed), do: "No closed polls"
+  defp empty_title(:published), do: "No published polls"
 
   defp empty_message(:all), do: "Create the first draft to begin configuring options."
   defp empty_message(_status), do: "Choose another status to view more polls."
 
-  defp status_label(status), do: status |> to_string() |> String.capitalize()
+  defp status_label(%Poll{status: :closed, results_published_at: published_at})
+       when not is_nil(published_at),
+       do: "Published"
 
-  defp status_class(:draft), do: "pill draft"
-  defp status_class(:open), do: "pill open"
-  defp status_class(:closed), do: "pill closed"
+  defp status_label(%Poll{status: status}), do: status |> to_string() |> String.capitalize()
+
+  defp status_class(%Poll{status: :closed, results_published_at: published_at})
+       when not is_nil(published_at),
+       do: "pill published"
+
+  defp status_class(%Poll{status: :draft}), do: "pill draft"
+  defp status_class(%Poll{status: :open}), do: "pill open"
+  defp status_class(%Poll{status: :closed}), do: "pill closed"
 end

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Touchpad — Administration dashboard mockup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=IBM+Plex+Mono:wght@500;600&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --ink: #0b1f33;
+        --ink-soft: #1b3a55;
+        --paper: #f5f7f6;
+        --paper-alt: #ecf1ef;
+        --water: #dceeea;
+        --coral: #e8491d;
+        --coral-dark: #c23815;
+        --coral-wash: #fce4da;
+        --slate: #5c7080;
+        --slate-light: #8ca0ac;
+        --green: #1f8a5f;
+        --green-wash: #ddefe6;
+        --amber: #b9791a;
+        --amber-wash: #f5e8d2;
+        --line: rgb(11 31 51 / 12%);
+        --line-strong: rgb(11 31 51 / 22%);
+        --shadow: 0 1px 2px rgb(11 31 51 / 6%), 0 8px 24px -12px rgb(11 31 51 / 18%);
+      }
+
+      * { box-sizing: border-box; }
+      html { background: var(--paper-alt); }
+      body { margin: 0; color: var(--ink); background: var(--paper-alt); font-family: Inter, sans-serif; -webkit-font-smoothing: antialiased; }
+      a { color: inherit; }
+      button { font: inherit; }
+      button:focus-visible, a:focus-visible { outline: 3px solid var(--water); outline-offset: 3px; }
+
+      .app-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+      .sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; padding: 27px 18px 20px; color: #fff; background: var(--ink); }
+      .brand { display: flex; align-items: center; gap: 11px; margin: 0 12px 38px; color: #fff; text-decoration: none; }
+      .brand-mark { position: relative; width: 42px; height: 42px; flex: 0 0 auto; border: 3px solid var(--coral); }
+      .brand-mark::after { position: absolute; top: 7px; left: 18px; width: 3px; height: 25px; background: var(--coral); content: ""; }
+      .brand-name { font-family: "Bebas Neue", sans-serif; font-size: 29px; letter-spacing: .055em; }
+      .nav-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+      .nav-link { display: flex; align-items: center; gap: 13px; min-height: 48px; padding: 0 14px; border-radius: 8px; color: #c8d3dc; font-size: 14px; font-weight: 600; text-decoration: none; }
+      .nav-link:hover { color: #fff; background: rgb(255 255 255 / 5%); }
+      .nav-link.current { color: #fff; background: rgb(36 100 154 / 35%); }
+      .icon { width: 22px; height: 22px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+      .nav-link.current .icon { color: var(--coral); }
+      .profile { display: flex; align-items: center; gap: 11px; margin-top: auto; padding: 20px 5px 0; border-top: 1px solid rgb(255 255 255 / 12%); }
+      .avatar { display: grid; width: 45px; height: 45px; place-items: center; border: 2px solid var(--coral); border-radius: 50%; color: var(--coral); font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600; }
+      .profile-copy { min-width: 0; }
+      .profile-copy strong { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+      .profile-copy span { color: #93a6b5; font-size: 11px; }
+
+      main { min-width: 0; padding: 32px clamp(24px, 4vw, 56px) 50px; }
+      .content { width: min(100%, 1190px); margin: 0 auto; }
+      .titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+      h1, h2 { margin: 0; font-family: "Bebas Neue", sans-serif; font-weight: 400; letter-spacing: .035em; }
+      h1 { font-size: 42px; line-height: 1; }
+      h2 { font-size: 21px; }
+      .subtitle { margin: 5px 0 15px; color: var(--slate); font-size: 14px; }
+      .lane-line { width: 178px; height: 2px; background-image: repeating-linear-gradient(90deg, var(--coral) 0 14px, transparent 14px 22px); }
+      .quick-actions { display: flex; gap: 10px; }
+      .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 43px; padding: 0 17px; border: 1px solid transparent; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-decoration: none; text-transform: uppercase; }
+      .btn .icon { width: 18px; height: 18px; }
+      .btn-primary { color: #fff; background: var(--coral); box-shadow: var(--shadow); }
+      .btn-primary:hover { background: var(--coral-dark); }
+      .btn-outline { border-color: var(--coral); color: var(--coral); background: #fff; }
+
+      .section { margin-top: 25px; }
+      .section-heading { margin-bottom: 11px; }
+      .card { border: 1px solid var(--line); border-radius: 11px; background: #fff; box-shadow: 0 1px 1px rgb(11 31 51 / 2%); }
+      .attention-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+      .attention-card { position: relative; display: grid; grid-template-columns: 46px 1fr; gap: 14px; min-height: 145px; padding: 24px 22px 19px; overflow: hidden; border-color: #edc99a; background: #fffaf6; }
+      .attention-card::before { position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--amber); content: ""; }
+      .attention-card.critical::before { background: var(--coral); }
+      .status-icon { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 50%; color: #fff; background: var(--amber); }
+      .critical .status-icon { background: var(--coral); }
+      .status-icon .icon { width: 24px; height: 24px; }
+      .attention-title { margin: 4px 0 5px; font-size: 14px; font-weight: 800; }
+      .attention-copy { margin: 0; color: var(--slate); font-size: 12px; line-height: 1.45; }
+      .card-link { display: inline-flex; align-items: center; gap: 7px; margin-top: 18px; color: var(--coral); font-size: 12px; font-weight: 700; text-decoration: none; }
+      .card-link .icon { width: 16px; height: 16px; }
+
+      .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+      .metric { display: flex; align-items: center; justify-content: space-between; min-height: 105px; padding: 18px 20px; }
+      .eyebrow { color: var(--slate); font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+      .metric-value { margin-top: 5px; font-family: "Bebas Neue", sans-serif; font-size: 37px; line-height: 1; }
+      .metric-icon { display: grid; width: 45px; height: 45px; place-items: center; border-radius: 50%; color: var(--ink-soft); background: #edf0f2; }
+      .metric-icon.green { color: var(--green); background: var(--green-wash); }
+      .metric-icon.amber { color: var(--amber); background: var(--amber-wash); }
+
+      .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, .9fr); gap: 16px; margin-top: 16px; }
+      .panel { padding: 20px; }
+      .panel h2 { margin-bottom: 12px; }
+      .poll-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, .8fr) auto; align-items: center; gap: 20px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+      .poll-row:last-of-type { border-bottom: 0; }
+      .poll-title { margin: 0 0 4px; font-size: 13px; font-weight: 800; }
+      .poll-meta { color: var(--slate); font-size: 11px; }
+      .turnout-label { margin-bottom: 7px; color: var(--green); font-size: 11px; font-weight: 600; }
+      .track { height: 7px; overflow: hidden; border-radius: 99px; background: var(--water); }
+      .track span { display: block; height: 100%; border-radius: inherit; background: var(--green); }
+      .pill { display: inline-flex; padding: 6px 10px; border-radius: 999px; color: var(--green); background: var(--green-wash); font-family: "IBM Plex Mono", monospace; font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+      .health-row { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+      .health-row:last-of-type { border-bottom: 0; }
+      .small-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; color: var(--ink-soft); background: #eaf0f7; }
+      .small-icon.warning { color: var(--coral); background: var(--coral-wash); }
+      .health-title { margin: 2px 0 3px; font-size: 12px; font-weight: 800; }
+
+      .activity-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 0; color: var(--ink-soft); font-size: 11px; }
+      .activity-row .small-icon { width: 29px; height: 29px; }
+      time { color: var(--slate); font-size: 10px; white-space: nowrap; }
+      .delivery-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 10px; }
+      .delivery-stat { display: grid; place-items: center; padding: 4px 8px; border-right: 1px solid var(--line); }
+      .delivery-stat:last-child { border-right: 0; }
+      .delivery-stat strong { margin: 5px 0 9px; font-family: "Bebas Neue", sans-serif; font-size: 28px; }
+
+      .mock-note { margin: 26px 0 0; color: var(--slate); font-size: 10px; text-align: right; }
+
+      @media (max-width: 1050px) {
+        .app-shell { grid-template-columns: 200px minmax(0, 1fr); }
+        .sidebar { padding-inline: 12px; }
+        .brand { margin-inline: 8px; }
+        .attention-grid { grid-template-columns: 1fr; }
+        .attention-card { min-height: auto; }
+        .metric-grid { grid-template-columns: repeat(2, 1fr); }
+        .dashboard-grid { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 720px) {
+        .app-shell { display: block; }
+        .sidebar { position: static; height: auto; padding: 16px; }
+        .brand { margin: 0 0 14px; }
+        .nav-list { grid-template-columns: repeat(3, 1fr); }
+        .nav-link { justify-content: center; padding: 8px; font-size: 0; }
+        .profile { display: none; }
+        main { padding: 24px 16px 40px; }
+        .titlebar { display: block; }
+        .quick-actions { margin-top: 20px; }
+        .quick-actions .btn { flex: 1; }
+        .poll-row { grid-template-columns: 1fr auto; }
+        .turnout { grid-column: 1 / -1; grid-row: 2; }
+      }
+
+      @media (max-width: 440px) {
+        .nav-list { grid-template-columns: repeat(2, 1fr); }
+        .metric-grid { grid-template-columns: 1fr; }
+        .quick-actions { flex-direction: column; }
+        .activity-row { grid-template-columns: 30px 1fr; }
+        time { grid-column: 2; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Inline icons are adapted from Heroicons Outline (MIT License): https://heroicons.com/ -->
+    <svg aria-hidden="true" width="0" height="0" style="position:absolute">
+      <defs>
+        <symbol id="i-overview" viewBox="0 0 24 24"><path d="M4 20V10m5 10V4m5 16v-7m5 7V7M2.5 20.5h19" /></symbol>
+        <symbol id="i-users" viewBox="0 0 24 24"><path d="M15 19.1a7.5 7.5 0 0 0-6 0M18 20.2a5.5 5.5 0 0 0-2.2-4.4M6 20.2a5.5 5.5 0 0 1 2.2-4.4M12 13.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm6-1.8a3 3 0 1 0-1.3-5.6" /></symbol>
+        <symbol id="i-polls" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.4c0 4.7 3.2 7.8 7.5 9.6 4.3-1.8 7.5-4.9 7.5-9.6V6L12 3Z" /><path d="m9.5 12 1.7 1.7 3.7-4" /></symbol>
+        <symbol id="i-document" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4V21H6V3.5Z" /><path d="M14 3.5V8h4M9 12h6m-6 4h6" /></symbol>
+        <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3" /><path d="M4 5.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6M4 11.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 13v7h14v-7" /></symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01" /></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" /></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 7v5l3 2" /></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="m8.5 12 2.2 2.2 4.8-5" /></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path d="M3 12s3.3-5 9-5 9 5 9 5-3.3 5-9 5-9-5-9-5Z" /><circle cx="12" cy="12" r="2.5" /></symbol>
+        <symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" /><path d="M3.5 20v-1.5A5.5 5.5 0 0 1 9 13h2m6-2v6m-3-3h6" /></symbol>
+        <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Z" /><path d="m3 7 9 7 9-7" /></symbol>
+      </defs>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Touchpad</span></a>
+        <nav aria-label="Administrator navigation">
+          <ul class="nav-list">
+            <li><a class="nav-link current" href="#"><svg class="icon"><use href="#i-overview" /></svg>Overview</a></li>
+            <li><a class="nav-link" href="#"><svg class="icon"><use href="#i-users" /></svg>Members</a></li>
+            <li><a class="nav-link" href="#"><svg class="icon"><use href="#i-polls" /></svg>Polls</a></li>
+            <li><a class="nav-link" href="#"><svg class="icon"><use href="#i-shield" /></svg>Administrators</a></li>
+            <li><a class="nav-link" href="#"><svg class="icon"><use href="#i-document" /></svg>Audit trail</a></li>
+            <li><a class="nav-link" href="#"><svg class="icon"><use href="#i-database" /></svg>Background jobs</a></li>
+          </ul>
+        </nav>
+        <div class="profile"><span class="avatar">OW</span><span class="profile-copy"><strong>Olivia Williams</strong><span>Owner</span></span></div>
+      </aside>
+
+      <main>
+        <div class="content">
+          <header class="titlebar">
+            <div><h1>Overview</h1><p class="subtitle">Here’s what needs your attention today.</p><div class="lane-line"></div></div>
+            <div class="quick-actions"><a class="btn btn-primary" href="#"><svg class="icon"><use href="#i-plus" /></svg>Create poll</a><a class="btn btn-outline" href="#"><svg class="icon"><use href="#i-upload" /></svg>Import members</a></div>
+          </header>
+
+          <section class="section"><h2 class="section-heading">Action required</h2><div class="attention-grid">
+            <article class="card attention-card"><span class="status-icon"><svg class="icon"><use href="#i-alert" /></svg></span><div><p class="attention-title">2 drafts need options</p><p class="attention-copy">Add answer options before these polls can open.</p><a class="card-link" href="#">View drafts <svg class="icon"><use href="#i-arrow" /></svg></a></div></article>
+            <article class="card attention-card critical"><span class="status-icon"><svg class="icon"><use href="#i-alert" /></svg></span><div><p class="attention-title">1 open poll has failed deliveries</p><p class="attention-copy">Some voters haven’t received their email invitations.</p><a class="card-link" href="#">View deliveries <svg class="icon"><use href="#i-arrow" /></svg></a></div></article>
+            <article class="card attention-card"><span class="status-icon"><svg class="icon"><use href="#i-alert" /></svg></span><div><p class="attention-title">3 results await publication</p><p class="attention-copy">Final aggregate results are ready to review.</p><a class="card-link" href="#">Review results <svg class="icon"><use href="#i-arrow" /></svg></a></div></article>
+          </div></section>
+
+          <section class="section"><h2 class="section-heading">Poll summary</h2><div class="metric-grid">
+            <article class="card metric"><div><div class="eyebrow">Draft</div><div class="metric-value">4</div></div><span class="metric-icon"><svg class="icon"><use href="#i-document" /></svg></span></article>
+            <article class="card metric"><div><div class="eyebrow">Open</div><div class="metric-value">2</div></div><span class="metric-icon green"><svg class="icon"><use href="#i-clock" /></svg></span></article>
+            <article class="card metric"><div><div class="eyebrow">Closed</div><div class="metric-value">18</div></div><span class="metric-icon"><svg class="icon"><use href="#i-check" /></svg></span></article>
+            <article class="card metric"><div><div class="eyebrow">Unpublished</div><div class="metric-value">3</div></div><span class="metric-icon amber"><svg class="icon"><use href="#i-eye" /></svg></span></article>
+          </div></section>
+
+          <div class="dashboard-grid">
+            <section class="card panel"><h2>Active polls</h2>
+              <div class="poll-row"><div><p class="poll-title">Board election 2027</p><span class="poll-meta">42 of 60 votes</span></div><div class="turnout"><div class="turnout-label">70% turnout</div><div class="track"><span style="width:70%"></span></div></div><span class="pill">Open</span></div>
+              <div class="poll-row"><div><p class="poll-title">Team song shortlist</p><span class="poll-meta">18 of 45 votes</span></div><div class="turnout"><div class="turnout-label">40% turnout</div><div class="track"><span style="width:40%"></span></div></div><span class="pill">Open</span></div>
+              <a class="card-link" href="#">View all polls <svg class="icon"><use href="#i-arrow" /></svg></a>
+            </section>
+            <section class="card panel"><h2>Account security</h2>
+              <div class="health-row"><span class="small-icon warning"><svg class="icon"><use href="#i-user-plus" /></svg></span><div><p class="health-title">1 active owner</p><span class="poll-meta">You are the only active owner.</span></div></div>
+              <div class="health-row"><span class="small-icon"><svg class="icon"><use href="#i-user-plus" /></svg></span><div><p class="health-title">2 pending invitations</p><span class="poll-meta">Invitations have not been accepted.</span></div></div>
+              <a class="card-link" href="#">Manage administrators <svg class="icon"><use href="#i-arrow" /></svg></a>
+            </section>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="card panel"><h2>Recent activity</h2>
+              <div class="activity-row"><span class="small-icon"><svg class="icon"><use href="#i-document" /></svg></span><span>Results for “Board election 2027” are ready for review</span><time datetime="2025-05-19T10:24:00Z">May 19, 10:24 AM</time></div>
+              <div class="activity-row"><span class="small-icon"><svg class="icon"><use href="#i-mail" /></svg></span><span>Poll “Team song shortlist” opened</span><time datetime="2025-05-19T09:02:00Z">May 19, 9:02 AM</time></div>
+              <div class="activity-row"><span class="small-icon"><svg class="icon"><use href="#i-user-plus" /></svg></span><span>Administrator invitation accepted</span><time datetime="2025-05-18T16:41:00Z">May 18, 4:41 PM</time></div>
+              <a class="card-link" href="#">View audit trail <svg class="icon"><use href="#i-arrow" /></svg></a>
+            </section>
+            <section class="card panel"><h2>Delivery health</h2><div class="delivery-stats">
+              <div class="delivery-stat"><span class="eyebrow">Queued</span><strong>3</strong><span class="small-icon"><svg class="icon"><use href="#i-clock" /></svg></span></div>
+              <div class="delivery-stat"><span class="eyebrow">Retrying</span><strong>1</strong><span class="small-icon" style="color:var(--amber);background:var(--amber-wash)"><svg class="icon"><use href="#i-clock" /></svg></span></div>
+              <div class="delivery-stat"><span class="eyebrow">Failed</span><strong>1</strong><span class="small-icon warning"><svg class="icon"><use href="#i-alert" /></svg></span></div>
+            </div><a class="card-link" href="#">View background jobs <svg class="icon"><use href="#i-arrow" /></svg></a></section>
+          </div>
+          <p class="mock-note">Static product mockup — fictional aggregate data only.</p>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
