@@ -501,6 +501,55 @@
      gap: 26px;
  }
 
+ .administrator-directory-heading {
+     display: flex;
+     align-items: end;
+     justify-content: space-between;
+     margin: 24px 0 12px;
+ }
+
+ .administrator-directory {
+     display: grid;
+     gap: 10px;
+ }
+
+ .administrator-account-row {
+     display: grid;
+     grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(110px, 1fr));
+     gap: 18px;
+     align-items: center;
+     padding: 16px 18px;
+ }
+
+ .administrator-account-email {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     color: var(--ink);
+     font-weight: 700;
+     overflow-wrap: anywhere;
+ }
+
+ .administrator-account-field {
+     display: grid;
+     gap: 4px;
+ }
+
+ .administrator-account-field>span:first-child {
+     color: var(--slate);
+     font-family: 'IBM Plex Mono', monospace;
+     font-size: 10px;
+     font-weight: 600;
+     letter-spacing: .05em;
+     text-transform: uppercase;
+ }
+
+ .administrator-account-field strong {
+     color: var(--ink-soft);
+     font-size: 12px;
+     font-weight: 600;
+ }
+
  .form-card {
      max-width: 720px;
  }
@@ -1707,6 +1756,15 @@
 
      .detail-grid {
          grid-template-columns: 1fr;
+     }
+
+     .administrator-account-row {
+         grid-template-columns: repeat(2, minmax(0, 1fr));
+     }
+
+     .administrator-account-identity,
+     .administrator-account-sign-in {
+         grid-column: 1 / -1;
      }
 
      .duplicate-layout {
