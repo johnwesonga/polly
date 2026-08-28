@@ -24,6 +24,7 @@ defmodule PollyWeb.RoleAuthorizationTest do
     assert has_element?(view, "#job-monitoring-card")
     refute has_element?(view, "#admin-nav-members")
     refute has_element?(view, "#admin-nav-polls")
+    refute has_element?(view, "#admin-nav-administrators")
     refute has_element?(view, "#admin-nav-audit")
 
     assert {:error, {:redirect, %{to: "/admin"}}} =
@@ -78,6 +79,12 @@ defmodule PollyWeb.RoleAuthorizationTest do
       conn |> sign_in(create_user!(:owner)) |> live(~p"/admin/administrators")
 
     assert has_element?(owner_view, "#administrator-management-page")
+    assert has_element?(owner_view, "#admin-nav-administrators.current", "Administrators")
+
+    {:ok, administrator_view, _html} =
+      build_conn() |> sign_in(create_user!(:administrator)) |> live(~p"/admin")
+
+    refute has_element?(administrator_view, "#admin-nav-administrators")
 
     assert {:error, {:redirect, %{to: "/admin"}}} =
              build_conn()
