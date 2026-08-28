@@ -2,7 +2,9 @@ defmodule PollyWeb.AdministratorLiveTest do
   use PollyWeb.ConnCase, async: false
   use Oban.Testing, repo: Polly.Repo
 
-  alias Polly.Accounts.{Administrators, User}
+  alias Polly.Accounts.{AdministratorInvitation, Administrators, User}
+
+  require Ash.Query
 
   test "lists account role, status, confirmation, and sign-in information", %{conn: conn} do
     owner = create_user!(:owner, "owner-directory@example.com")
@@ -232,6 +234,51 @@ defmodule PollyWeb.AdministratorLiveTest do
     view |> form("#administrator-invitation-form", invitation: params) |> render_submit()
     assert has_element?(view, "#flash-group", "A pending invitation already exists")
     assert length(all_enqueued()) == 1
+  end
+
+  test "an owner resends, renews, and revokes invitations with confirmation", %{conn: conn} do
+    owner = create_user!(:owner, "invitation-actions-owner@example.com")
+    view = mount_as(conn, owner)
+
+    view
+    |> form("#administrator-invitation-form",
+      invitation: %{email: "invitation-actions@example.com", role: "auditor"}
+    )
+    |> render_submit()
+
+    assert [%Oban.Job{args: %{"invitation_id" => invitation_id}}] = all_enqueued()
+    invitation = Ash.get!(AdministratorInvitation, invitation_id, authorize?: false)
+    original_expiry = invitation.expires_at
+
+    view |> element("#resend-administrator-invitation-#{invitation_id}") |> render_click()
+    assert has_element?(view, "#invitation-action-confirmation", "Resend invitation?")
+    view |> element("#confirm-invitation-action") |> render_click()
+
+    assert length(all_enqueued()) == 2
+    resent = Ash.get!(AdministratorInvitation, invitation_id, authorize?: false)
+    assert resent.expires_at == original_expiry
+
+    view |> element("#renew-administrator-invitation-#{invitation_id}") |> render_click()
+    assert has_element?(view, "#invitation-action-confirmation", "Renew invitation?")
+    view |> element("#confirm-invitation-action") |> render_click()
+
+    assert Ash.get!(AdministratorInvitation, invitation_id, authorize?: false).status == :revoked
+
+    replacement =
+      AdministratorInvitation
+      |> Ash.Query.filter(email == "invitation-actions@example.com" and status == :pending)
+      |> Ash.read_one!(authorize?: false)
+
+    assert replacement.id != invitation_id
+    assert DateTime.after?(replacement.expires_at, original_expiry)
+    assert has_element?(view, "#administrator-invitation-#{replacement.id}")
+
+    view |> element("#revoke-administrator-invitation-#{replacement.id}") |> render_click()
+    assert has_element?(view, "#invitation-action-confirmation", "Revoke invitation?")
+    view |> element("#confirm-invitation-action") |> render_click()
+
+    assert Ash.get!(AdministratorInvitation, replacement.id, authorize?: false).status == :revoked
+    refute has_element?(view, "#administrator-invitation-#{replacement.id}")
   end
 
   defp create_user!(role, email) do

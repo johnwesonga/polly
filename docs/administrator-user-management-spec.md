@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 0–3 implemented; production deployment verification remains pending. Phases 4–7 proposed.
+Phases 0–5 implemented; production deployment verification and least-privilege rollout remain in phase 6. Phase 7 is deferred.
 
 ## Summary
 

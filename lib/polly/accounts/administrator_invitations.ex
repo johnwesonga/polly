@@ -23,6 +23,74 @@ defmodule Polly.Accounts.AdministratorInvitations do
 
   def invite(_email, _role, _actor), do: {:error, :unauthorized}
 
+  def resend(%AdministratorInvitation{} = invitation, %User{} = actor) do
+    with :ok <- Authorization.authorize(actor, :manage_administrators) do
+      transaction(fn ->
+        lock_users(actor.id)
+        invitation = reload_invitation!(invitation.id)
+        require_pending!(invitation, require_unexpired?: true)
+        queue_delivery!(invitation)
+
+        invitation =
+          Ash.update!(invitation, %{delivery_status: :queued, last_error_code: nil},
+            action: :record_delivery,
+            authorize?: false
+          )
+
+        audit!("administrator.invitation_resent", actor, invitation, %{})
+        invitation
+      end)
+    end
+  end
+
+  def resend(_invitation, _actor), do: {:error, :unauthorized}
+
+  def renew(%AdministratorInvitation{} = invitation, %User{} = actor) do
+    with :ok <- Authorization.authorize(actor, :manage_administrators) do
+      transaction(fn ->
+        lock_users(actor.id)
+        invitation = reload_invitation!(invitation.id)
+        require_pending!(invitation)
+
+        Ash.update!(invitation, %{revoked_at: now()}, action: :revoke, authorize?: false)
+
+        replacement =
+          create_invitation(
+            to_string(invitation.email),
+            invitation.role,
+            actor
+          )
+
+        audit!("administrator.invitation_renewed", actor, replacement, %{
+          replaced_invitation_id: invitation.id,
+          role: to_string(invitation.role)
+        })
+
+        replacement
+      end)
+    end
+  end
+
+  def renew(_invitation, _actor), do: {:error, :unauthorized}
+
+  def revoke(%AdministratorInvitation{} = invitation, %User{} = actor) do
+    with :ok <- Authorization.authorize(actor, :manage_administrators) do
+      transaction(fn ->
+        lock_users(actor.id)
+        invitation = reload_invitation!(invitation.id)
+        require_pending!(invitation)
+
+        revoked =
+          Ash.update!(invitation, %{revoked_at: now()}, action: :revoke, authorize?: false)
+
+        audit!("administrator.invitation_revoked", actor, revoked, %{})
+        revoked
+      end)
+    end
+  end
+
+  def revoke(_invitation, _actor), do: {:error, :unauthorized}
+
   def accept(id, token, password, confirmation) do
     cond do
       not is_binary(password) or String.length(password) < 8 -> {:error, :invalid_password}
@@ -44,6 +112,7 @@ defmodule Polly.Accounts.AdministratorInvitations do
 
   defp create_invitation(email, role, actor) do
     lock_users(actor.id)
+    expire_pending_for_email!(email)
 
     if user_exists?(email), do: rollback(:existing_user)
     if pending_exists?(email), do: rollback(:pending_invitation)
@@ -61,9 +130,7 @@ defmodule Polly.Accounts.AdministratorInvitations do
         authorize?: false
       )
 
-    %{invitation_id: invitation.id}
-    |> AdministratorInvitationWorker.new()
-    |> Oban.insert!()
+    queue_delivery!(invitation)
 
     Polly.Audit.append!(%{
       action: "administrator.invited",
@@ -153,6 +220,51 @@ defmodule Polly.Accounts.AdministratorInvitations do
             fragment("lower(?)", invitation.email) == ^String.downcase(email) and
             invitation.expires_at > ^now()
     )
+  end
+
+  defp expire_pending_for_email!(email) do
+    Polly.Repo.query!(
+      """
+      UPDATE administrator_invitations
+      SET status = 'expired', updated_at = ?
+      WHERE status = 'pending' AND lower(email) = lower(?) AND expires_at <= ?
+      """,
+      [now(), email, now()]
+    )
+  end
+
+  defp queue_delivery!(invitation) do
+    %{invitation_id: invitation.id}
+    |> AdministratorInvitationWorker.new()
+    |> Oban.insert!()
+  end
+
+  defp reload_invitation!(id) do
+    case Ash.get(AdministratorInvitation, id, authorize?: false) do
+      {:ok, invitation} -> invitation
+      _ -> rollback(:invitation_not_found)
+    end
+  end
+
+  defp require_pending!(invitation, options \\ []) do
+    if invitation.status != :pending, do: rollback(:not_pending)
+
+    if Keyword.get(options, :require_unexpired?, false) and
+         not DateTime.after?(invitation.expires_at, DateTime.utc_now()),
+       do: rollback(:expired)
+  end
+
+  defp audit!(action, actor, invitation, metadata) do
+    Polly.Audit.append!(%{
+      action: action,
+      actor: actor,
+      target: %{
+        type: "administrator_invitation",
+        id: invitation.id,
+        label: to_string(invitation.email)
+      },
+      metadata: metadata
+    })
   end
 
   defp lock_users(id),

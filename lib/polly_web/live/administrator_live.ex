@@ -19,6 +19,7 @@ defmodule PollyWeb.AdministratorLive do
      |> assign(:page_title, "Administrators")
      |> assign(:pending_action, nil)
      |> assign(:pending_invite, nil)
+     |> assign(:pending_invitation_action, nil)
      |> assign(:invite_form, invite_form())
      |> assign(:account_count, length(accounts))
      |> assign(:active_owner_count, active_owner_count(accounts))
@@ -44,6 +45,61 @@ defmodule PollyWeb.AdministratorLive do
   def handle_event("confirm-owner-invitation", _params, socket) do
     params = socket.assigns.pending_invite
     perform_invite(assign(socket, :pending_invite, nil), params)
+  end
+
+  def handle_event("request-invitation-action", %{"id" => id, "operation" => operation}, socket)
+      when operation in ["resend", "renew", "revoke"] do
+    case Ash.get(AdministratorInvitation, id, actor: socket.assigns.current_user) do
+      {:ok, invitation} ->
+        {:noreply,
+         assign(socket, :pending_invitation_action, %{
+           invitation: invitation,
+           operation: String.to_existing_atom(operation)
+         })}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Administrator invitation not found.")}
+    end
+  end
+
+  def handle_event("cancel-invitation-action", _params, socket) do
+    {:noreply, assign(socket, :pending_invitation_action, nil)}
+  end
+
+  def handle_event(
+        "confirm-invitation-action",
+        _params,
+        %{assigns: %{pending_invitation_action: nil}} = socket
+      ) do
+    {:noreply, socket}
+  end
+
+  def handle_event("confirm-invitation-action", _params, socket) do
+    pending = socket.assigns.pending_invitation_action
+    actor = socket.assigns.current_user
+
+    result =
+      case pending.operation do
+        :resend -> AdministratorInvitations.resend(pending.invitation, actor)
+        :renew -> AdministratorInvitations.renew(pending.invitation, actor)
+        :revoke -> AdministratorInvitations.revoke(pending.invitation, actor)
+      end
+
+    case result do
+      {:ok, _invitation} ->
+        {:noreply,
+         socket
+         |> assign(:pending_invitation_action, nil)
+         |> put_flash(:info, invitation_success(pending.operation))
+         |> refresh_invitations()}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(:pending_invitation_action, nil)
+         |> put_flash(:error, invitation_action_error(reason))
+         |> refresh_invitations()}
+    end
   end
 
   @impl true
@@ -161,7 +217,41 @@ defmodule PollyWeb.AdministratorLive do
                 <div class="poll-meta">Expires {format_datetime(invitation.expires_at)}</div>
               </div>
               <span class="pill draft">{role_label(invitation.role)}</span>
-              <span class="pill published">Pending</span>
+              <span class={invitation_delivery_class(invitation.delivery_status)}>
+                {invitation_delivery_label(invitation.delivery_status)}
+              </span>
+              <div class="poll-actions">
+                <button
+                  id={"resend-administrator-invitation-#{invitation.id}"}
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  phx-click="request-invitation-action"
+                  phx-value-id={invitation.id}
+                  phx-value-operation="resend"
+                >
+                  Resend
+                </button>
+                <button
+                  id={"renew-administrator-invitation-#{invitation.id}"}
+                  type="button"
+                  class="btn btn-outline btn-sm"
+                  phx-click="request-invitation-action"
+                  phx-value-id={invitation.id}
+                  phx-value-operation="renew"
+                >
+                  Renew
+                </button>
+                <button
+                  id={"revoke-administrator-invitation-#{invitation.id}"}
+                  type="button"
+                  class="btn btn-outline btn-sm"
+                  phx-click="request-invitation-action"
+                  phx-value-id={invitation.id}
+                  phx-value-operation="revoke"
+                >
+                  Revoke
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -296,6 +386,46 @@ defmodule PollyWeb.AdministratorLive do
               </p>
             </div>
           </article>
+        </div>
+
+        <div
+          :if={@pending_invitation_action}
+          id="invitation-action-confirmation-overlay"
+          class="invitation-confirmation-overlay"
+          phx-window-keydown="cancel-invitation-action"
+          phx-key="escape"
+        >
+          <section
+            id="invitation-action-confirmation"
+            class="card card-pad invitation-confirmation"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="invitation-action-confirmation-title"
+          >
+            <div class="m-eyebrow">Administrator invitation</div>
+            <h2 id="invitation-action-confirmation-title" class="admin-h2">
+              {invitation_action_title(@pending_invitation_action.operation)}
+            </h2>
+            <p class="admin-sub">{invitation_action_message(@pending_invitation_action)}</p>
+            <div class="invitation-confirmation-actions">
+              <button
+                id="cancel-invitation-action"
+                type="button"
+                class="btn btn-outline"
+                phx-click="cancel-invitation-action"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-invitation-action"
+                type="button"
+                class="btn btn-coral"
+                phx-click="confirm-invitation-action"
+              >
+                Confirm
+              </button>
+            </div>
+          </section>
         </div>
 
         <div
@@ -436,6 +566,37 @@ defmodule PollyWeb.AdministratorLive do
   defp invitation_error(:invalid_role), do: "Select a valid role."
   defp invitation_error(:unauthorized), do: "You are not allowed to invite administrators."
   defp invitation_error(_reason), do: "The invitation could not be created."
+
+  defp invitation_success(:resend), do: "Administrator invitation queued again."
+  defp invitation_success(:renew), do: "Administrator invitation renewed for seven days."
+  defp invitation_success(:revoke), do: "Administrator invitation revoked."
+
+  defp invitation_action_error(:expired), do: "The invitation has expired. Renew it instead."
+  defp invitation_action_error(:not_pending), do: "The invitation is no longer pending."
+  defp invitation_action_error(:invitation_not_found), do: "Administrator invitation not found."
+  defp invitation_action_error(_reason), do: "The invitation could not be updated."
+
+  defp invitation_action_title(:resend), do: "Resend invitation?"
+  defp invitation_action_title(:renew), do: "Renew invitation?"
+  defp invitation_action_title(:revoke), do: "Revoke invitation?"
+
+  defp invitation_action_message(%{operation: :resend, invitation: invitation}),
+    do: "Queue another email to #{invitation.email} without changing its expiry."
+
+  defp invitation_action_message(%{operation: :renew, invitation: invitation}),
+    do: "Revoke the current link for #{invitation.email} and issue a new seven-day invitation."
+
+  defp invitation_action_message(%{operation: :revoke, invitation: invitation}),
+    do: "Permanently invalidate the pending setup link for #{invitation.email}."
+
+  defp invitation_delivery_label(:queued), do: "Queued"
+  defp invitation_delivery_label(:sending), do: "Sending"
+  defp invitation_delivery_label(:sent), do: "Sent"
+  defp invitation_delivery_label(:failed), do: "Failed"
+
+  defp invitation_delivery_class(:sent), do: "pill published"
+  defp invitation_delivery_class(:failed), do: "pill open"
+  defp invitation_delivery_class(_status), do: "pill draft"
 
   defp refresh_accounts(socket) do
     accounts = list_accounts(socket.assigns.current_user)

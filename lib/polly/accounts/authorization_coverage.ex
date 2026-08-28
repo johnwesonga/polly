@@ -78,7 +78,9 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       Polly.Accounts.AdministratorInvitation => %{
         read: {:permission, :manage_administrators},
         invite: {:trusted, "owner-authorized invitation service"},
-        record_sent: {:trusted, "administrator invitation Oban worker"},
+        record_delivery: {:trusted, "administrator invitation Oban worker"},
+        revoke: {:trusted, "owner-authorized invitation service"},
+        expire: {:trusted, "administrator invitation lifecycle"},
         accept: {:trusted, "validated invitation acceptance transaction"}
       },
       Polly.Members.Member => %{
@@ -142,6 +144,9 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Accounts.Administrators, :enable} => {:permission, :manage_administrators},
       {Polly.Accounts.Administrators, :change_role} => {:permission, :manage_administrators},
       {Polly.Accounts.AdministratorInvitations, :invite} => {:permission, :manage_administrators},
+      {Polly.Accounts.AdministratorInvitations, :resend} => {:permission, :manage_administrators},
+      {Polly.Accounts.AdministratorInvitations, :renew} => {:permission, :manage_administrators},
+      {Polly.Accounts.AdministratorInvitations, :revoke} => {:permission, :manage_administrators},
       {Polly.Accounts.AdministratorInvitations, :accept} =>
         {:trusted, "signed administrator invitation credential"},
       {Polly.Accounts.AdministratorInvitations, :verify} =>
@@ -180,11 +185,11 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         reason: "owner-authorized lifecycle transaction, token revocation, and session checks"
       },
       "lib/polly/accounts/administrator_invitation_worker.ex" => %{
-        count: 3,
+        count: 7,
         reason: "trusted Oban worker processing an ID-only durable invitation command"
       },
       "lib/polly/accounts/administrator_invitations.ex" => %{
-        count: 6,
+        count: 10,
         reason: "owner-authorized creation and signed public acceptance transactions"
       },
       "lib/polly/members/member_import.ex" => %{

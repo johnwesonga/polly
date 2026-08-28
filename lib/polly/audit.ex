@@ -19,6 +19,9 @@ defmodule Polly.Audit do
     "administrator.disabled" => [],
     "administrator.role_changed" => [:old_role, :new_role],
     "administrator.invited" => [:role],
+    "administrator.invitation_resent" => [],
+    "administrator.invitation_renewed" => [:replaced_invitation_id, :role],
+    "administrator.invitation_revoked" => [],
     "administrator.invitation_accepted" => [:role, :invitation_id],
     "poll.created" => [],
     "poll.updated" => [:changed_fields],
@@ -177,6 +180,15 @@ defmodule Polly.Audit do
 
       "administrator.invited" ->
         "invited administrator “#{event.target_label}”"
+
+      "administrator.invitation_resent" ->
+        "resent an invitation to “#{event.target_label}”"
+
+      "administrator.invitation_renewed" ->
+        "renewed an invitation for “#{event.target_label}”"
+
+      "administrator.invitation_revoked" ->
+        "revoked an invitation for “#{event.target_label}”"
 
       "administrator.invitation_accepted" ->
         "accepted an administrator invitation for “#{event.target_label}”"

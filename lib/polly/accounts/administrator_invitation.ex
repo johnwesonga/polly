@@ -19,8 +19,18 @@ defmodule Polly.Accounts.AdministratorInvitation do
       accept [:email, :role, :invited_by_id, :expires_at]
     end
 
-    update :record_sent do
-      accept [:sent_at, :send_count]
+    update :record_delivery do
+      accept [:delivery_status, :sent_at, :send_count, :last_error_code]
+    end
+
+    update :revoke do
+      accept [:revoked_at]
+      change set_attribute(:status, :revoked)
+    end
+
+    update :expire do
+      accept []
+      change set_attribute(:status, :expired)
     end
 
     update :accept do
@@ -50,6 +60,14 @@ defmodule Polly.Accounts.AdministratorInvitation do
     attribute :expires_at, :utc_datetime_usec, allow_nil?: false, public?: true
     attribute :sent_at, :utc_datetime_usec, public?: true
     attribute :send_count, :integer, allow_nil?: false, public?: true, default: 0
+
+    attribute :delivery_status, :atom,
+      allow_nil?: false,
+      public?: true,
+      default: :queued,
+      constraints: [one_of: [:queued, :sending, :sent, :failed]]
+
+    attribute :last_error_code, :string, public?: true
     attribute :revoked_at, :utc_datetime_usec, public?: true
     attribute :accepted_at, :utc_datetime_usec, public?: true
     timestamps()
