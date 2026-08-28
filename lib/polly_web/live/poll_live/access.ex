@@ -5,7 +5,7 @@ defmodule PollyWeb.PollLive.Access do
 
   alias Polly.Polls.{AccessGrant, Eligibility, Electorate, Invitations, Poll}
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_permission, :manage_access_grants}}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do

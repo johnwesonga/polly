@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 0–2 implemented; production deployment verification remains pending. Phases 3–7 proposed.
+Phases 0–3 implemented; production deployment verification remains pending. Phases 4–7 proposed.
 
 ## Summary
 
@@ -699,6 +699,8 @@ Make account status authoritative and add safe domain operations before exposing
 
 ### Phase 3 — Central permissions and application-wide enforcement
 
+**Status:** Implemented; production authorization smoke tests pending.
+
 #### Purpose
 
 Replace “any authenticated user” authorization with the documented role matrix.
@@ -716,6 +718,19 @@ Replace “any authenticated user” authorization with the documented role matr
 - Update Oban Web resolver so only owners/operators with `:view_jobs` receive `:read_only`.
 - Add permission-aware navigation while retaining server-side enforcement.
 - Review, minimize, and document every `authorize?: false` call.
+
+#### Implementation notes
+
+- `Polly.Accounts.Authorization` owns the stable permission vocabulary and fixed role matrix; disabled users always receive no permissions.
+- `Polly.Accounts.Checks.HasPermission` applies that matrix to action-specific Ash policies for users, members, polls, options, electorates, access grants, ballots, selections, invitation deliveries, and audit events.
+- Public access-grant resolution and ballot submission remain narrow trusted exceptions. Background invitation updates remain worker-only calls using the reviewed authorization bypass.
+- Invitation delivery records are readable for delivery-status roles, while field policies redact recipient email addresses and provider identifiers from auditors and operators.
+- Protected LiveViews declare one required permission or an explicit any-of set. Permission and active-account status are rechecked before every client event.
+- The poll index becomes read-only for auditors and links directly to aggregate results. Mutation links and lifecycle controls are omitted when their permission is absent.
+- Result CSV exports require `:export_results` in both the controller plug and export service.
+- Administrator navigation is generated from permissions. No administrator-management link is added until its Phase 4 page exists.
+- Oban Web grants only `:read_only` access and only to owners and operators; `:operate_jobs` remains unassigned.
+- Signed-in users without permission receive a consistent forbidden response or are redirected to the safe administration overview with an explanatory flash.
 
 #### Deployment safety
 

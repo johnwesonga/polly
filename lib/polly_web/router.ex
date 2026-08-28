@@ -23,7 +23,7 @@ defmodule PollyWeb.Router do
   end
 
   pipeline :authenticated_administrator do
-    plug PollyWeb.Plugs.RequireAdministrator
+    plug PollyWeb.Plugs.RequireAdministrator, permission: :export_results
   end
 
   scope "/", PollyWeb do

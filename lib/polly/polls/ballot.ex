@@ -27,8 +27,12 @@ defmodule Polly.Polls.Ballot do
   end
 
   policies do
-    policy always() do
-      authorize_if actor_present()
+    bypass action(:submit) do
+      authorize_if always()
+    end
+
+    policy action(:read) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :view_results}
     end
   end
 

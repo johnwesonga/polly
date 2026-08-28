@@ -122,7 +122,7 @@ defmodule Polly.Accounts.Administrators do
     case Polly.Repo.transaction(fn ->
            actor = reload!(actor)
 
-           if actor.status != :active or actor.role != :owner do
+           if not Polly.Accounts.Authorization.allowed?(actor, :manage_administrators) do
              rollback(:unauthorized)
            end
 

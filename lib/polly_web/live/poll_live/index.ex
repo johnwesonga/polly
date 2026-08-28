@@ -7,13 +7,17 @@ defmodule PollyWeb.PollLive.Index do
 
   @page_size 25
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_any_permission, [:manage_polls, :view_results]}}
 
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
      socket
      |> assign(:page_title, "Polls")
+     |> assign(
+       :manage_polls?,
+       Polly.Accounts.Authorization.allowed?(socket.assigns.current_user, :manage_polls)
+     )
      |> assign(:polls, [])
      |> assign(:polls_empty?, true)
      |> assign(:previous_cursor, nil)
@@ -46,7 +50,12 @@ defmodule PollyWeb.PollLive.Index do
       <section id="polls-index">
         <div class="admin-titlebar">
           <div class="admin-h1">Polls</div>
-          <.link id="new-poll-link" navigate={~p"/admin/polls/new"} class="btn btn-coral">
+          <.link
+            :if={@manage_polls?}
+            id="new-poll-link"
+            navigate={~p"/admin/polls/new"}
+            class="btn btn-coral"
+          >
             <.icon name="hero-plus" class="size-4" /> New poll
           </.link>
         </div>
@@ -79,7 +88,7 @@ defmodule PollyWeb.PollLive.Index do
             class="poll-card"
           >
             <.link
-              navigate={~p"/admin/polls/#{poll.id}/options"}
+              navigate={poll_destination(poll, @manage_polls?)}
               class="poll-card-link"
             >
               <div class="poll-name">{poll.title}</div>
@@ -99,6 +108,7 @@ defmodule PollyWeb.PollLive.Index do
             </div>
             <div class="poll-actions">
               <.link
+                :if={@manage_polls?}
                 id={"poll-options-#{poll.id}"}
                 navigate={~p"/admin/polls/#{poll.id}/options"}
                 class="btn btn-ghost btn-sm"
@@ -106,7 +116,7 @@ defmodule PollyWeb.PollLive.Index do
                 Options
               </.link>
               <.link
-                :if={poll.status == :draft}
+                :if={@manage_polls? && poll.status == :draft}
                 id={"poll-edit-#{poll.id}"}
                 navigate={~p"/admin/polls/#{poll.id}/edit"}
                 class="btn btn-outline btn-sm"
@@ -114,6 +124,7 @@ defmodule PollyWeb.PollLive.Index do
                 Edit
               </.link>
               <.link
+                :if={@manage_polls?}
                 id={"poll-duplicate-#{poll.id}"}
                 navigate={~p"/admin/polls/#{poll.id}/duplicate"}
                 class="btn btn-outline btn-sm"
@@ -173,6 +184,9 @@ defmodule PollyWeb.PollLive.Index do
 
   defp status_filter_path(:all), do: ~p"/admin/polls"
   defp status_filter_path(status), do: ~p"/admin/polls?status=#{status}"
+
+  defp poll_destination(poll, true), do: ~p"/admin/polls/#{poll.id}/options"
+  defp poll_destination(poll, false), do: ~p"/admin/polls/#{poll.id}/results"
 
   defp pagination_path(status, direction, cursor) do
     params = %{Atom.to_string(direction) => cursor}

@@ -4,7 +4,7 @@ defmodule PollyWeb.MemberLive.Import do
   alias Polly.Members.MemberImport
   alias Polly.Members.MemberImport.Preview
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_permission, :manage_members}}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -201,7 +201,7 @@ defmodule PollyWeb.MemberLive.Import do
   def handle_event("preview", _params, socket) do
     case uploaded_contents(socket) do
       {:ok, contents, filename} ->
-        case MemberImport.preview(contents) do
+        case MemberImport.preview(contents, socket.assigns.current_user) do
           {:ok, preview} ->
             {:noreply,
              assign(socket,

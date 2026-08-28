@@ -10,9 +10,10 @@ defmodule Polly.Members.MemberImport do
   @max_bytes 2_000_000
   @max_rows 5_000
 
-  @spec preview(binary()) :: {:ok, Preview.t()} | {:error, String.t()}
-  def preview(contents) when is_binary(contents) do
-    with :ok <- validate_size(contents),
+  @spec preview(binary(), term()) :: {:ok, Preview.t()} | {:error, term()}
+  def preview(contents, actor) when is_binary(contents) do
+    with :ok <- Polly.Accounts.Authorization.authorize(actor, :manage_members),
+         :ok <- validate_size(contents),
          :ok <- validate_utf8(contents),
          {:ok, parsed_rows} <- parse(contents),
          {:ok, headers, data_rows} <- split_rows(parsed_rows),
@@ -27,7 +28,8 @@ defmodule Polly.Members.MemberImport do
           {:ok, %{created_count: non_neg_integer(), skipped_count: non_neg_integer()}}
           | {:error, term()}
   def commit(%Preview{} = preview, %Polly.Accounts.User{} = actor) do
-    with true <- Preview.valid?(preview),
+    with :ok <- Polly.Accounts.Authorization.authorize(actor, :manage_members),
+         true <- Preview.valid?(preview),
          refreshed <- classify(Enum.map(preview.rows, &reset_row/1)),
          true <- Preview.valid?(refreshed) do
       case Polly.Repo.transaction(fn -> commit_rows(refreshed, actor) end) do

@@ -23,12 +23,12 @@ defmodule Polly.Members.MemberImportTest do
     %{actor: actor}
   end
 
-  test "previews quoted UTF-8 CSV and normalizes headers and fields" do
+  test "previews quoted UTF-8 CSV and normalizes headers and fields", %{actor: actor} do
     csv =
       <<0xEF, 0xBB, 0xBF>> <>
         " EMAIL , NAME \r\nJAMIE@EXAMPLE.COM,  Jamie Rivera  \r\n\"morgan@example.com\",\"Morgan Lee, Jr.\"\r\n"
 
-    assert {:ok, preview} = MemberImport.preview(csv)
+    assert {:ok, preview} = MemberImport.preview(csv, actor)
     assert preview.total_count == 2
     assert preview.new_count == 2
     assert preview.invalid_count == 0
@@ -42,7 +42,7 @@ defmodule Polly.Members.MemberImportTest do
   test "marks every duplicate email and invalid field without writing", %{actor: actor} do
     csv = "name,email\nFirst, SAME@example.com\nSecond,same@example.com\n,invalid\n"
 
-    assert {:ok, preview} = MemberImport.preview(csv)
+    assert {:ok, preview} = MemberImport.preview(csv, actor)
     assert preview.invalid_count == 3
     assert Enum.all?(preview.rows, &(&1.classification == :invalid))
     assert {:error, :invalid_preview} = MemberImport.commit(preview, actor)
@@ -56,7 +56,7 @@ defmodule Polly.Members.MemberImportTest do
     csv = "name,email\nChanged Name,existing@example.com\nNew Member,new@example.com\n"
 
     assert existing.email == "existing@example.com"
-    assert {:ok, preview} = MemberImport.preview(csv)
+    assert {:ok, preview} = MemberImport.preview(csv, actor)
     assert preview.new_count == 1
     assert preview.existing_count == 1
 
@@ -69,11 +69,11 @@ defmodule Polly.Members.MemberImportTest do
     import_event =
       Event
       |> Ash.Query.filter(action == "member_import.completed")
-      |> Ash.read_one!(actor: actor)
+      |> Ash.read_one!(authorize?: false)
 
     assert import_event.metadata == %{"created_count" => 1, "skipped_count" => 1}
 
-    assert {:ok, repeated_preview} = MemberImport.preview(csv)
+    assert {:ok, repeated_preview} = MemberImport.preview(csv, actor)
 
     assert {:ok, %{created_count: 0, skipped_count: 2}} =
              MemberImport.commit(repeated_preview, actor)
@@ -81,15 +81,25 @@ defmodule Polly.Members.MemberImportTest do
     assert Ash.count!(Member, authorize?: false) == 2
   end
 
-  test "rejects malformed files, invalid headers, empty data, and anonymous commits" do
-    assert {:error, _message} = MemberImport.preview(<<255>>)
-    assert {:error, _message} = MemberImport.preview("name,mail\nJamie,jamie@example.com\n")
-    assert {:error, _message} = MemberImport.preview("name,email\n")
+  test "rejects malformed files, invalid headers, empty data, and anonymous commits", %{
+    actor: actor
+  } do
+    assert {:error, _message} = MemberImport.preview(<<255>>, actor)
 
     assert {:error, _message} =
-             MemberImport.preview("name,email\n\"unterminated,jamie@example.com")
+             MemberImport.preview("name,mail\nJamie,jamie@example.com\n", actor)
 
-    assert {:ok, preview} = MemberImport.preview("name,email\nJamie,jamie@example.com\n")
+    assert {:error, _message} = MemberImport.preview("name,email\n", actor)
+
+    assert {:error, _message} =
+             MemberImport.preview("name,email\n\"unterminated,jamie@example.com", actor)
+
+    assert {:ok, preview} =
+             MemberImport.preview("name,email\nJamie,jamie@example.com\n", actor)
+
+    assert {:error, :forbidden} =
+             MemberImport.preview("name,email\nJamie,jamie@example.com\n", nil)
+
     assert {:error, :unauthorized} = MemberImport.commit(preview, nil)
   end
 end

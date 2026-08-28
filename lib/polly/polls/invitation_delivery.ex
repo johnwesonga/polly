@@ -12,6 +12,18 @@ defmodule Polly.Polls.InvitationDelivery do
     repo Polly.Repo
   end
 
+  field_policies do
+    private_fields :include
+
+    field_policy [:recipient_email, :provider_message_id] do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :send_invitations}
+    end
+
+    field_policy :* do
+      authorize_if always()
+    end
+  end
+
   actions do
     defaults [:read]
 
@@ -58,8 +70,13 @@ defmodule Polly.Polls.InvitationDelivery do
   end
 
   policies do
-    policy always() do
-      authorize_if actor_present()
+    policy action(:read) do
+      authorize_if {Polly.Accounts.Checks.HasPermission,
+                    permissions: [:send_invitations, :view_results, :view_jobs]}
+    end
+
+    policy action(:queue) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :send_invitations}
     end
   end
 

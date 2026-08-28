@@ -62,7 +62,8 @@ defmodule Polly.Polls.ResultExport do
     do: {:error, :unauthorized}
 
   defp generate_export(poll_id, actor, now, request_id) do
-    with {:ok, poll} <- Ash.get(Poll, poll_id, actor: actor),
+    with :ok <- Polly.Accounts.Authorization.authorize(actor, :export_results),
+         {:ok, poll} <- Ash.get(Poll, poll_id, actor: actor),
          :ok <- exportable?(poll),
          result <- Results.for_poll(poll),
          :ok <- has_options?(result),

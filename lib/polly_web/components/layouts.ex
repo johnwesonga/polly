@@ -55,6 +55,7 @@ defmodule PollyWeb.Layouts do
             Overview
           </.link>
           <.link
+            :if={allowed?(@current_scope.user, :manage_members)}
             id="admin-nav-members"
             navigate={~p"/admin/members"}
             class={if(@active_nav == :members, do: "current", else: nil)}
@@ -62,6 +63,10 @@ defmodule PollyWeb.Layouts do
             Members
           </.link>
           <.link
+            :if={
+              allowed?(@current_scope.user, :manage_polls) ||
+                allowed?(@current_scope.user, :view_results)
+            }
             id="admin-nav-polls"
             navigate={~p"/admin/polls"}
             class={if(@active_nav == :polls, do: "current", else: nil)}
@@ -69,6 +74,7 @@ defmodule PollyWeb.Layouts do
             Polls
           </.link>
           <.link
+            :if={allowed?(@current_scope.user, :view_audit)}
             id="admin-nav-audit"
             navigate={~p"/admin/audit"}
             class={if(@active_nav == :audit, do: "current", else: nil)}
@@ -76,6 +82,7 @@ defmodule PollyWeb.Layouts do
             Audit trail
           </.link>
           <.link
+            :if={allowed?(@current_scope.user, :view_jobs)}
             id="admin-nav-background-jobs"
             href={~p"/admin/oban"}
             class={if(@active_nav == :jobs, do: "current", else: nil)}
@@ -119,6 +126,8 @@ defmodule PollyWeb.Layouts do
     <.flash_group flash={@flash} />
     """
   end
+
+  defp allowed?(user, permission), do: Polly.Accounts.Authorization.allowed?(user, permission)
 
   @doc """
   Shows the flash group with standard titles and content.

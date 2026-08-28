@@ -52,8 +52,8 @@ defmodule Polly.Polls.AccessGrant do
       authorize_if always()
     end
 
-    policy always() do
-      authorize_if actor_present()
+    policy action([:read, :issue, :revoke]) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :manage_access_grants}
     end
   end
 

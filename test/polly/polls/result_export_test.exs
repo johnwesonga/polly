@@ -64,7 +64,7 @@ defmodule Polly.Polls.ResultExportTest do
     event =
       Event
       |> Ash.Query.filter(action == "poll.results_exported")
-      |> Ash.read_one!(actor: actor)
+      |> Ash.read_one!(authorize?: false)
 
     assert event.metadata == %{
              "eligible_count" => 2,

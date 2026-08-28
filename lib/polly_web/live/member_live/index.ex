@@ -5,7 +5,7 @@ defmodule PollyWeb.MemberLive.Index do
 
   alias Polly.Members.Member
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_permission, :manage_members}}
 
   @impl true
   def mount(_params, _session, socket) do

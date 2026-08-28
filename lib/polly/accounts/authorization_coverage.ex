@@ -2,27 +2,12 @@ defmodule Polly.Accounts.AuthorizationCoverage do
   @moduledoc """
   Phase 0 inventory of Polly's authorization boundaries.
 
-  This module is deliberately data-only. Later phases use it as the migration
-  checklist when broad `actor_present()` policies are replaced with explicit
-  permissions. The accompanying test makes additions to Ash actions and
-  authorization bypasses visible during review.
+  This module is deliberately data-only. It records the permission enforced at
+  each boundary and keeps trusted authorization bypasses visible during review.
+  The accompanying test detects unreviewed Ash actions and bypasses.
   """
 
-  @permissions [
-    :manage_administrators,
-    :manage_members,
-    :manage_polls,
-    :manage_electorates,
-    :manage_access_grants,
-    :send_invitations,
-    :view_results,
-    :publish_results,
-    :export_results,
-    :export_access_links,
-    :view_audit,
-    :view_jobs,
-    :operate_jobs
-  ]
+  @permissions Polly.Accounts.Authorization.permissions()
 
   @spec permissions() :: [atom()]
   def permissions, do: @permissions
@@ -42,7 +27,12 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       PollyWeb.PollLive.Access =>
         {:all, [:manage_access_grants], event_permissions: [send: :send_invitations]},
       PollyWeb.PollLive.Results =>
-        {:all, [:view_results], event_permissions: [publish: :publish_results]},
+        {:all, [:view_results],
+         event_permissions: [
+           open: :manage_polls,
+           publish: :publish_results,
+           export: :export_results
+         ]},
       PollyWeb.PollResultsExportController => {:permission, :export_results},
       PollyWeb.ObanWebResolver => {:permission, :view_jobs}
     }
@@ -120,7 +110,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         select: {:trusted, "validated ballot submission"}
       },
       Polly.Polls.InvitationDelivery => %{
-        read: {:any, [:send_invitations, :view_jobs]},
+        read: {:any, [:send_invitations, :view_results, :view_jobs]},
         queue: {:permission, :send_invitations},
         record_attempt: {:trusted, "Oban invitation worker"},
         accept: {:trusted, "Oban invitation worker"},

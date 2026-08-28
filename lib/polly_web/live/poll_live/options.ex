@@ -6,7 +6,7 @@ defmodule PollyWeb.PollLive.Options do
   alias Polly.Polls.{Option, Poll}
   alias Polly.Polls.Options, as: PollOptions
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_permission, :manage_polls}}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do

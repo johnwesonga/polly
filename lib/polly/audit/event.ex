@@ -45,8 +45,12 @@ defmodule Polly.Audit.Event do
   end
 
   policies do
-    policy always() do
-      authorize_if actor_present()
+    policy action(:read) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :view_audit}
+    end
+
+    policy action(:append) do
+      authorize_if actor_attribute_equals(:status, :active)
     end
   end
 

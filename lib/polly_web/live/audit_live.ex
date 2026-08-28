@@ -7,7 +7,7 @@ defmodule PollyWeb.AuditLive do
   alias Polly.Audit.Event
   alias Polly.Polls.Poll
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_permission, :view_audit}}
 
   @impl true
   def mount(_params, _session, socket) do

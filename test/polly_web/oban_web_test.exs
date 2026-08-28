@@ -7,8 +7,8 @@ defmodule PollyWeb.ObanWebTest do
     assert redirected_to(conn) == ~p"/sign-in"
   end
 
-  test "mounts the dashboard and grants administrators read-only access", %{conn: conn} do
-    {_conn, administrator} = register_and_log_in_administrator(conn)
+  test "mounts the dashboard and grants owners read-only access", %{conn: conn} do
+    {_conn, administrator} = register_and_log_in_administrator(conn, %{role: :owner})
 
     assert :read_only == PollyWeb.ObanWebResolver.resolve_access(administrator)
 
@@ -23,6 +23,12 @@ defmodule PollyWeb.ObanWebTest do
 
   test "resolver forbids anonymous access and never grants write access" do
     assert {:forbidden, "/sign-in"} == PollyWeb.ObanWebResolver.resolve_access(nil)
-    assert :read_only == PollyWeb.ObanWebResolver.resolve_access(%{id: "administrator"})
+
+    assert {:forbidden, "/admin"} ==
+             PollyWeb.ObanWebResolver.resolve_access(%Polly.Accounts.User{
+               id: Ash.UUID.generate(),
+               role: :administrator,
+               status: :active
+             })
   end
 end

@@ -14,7 +14,7 @@ defmodule PollyWeb.AuditLiveTest do
   end
 
   test "lists events and renders safe event details", %{conn: conn} do
-    {conn, actor} = register_and_log_in_administrator(conn)
+    {conn, actor} = register_and_log_in_administrator(conn, %{role: :owner})
     poll = Ash.create!(Poll, %{title: "Visible audit", slug: "visible-audit"}, actor: actor)
     event = Ash.read_one!(Event, actor: actor)
 
@@ -29,7 +29,7 @@ defmodule PollyWeb.AuditLiveTest do
   end
 
   test "filters with URL parameters and paginates using keysets", %{conn: conn} do
-    {conn, actor} = register_and_log_in_administrator(conn)
+    {conn, actor} = register_and_log_in_administrator(conn, %{role: :owner})
 
     for index <- 1..27 do
       Audit.append!(%{
@@ -65,7 +65,7 @@ defmodule PollyWeb.AuditLiveTest do
   end
 
   test "opens and closes details with patches while preserving filters", %{conn: conn} do
-    {conn, actor} = register_and_log_in_administrator(conn)
+    {conn, actor} = register_and_log_in_administrator(conn, %{role: :owner})
 
     event =
       Audit.append!(%{
@@ -90,7 +90,7 @@ defmodule PollyWeb.AuditLiveTest do
   end
 
   test "filters by actor, target, poll, and date", %{conn: conn} do
-    {conn, actor} = register_and_log_in_administrator(conn)
+    {conn, actor} = register_and_log_in_administrator(conn, %{role: :owner})
 
     other_actor =
       Ash.create!(

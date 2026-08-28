@@ -35,7 +35,7 @@ defmodule Polly.Polls.Eligibility do
 
   policies do
     policy always() do
-      authorize_if actor_present()
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :manage_electorates}
     end
   end
 

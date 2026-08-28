@@ -37,8 +37,12 @@ defmodule Polly.Members.Member do
   end
 
   policies do
-    policy always() do
-      authorize_if actor_present()
+    policy action(:read) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :manage_members}
+    end
+
+    policy action([:create, :update]) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :manage_members}
     end
   end
 

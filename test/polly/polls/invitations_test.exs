@@ -45,7 +45,7 @@ defmodule Polly.Polls.InvitationsTest do
     events =
       Polly.Audit.Event
       |> Ash.Query.filter(action == "poll.invitations_enqueued")
-      |> Ash.read!(actor: actor)
+      |> Ash.read!(authorize?: false)
 
     assert length(events) == 2
     assert Enum.all?(events, &(not Map.has_key?(&1.metadata, "email")))

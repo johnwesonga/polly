@@ -16,7 +16,8 @@ defmodule Polly.AuditTest do
         %{
           email: "audit-admin-#{System.unique_integer([:positive])}@example.com",
           password: "secure-password",
-          password_confirmation: "secure-password"
+          password_confirmation: "secure-password",
+          role: :owner
         },
         action: :register_with_password,
         authorize?: false

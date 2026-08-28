@@ -44,8 +44,13 @@ defmodule Polly.Polls.Option do
   end
 
   policies do
-    policy always() do
-      authorize_if actor_present()
+    policy action(:read) do
+      authorize_if {Polly.Accounts.Checks.HasPermission,
+                    permissions: [:manage_polls, :view_results]}
+    end
+
+    policy action([:create, :update, :destroy]) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :manage_polls}
     end
   end
 

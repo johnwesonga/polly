@@ -4,7 +4,7 @@ defmodule PollyWeb.PollLive.Results do
   alias Polly.Polls.{Events, Poll}
   alias Polly.Polls.Results, as: PollResults
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_permission, :view_results}}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -17,6 +17,9 @@ defmodule PollyWeb.PollLive.Results do
      socket
      |> stream_configure(:results, dom_id: &"result-#{&1.option.id}")
      |> assign(:page_title, "#{poll.title} results")
+     |> assign(:manage_polls?, Polly.Accounts.Authorization.allowed?(actor, :manage_polls))
+     |> assign(:publish_results?, Polly.Accounts.Authorization.allowed?(actor, :publish_results))
+     |> assign(:export_results?, Polly.Accounts.Authorization.allowed?(actor, :export_results))
      |> assign(:poll, poll)
      |> assign(:confirming_export?, false)
      |> load_results()}
@@ -41,11 +44,25 @@ defmodule PollyWeb.PollLive.Results do
         </div>
 
         <div class="detail-tabs" aria-label="Poll configuration sections">
-          <.link navigate={~p"/admin/polls/#{@poll.id}/options"} class="phase-tab">Options</.link>
-          <.link navigate={~p"/admin/polls/#{@poll.id}/electorate"} class="phase-tab">
+          <.link
+            :if={@manage_polls?}
+            navigate={~p"/admin/polls/#{@poll.id}/options"}
+            class="phase-tab"
+          >
+            Options
+          </.link>
+          <.link
+            :if={@manage_polls?}
+            navigate={~p"/admin/polls/#{@poll.id}/electorate"}
+            class="phase-tab"
+          >
             Electorate
           </.link>
-          <.link navigate={~p"/admin/polls/#{@poll.id}/access"} class="phase-tab">
+          <.link
+            :if={@manage_polls?}
+            navigate={~p"/admin/polls/#{@poll.id}/access"}
+            class="phase-tab"
+          >
             Access links
           </.link>
           <span class="phase-tab current">Results</span>
@@ -57,7 +74,7 @@ defmodule PollyWeb.PollLive.Results do
             <p class="admin-sub lifecycle-copy">{lifecycle_copy(@poll)}</p>
           </div>
           <button
-            :if={@poll.status == :draft}
+            :if={@manage_polls? && @poll.status == :draft}
             id="open-poll-button"
             type="button"
             phx-click="open"
@@ -67,7 +84,7 @@ defmodule PollyWeb.PollLive.Results do
             Open poll
           </button>
           <button
-            :if={@poll.status == :open}
+            :if={@publish_results? && @poll.status == :open}
             id="close-poll-button"
             type="button"
             phx-click="close"
@@ -77,7 +94,7 @@ defmodule PollyWeb.PollLive.Results do
             Close poll
           </button>
           <button
-            :if={@poll.status == :closed && is_nil(@poll.results_published_at)}
+            :if={@publish_results? && @poll.status == :closed && is_nil(@poll.results_published_at)}
             id="publish-results-button"
             type="button"
             phx-click="publish"
@@ -94,6 +111,7 @@ defmodule PollyWeb.PollLive.Results do
             Published
           </span>
           <.link
+            :if={@manage_polls?}
             id="duplicate-poll-button"
             navigate={~p"/admin/polls/#{@poll.id}/duplicate"}
             class="btn btn-outline"
@@ -101,6 +119,7 @@ defmodule PollyWeb.PollLive.Results do
             Duplicate poll
           </.link>
           <button
+            :if={@export_results?}
             id="export-results-button"
             type="button"
             phx-click="prepare-export"

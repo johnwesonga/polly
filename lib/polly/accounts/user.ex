@@ -281,6 +281,10 @@ defmodule Polly.Accounts.User do
     bypass AshAuthentication.Checks.AshAuthenticationInteraction do
       authorize_if always()
     end
+
+    policy action(:read) do
+      authorize_if {Polly.Accounts.Checks.HasPermission, permission: :manage_administrators}
+    end
   end
 
   attributes do

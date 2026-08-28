@@ -8,5 +8,12 @@ defmodule PollyWeb.ObanWebResolver do
 
   @impl true
   def resolve_access(nil), do: {:forbidden, "/sign-in"}
-  def resolve_access(_administrator), do: :read_only
+
+  def resolve_access(administrator) do
+    if Polly.Accounts.Authorization.allowed?(administrator, :view_jobs) do
+      :read_only
+    else
+      {:forbidden, "/admin"}
+    end
+  end
 end

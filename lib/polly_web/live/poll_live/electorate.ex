@@ -6,7 +6,7 @@ defmodule PollyWeb.PollLive.Electorate do
   alias Polly.Members.Member
   alias Polly.Polls.{Eligibility, Electorate, Option, Poll}
 
-  on_mount {PollyWeb.LiveUserAuth, :live_user_required}
+  on_mount {PollyWeb.LiveUserAuth, {:require_permission, :manage_electorates}}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
