@@ -3,7 +3,7 @@ defmodule PollyWeb.AdministratorLive do
 
   use PollyWeb, :live_view
 
-  alias Polly.Accounts.{Administrators, User}
+  alias Polly.Accounts.{AdministratorInvitation, AdministratorInvitations, Administrators, User}
 
   require Ash.Query
 
@@ -12,15 +12,38 @@ defmodule PollyWeb.AdministratorLive do
   @impl true
   def mount(_params, _session, socket) do
     accounts = list_accounts(socket.assigns.current_user)
+    invitations = list_pending_invitations(socket.assigns.current_user)
 
     {:ok,
      socket
      |> assign(:page_title, "Administrators")
      |> assign(:pending_action, nil)
+     |> assign(:pending_invite, nil)
+     |> assign(:invite_form, invite_form())
      |> assign(:account_count, length(accounts))
      |> assign(:active_owner_count, active_owner_count(accounts))
      |> stream_configure(:administrator_accounts, dom_id: &"administrator-account-#{&1.id}")
+     |> stream_configure(:administrator_invitations, dom_id: &"administrator-invitation-#{&1.id}")
+     |> stream(:administrator_invitations, invitations)
      |> stream(:administrator_accounts, accounts)}
+  end
+
+  @impl true
+  def handle_event("invite-administrator", %{"invitation" => params}, socket) do
+    if params["role"] == "owner" do
+      {:noreply, assign(socket, :pending_invite, params)}
+    else
+      perform_invite(socket, params)
+    end
+  end
+
+  def handle_event("cancel-owner-invitation", _params, socket) do
+    {:noreply, assign(socket, :pending_invite, nil)}
+  end
+
+  def handle_event("confirm-owner-invitation", _params, socket) do
+    params = socket.assigns.pending_invite
+    perform_invite(assign(socket, :pending_invite, nil), params)
   end
 
   @impl true
@@ -105,6 +128,43 @@ defmodule PollyWeb.AdministratorLive do
           </div>
         </div>
         <div class="laneline"></div>
+
+        <section id="administrator-invitations-section" class="card card-pad form-card">
+          <div class="m-eyebrow">Invite administrator</div>
+          <h2 class="admin-h2">Send a private setup link</h2>
+          <p class="admin-sub">The recipient chooses their own password. You will never see it.</p>
+          <.form
+            for={@invite_form}
+            id="administrator-invitation-form"
+            phx-submit="invite-administrator"
+          >
+            <.input field={@invite_form[:email]} type="email" label="Email address" required />
+            <.input field={@invite_form[:role]} type="select" label="Role" options={role_options()} />
+            <div class="form-actions">
+              <button id="send-administrator-invitation" type="submit" class="btn btn-coral">
+                Send invitation
+              </button>
+            </div>
+          </.form>
+
+          <div id="administrator-invitations" class="administrator-directory" phx-update="stream">
+            <div id="administrator-invitations-empty" class="empty-state hidden only:block">
+              <p>No pending invitations.</p>
+            </div>
+            <div
+              :for={{id, invitation} <- @streams.administrator_invitations}
+              id={id}
+              class="poll-card"
+            >
+              <div>
+                <div class="poll-name">{invitation.email}</div>
+                <div class="poll-meta">Expires {format_datetime(invitation.expires_at)}</div>
+              </div>
+              <span class="pill draft">{role_label(invitation.role)}</span>
+              <span class="pill published">Pending</span>
+            </div>
+          </div>
+        </section>
 
         <div class="administrator-directory-heading">
           <div>
@@ -239,6 +299,43 @@ defmodule PollyWeb.AdministratorLive do
         </div>
 
         <div
+          :if={@pending_invite}
+          id="owner-invitation-confirmation-overlay"
+          class="invitation-confirmation-overlay"
+        >
+          <section
+            class="card card-pad invitation-confirmation"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="owner-invitation-title"
+          >
+            <div class="m-eyebrow">Administrator invitation</div>
+            <h2 id="owner-invitation-title" class="admin-h2">Grant owner access?</h2>
+            <p class="admin-sub">
+              {@pending_invite["email"]} will receive full access, including administrator management.
+            </p>
+            <div class="invitation-confirmation-actions">
+              <button
+                id="cancel-owner-invitation"
+                type="button"
+                class="btn btn-outline"
+                phx-click="cancel-owner-invitation"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-owner-invitation"
+                type="button"
+                class="btn btn-coral"
+                phx-click="confirm-owner-invitation"
+              >
+                Send owner invitation
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div
           :if={@pending_action}
           id="administrator-action-confirmation-overlay"
           class="invitation-confirmation-overlay"
@@ -282,11 +379,63 @@ defmodule PollyWeb.AdministratorLive do
     """
   end
 
+  defp perform_invite(socket, params) do
+    case AdministratorInvitations.invite(
+           params["email"],
+           params["role"],
+           socket.assigns.current_user
+         ) do
+      {:ok, _invitation} ->
+        {:noreply,
+         socket
+         |> assign(:invite_form, invite_form())
+         |> put_flash(:info, "Administrator invitation queued.")
+         |> refresh_invitations()}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(:invite_form, invite_form(params))
+         |> put_flash(:error, invitation_error(reason))}
+    end
+  end
+
   defp list_accounts(actor) do
     User
     |> Ash.Query.sort(inserted_at: :asc, email: :asc)
     |> Ash.read!(actor: actor)
   end
+
+  defp list_pending_invitations(actor) do
+    AdministratorInvitation
+    |> Ash.Query.filter(status == :pending and expires_at > ^DateTime.utc_now())
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.read!(actor: actor)
+  end
+
+  defp refresh_invitations(socket) do
+    stream(
+      socket,
+      :administrator_invitations,
+      list_pending_invitations(socket.assigns.current_user),
+      reset: true
+    )
+  end
+
+  defp invite_form(params \\ %{"email" => "", "role" => "administrator"}) do
+    to_form(params, as: :invitation)
+  end
+
+  defp invitation_error(:existing_user),
+    do: "An account already exists for that email. Enable it instead if needed."
+
+  defp invitation_error(:pending_invitation),
+    do: "A pending invitation already exists for that email."
+
+  defp invitation_error(:invalid_email), do: "Enter a valid email address."
+  defp invitation_error(:invalid_role), do: "Select a valid role."
+  defp invitation_error(:unauthorized), do: "You are not allowed to invite administrators."
+  defp invitation_error(_reason), do: "The invitation could not be created."
 
   defp refresh_accounts(socket) do
     accounts = list_accounts(socket.assigns.current_user)

@@ -189,6 +189,16 @@ defmodule Polly.Accounts.User do
       end
     end
 
+    create :accept_administrator_invitation do
+      argument :email, :ci_string, allow_nil?: false
+      argument :role, Polly.Accounts.User.Role, allow_nil?: false
+      argument :hashed_password, :string, allow_nil?: false, sensitive?: true
+
+      change set_attribute(:email, arg(:email))
+      change set_attribute(:role, arg(:role))
+      change set_attribute(:hashed_password, arg(:hashed_password))
+    end
+
     action :request_password_reset_token do
       description "Send password reset instructions to a user if they exist."
 

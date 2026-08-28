@@ -17,6 +17,8 @@ defmodule Polly.Accounts.AuthorizationCoverage do
     %{
       PollyWeb.AdminLive => {:any, @permissions -- [:operate_jobs]},
       PollyWeb.AdministratorLive => {:permission, :manage_administrators},
+      PollyWeb.AdministratorInvitationLive =>
+        {:trusted, "signed administrator invitation credential"},
       PollyWeb.AuditLive => {:permission, :view_audit},
       PollyWeb.MemberLive.Index => {:permission, :manage_members},
       PollyWeb.MemberLive.Import => {:permission, :manage_members},
@@ -52,6 +54,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         sign_in_with_password: {:trusted, "authentication entry point"},
         sign_in_with_token: {:trusted, "signed authentication credential"},
         register_with_password: {:trusted, "bootstrap and invitation acceptance only"},
+        accept_administrator_invitation: {:trusted, "validated invitation acceptance service"},
         request_password_reset_token: {:trusted, "non-enumerating authentication entry point"},
         get_by_email: {:trusted, "authentication and administrator lifecycle lookup"},
         reset_password_with_token: {:trusted, "signed password-reset credential"},
@@ -71,6 +74,12 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         store_token: {:trusted, "authentication token storage"},
         expunge_expired: {:trusted, "authentication token maintenance"},
         revoke_all_stored_for_subject: {:trusted, "account disable and session lifecycle"}
+      },
+      Polly.Accounts.AdministratorInvitation => %{
+        read: {:permission, :manage_administrators},
+        invite: {:trusted, "owner-authorized invitation service"},
+        record_sent: {:trusted, "administrator invitation Oban worker"},
+        accept: {:trusted, "validated invitation acceptance transaction"}
       },
       Polly.Members.Member => %{
         read: {:permission, :manage_members},
@@ -132,6 +141,11 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Accounts.Administrators, :disable} => {:permission, :manage_administrators},
       {Polly.Accounts.Administrators, :enable} => {:permission, :manage_administrators},
       {Polly.Accounts.Administrators, :change_role} => {:permission, :manage_administrators},
+      {Polly.Accounts.AdministratorInvitations, :invite} => {:permission, :manage_administrators},
+      {Polly.Accounts.AdministratorInvitations, :accept} =>
+        {:trusted, "signed administrator invitation credential"},
+      {Polly.Accounts.AdministratorInvitations, :verify} =>
+        {:trusted, "signed administrator invitation credential"},
       {Polly.Members.MemberImport, :commit} => {:permission, :manage_members},
       {Polly.Polls.Options, :reorder} => {:permission, :manage_polls},
       {Polly.Polls.Invitations, :preview} => {:permission, :send_invitations},
@@ -164,6 +178,14 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       "lib/polly/accounts/administrators.ex" => %{
         count: 5,
         reason: "owner-authorized lifecycle transaction, token revocation, and session checks"
+      },
+      "lib/polly/accounts/administrator_invitation_worker.ex" => %{
+        count: 3,
+        reason: "trusted Oban worker processing an ID-only durable invitation command"
+      },
+      "lib/polly/accounts/administrator_invitations.ex" => %{
+        count: 6,
+        reason: "owner-authorized creation and signed public acceptance transactions"
       },
       "lib/polly/members/member_import.ex" => %{
         count: 1,

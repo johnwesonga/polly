@@ -1,5 +1,6 @@
 defmodule PollyWeb.AdministratorLiveTest do
   use PollyWeb.ConnCase, async: false
+  use Oban.Testing, repo: Polly.Repo
 
   alias Polly.Accounts.{Administrators, User}
 
@@ -162,6 +163,75 @@ defmodule PollyWeb.AdministratorLiveTest do
     assert has_element?(view, "#administrator-account-role-#{actor.id}", "Owner")
     assert has_element?(view, "#administrator-change-role-#{actor.id}[disabled]")
     refute has_element?(view, "#administrator-action-confirmation-overlay")
+  end
+
+  test "an owner queues an administrator invitation without choosing a password", %{conn: conn} do
+    owner = create_user!(:owner, "inviting-owner@example.com")
+    view = mount_as(conn, owner)
+
+    refute has_element?(view, "#administrator-invitation-form input[type=password]")
+
+    view
+    |> form("#administrator-invitation-form",
+      invitation: %{email: "New.Admin@Example.com", role: "administrator"}
+    )
+    |> render_submit()
+
+    assert has_element?(view, "#flash-group", "Administrator invitation queued")
+    assert has_element?(view, "#administrator-invitations", "new.admin@example.com")
+
+    assert [%Oban.Job{args: %{"invitation_id" => invitation_id}}] = all_enqueued()
+    refute Map.has_key?(hd(all_enqueued()).args, "token")
+
+    invitation =
+      Ash.get!(Polly.Accounts.AdministratorInvitation, invitation_id, authorize?: false)
+
+    assert invitation.role == :administrator
+    assert invitation.status == :pending
+  end
+
+  test "owner invitations require an additional confirmation", %{conn: conn} do
+    owner = create_user!(:owner, "inviting-an-owner@example.com")
+    view = mount_as(conn, owner)
+
+    view
+    |> form("#administrator-invitation-form",
+      invitation: %{email: "second-owner@example.com", role: "owner"}
+    )
+    |> render_submit()
+
+    assert has_element?(view, "#owner-invitation-confirmation-overlay", "Grant owner access?")
+    assert all_enqueued() == []
+
+    view |> element("#confirm-owner-invitation") |> render_click()
+
+    assert [_job] = all_enqueued()
+    assert has_element?(view, "#administrator-invitations", "second-owner@example.com")
+  end
+
+  test "invitation form rejects existing accounts and duplicate pending invitations", %{
+    conn: conn
+  } do
+    owner = create_user!(:owner, "guard-inviter@example.com")
+    _existing = create_user!(:administrator, "existing-account@example.com")
+    view = mount_as(conn, owner)
+
+    view
+    |> form("#administrator-invitation-form",
+      invitation: %{email: "existing-account@example.com", role: "operator"}
+    )
+    |> render_submit()
+
+    assert has_element?(view, "#flash-group", "An account already exists")
+    assert all_enqueued() == []
+
+    params = %{email: "pending-duplicate@example.com", role: "operator"}
+    view |> form("#administrator-invitation-form", invitation: params) |> render_submit()
+    assert [_job] = all_enqueued()
+
+    view |> form("#administrator-invitation-form", invitation: params) |> render_submit()
+    assert has_element?(view, "#flash-group", "A pending invitation already exists")
+    assert length(all_enqueued()) == 1
   end
 
   defp create_user!(role, email) do

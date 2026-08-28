@@ -10,6 +10,7 @@ defmodule Polly.Accounts do
     otp_app: :polly
 
   resources do
+    resource Polly.Accounts.AdministratorInvitation
     resource Polly.Accounts.Token
     resource Polly.Accounts.User
   end

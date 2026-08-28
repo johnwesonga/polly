@@ -72,6 +72,7 @@ defmodule PollyWeb.Router do
 
     get "/", PageController, :home
     live "/polls/:poll_id/vote/:token", PollLive.Vote, :show
+    live "/administrator-invitations/:id/setup", AdministratorInvitationLive, :new
     auth_routes AuthController, Polly.Accounts.User, path: "/auth"
     sign_out_route AuthController
 

@@ -18,6 +18,8 @@ defmodule Polly.Audit do
     "administrator.enabled" => [],
     "administrator.disabled" => [],
     "administrator.role_changed" => [:old_role, :new_role],
+    "administrator.invited" => [:role],
+    "administrator.invitation_accepted" => [:role, :invitation_id],
     "poll.created" => [],
     "poll.updated" => [:changed_fields],
     "poll.duplicated" => [
@@ -128,32 +130,89 @@ defmodule Polly.Audit do
 
   def humanize(%Event{} = event) do
     case event.action do
-      "poll.created" -> "created poll “#{event.target_label}”"
-      "poll.updated" -> "updated poll “#{event.target_label}”"
-      "poll.duplicated" -> "duplicated a poll as “#{event.target_label}”"
-      "poll.opened" -> "opened “#{event.target_label}”"
-      "poll.closed" -> "closed “#{event.target_label}”"
-      "poll.results_published" -> "published results for “#{event.target_label}”"
-      "poll.results_exported" -> "exported results for “#{event.target_label}”"
-      "member.created" -> "created member “#{event.target_label}”"
-      "member.updated" -> "updated member “#{event.target_label}”"
-      "member.activated" -> "activated member “#{event.target_label}”"
-      "member.deactivated" -> "deactivated member “#{event.target_label}”"
-      "member_import.completed" -> "completed a member import"
-      "administrator.enabled" -> "enabled administrator “#{event.target_label}”"
-      "administrator.disabled" -> "disabled administrator “#{event.target_label}”"
-      "administrator.role_changed" -> "changed the role for “#{event.target_label}”"
-      "poll_option.created" -> "created option “#{event.target_label}”"
-      "poll_option.updated" -> "updated option “#{event.target_label}”"
-      "poll_option.reordered" -> "reordered option “#{event.target_label}”"
-      "poll_option.deleted" -> "deleted option “#{event.target_label}”"
-      "poll_electorate.member_added" -> "added “#{event.target_label}” to an electorate"
-      "poll_electorate.member_removed" -> "removed “#{event.target_label}” from an electorate"
-      "poll_access_grant.issued" -> "issued access for “#{event.target_label}”"
-      "poll_access_grant.revoked" -> "revoked access for “#{event.target_label}”"
-      "poll_access_grant.reissued" -> "reissued access for “#{event.target_label}”"
-      "poll.invitations_enqueued" -> "queued email invitations for “#{event.target_label}”"
-      _unknown -> event.action <> " on “#{event.target_label}”"
+      "poll.created" ->
+        "created poll “#{event.target_label}”"
+
+      "poll.updated" ->
+        "updated poll “#{event.target_label}”"
+
+      "poll.duplicated" ->
+        "duplicated a poll as “#{event.target_label}”"
+
+      "poll.opened" ->
+        "opened “#{event.target_label}”"
+
+      "poll.closed" ->
+        "closed “#{event.target_label}”"
+
+      "poll.results_published" ->
+        "published results for “#{event.target_label}”"
+
+      "poll.results_exported" ->
+        "exported results for “#{event.target_label}”"
+
+      "member.created" ->
+        "created member “#{event.target_label}”"
+
+      "member.updated" ->
+        "updated member “#{event.target_label}”"
+
+      "member.activated" ->
+        "activated member “#{event.target_label}”"
+
+      "member.deactivated" ->
+        "deactivated member “#{event.target_label}”"
+
+      "member_import.completed" ->
+        "completed a member import"
+
+      "administrator.enabled" ->
+        "enabled administrator “#{event.target_label}”"
+
+      "administrator.disabled" ->
+        "disabled administrator “#{event.target_label}”"
+
+      "administrator.role_changed" ->
+        "changed the role for “#{event.target_label}”"
+
+      "administrator.invited" ->
+        "invited administrator “#{event.target_label}”"
+
+      "administrator.invitation_accepted" ->
+        "accepted an administrator invitation for “#{event.target_label}”"
+
+      "poll_option.created" ->
+        "created option “#{event.target_label}”"
+
+      "poll_option.updated" ->
+        "updated option “#{event.target_label}”"
+
+      "poll_option.reordered" ->
+        "reordered option “#{event.target_label}”"
+
+      "poll_option.deleted" ->
+        "deleted option “#{event.target_label}”"
+
+      "poll_electorate.member_added" ->
+        "added “#{event.target_label}” to an electorate"
+
+      "poll_electorate.member_removed" ->
+        "removed “#{event.target_label}” from an electorate"
+
+      "poll_access_grant.issued" ->
+        "issued access for “#{event.target_label}”"
+
+      "poll_access_grant.revoked" ->
+        "revoked access for “#{event.target_label}”"
+
+      "poll_access_grant.reissued" ->
+        "reissued access for “#{event.target_label}”"
+
+      "poll.invitations_enqueued" ->
+        "queued email invitations for “#{event.target_label}”"
+
+      _unknown ->
+        event.action <> " on “#{event.target_label}”"
     end
   end
 
