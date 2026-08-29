@@ -96,7 +96,7 @@ defmodule Polly.Polls.AccessGrantTest do
   defp create_poll!(actor, title) do
     Ash.create!(
       Poll,
-      %{title: title, slug: Polly.Polls.Slug.from_title(title)},
+      %{title: title},
       actor: actor
     )
   end

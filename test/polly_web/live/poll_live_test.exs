@@ -60,7 +60,7 @@ defmodule PollyWeb.PollLiveTest do
       for number <- 1..26 do
         Ash.create!(
           Poll,
-          %{title: "Paginated Poll #{number}", slug: "paginated-poll-#{number}"},
+          %{title: "Paginated Poll #{number}"},
           actor: actor
         )
       end
@@ -93,13 +93,13 @@ defmodule PollyWeb.PollLiveTest do
     {conn, actor} = register_and_log_in_administrator(conn)
 
     draft =
-      Ash.create!(Poll, %{title: "Draft Listing", slug: "draft-listing"}, actor: actor)
+      Ash.create!(Poll, %{title: "Draft Listing"}, actor: actor)
 
-    open = create_poll_with_status!(actor, "Open Listing", "open-listing", :open)
-    closed = create_poll_with_status!(actor, "Closed Listing", "closed-listing", :closed)
+    open = create_poll_with_status!(actor, "Open Listing", :open)
+    closed = create_poll_with_status!(actor, "Closed Listing", :closed)
 
     published =
-      create_poll_with_status!(actor, "Published Listing", "published-listing", :published)
+      create_poll_with_status!(actor, "Published Listing", :published)
 
     {:ok, view, _html} = live(conn, ~p"/admin/polls")
 
@@ -146,7 +146,7 @@ defmodule PollyWeb.PollLiveTest do
 
     Ash.create!(
       Poll,
-      %{title: "Existing Title", slug: "existing-title"},
+      %{title: "Existing Title"},
       actor: actor
     )
 
@@ -272,7 +272,7 @@ defmodule PollyWeb.PollLiveTest do
   defp create_poll!(actor) do
     Ash.create!(
       Poll,
-      %{title: "Team Theme", description: "Choose", slug: "team-theme"},
+      %{title: "Team Theme", description: "Choose"},
       actor: actor
     )
   end
@@ -281,8 +281,8 @@ defmodule PollyWeb.PollLiveTest do
     Ash.create!(Option, %{poll_id: poll.id, label: label, position: position}, actor: actor)
   end
 
-  defp create_poll_with_status!(actor, title, slug, status) do
-    poll = Ash.create!(Poll, %{title: title, slug: slug}, actor: actor)
+  defp create_poll_with_status!(actor, title, status) do
+    poll = Ash.create!(Poll, %{title: title}, actor: actor)
     create_option!(poll, actor, "One", 1)
     create_option!(poll, actor, "Two", 2)
 

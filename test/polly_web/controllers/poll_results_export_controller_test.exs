@@ -48,7 +48,7 @@ defmodule PollyWeb.PollResultsExportControllerTest do
     poll =
       Ash.create!(
         Poll,
-        %{title: "Controller export", slug: "controller-export"},
+        %{title: "Controller export"},
         actor: actor
       )
 

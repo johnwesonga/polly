@@ -66,6 +66,6 @@ defmodule PollyWeb.PhaseTwoLiveTest do
   end
 
   defp create_poll!(actor) do
-    Ash.create!(Poll, %{title: "Team Theme", slug: "team-theme"}, actor: actor)
+    Ash.create!(Poll, %{title: "Team Theme"}, actor: actor)
   end
 end

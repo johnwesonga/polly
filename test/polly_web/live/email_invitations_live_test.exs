@@ -7,7 +7,7 @@ defmodule PollyWeb.EmailInvitationsLiveTest do
 
   test "queues ready invitations from the poll access page", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
-    poll = Ash.create!(Poll, %{title: "Board Election", slug: "board-election"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Board Election"}, actor: actor)
 
     member =
       Ash.create!(Member, %{name: "Jamie Rivera", email: "jamie@example.com"}, actor: actor)
@@ -36,7 +36,7 @@ defmodule PollyWeb.EmailInvitationsLiveTest do
 
   test "disables bulk delivery while the poll is a draft", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
-    poll = Ash.create!(Poll, %{title: "Draft Poll", slug: "draft-poll"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Draft Poll"}, actor: actor)
 
     {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/access")
 
@@ -46,7 +46,7 @@ defmodule PollyWeb.EmailInvitationsLiveTest do
 
   test "shows skipped reasons in readiness and bulk confirmation", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
-    poll = Ash.create!(Poll, %{title: "Mixed Electorate", slug: "mixed-electorate"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Mixed Electorate"}, actor: actor)
 
     ready = Ash.create!(Member, %{name: "Ready", email: "ready@example.com"}, actor: actor)
     missing = Ash.create!(Member, %{name: "Missing Email"}, actor: actor)
@@ -71,7 +71,7 @@ defmodule PollyWeb.EmailInvitationsLiveTest do
 
   test "refreshes accepted and failed delivery presentations", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
-    poll = Ash.create!(Poll, %{title: "Delivery Status", slug: "delivery-status"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Delivery Status"}, actor: actor)
 
     member =
       Ash.create!(Member, %{name: "Jamie Rivera", email: "jamie@example.com"}, actor: actor)

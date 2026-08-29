@@ -111,7 +111,7 @@ defmodule Polly.Polls.ResultExportTest do
 
   defp configured_poll!(actor, title, member_count) do
     poll =
-      Ash.create!(Poll, %{title: title, slug: Polly.Polls.Slug.from_title(title)}, actor: actor)
+      Ash.create!(Poll, %{title: title}, actor: actor)
 
     first =
       Ash.create!(Option, %{poll_id: poll.id, label: "+Formula option", position: 1},

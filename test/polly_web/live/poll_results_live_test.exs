@@ -94,7 +94,7 @@ defmodule PollyWeb.PollResultsLiveTest do
     poll =
       Ash.create!(
         Poll,
-        %{title: title, slug: unique_slug(title)},
+        %{title: title},
         actor: actor
       )
 
@@ -106,9 +106,5 @@ defmodule PollyWeb.PollResultsLiveTest do
     {_eligibility, grant} = Electorate.include_member(poll, member, actor)
 
     %{poll: poll, option: option, grant: grant}
-  end
-
-  defp unique_slug(title) do
-    "#{Polly.Polls.Slug.from_title(title)}-#{System.unique_integer([:positive])}"
   end
 end

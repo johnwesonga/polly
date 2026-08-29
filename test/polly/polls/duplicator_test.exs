@@ -131,8 +131,7 @@ defmodule Polly.Polls.DuplicatorTest do
         Poll,
         %{
           title: String.duplicate("A", 160),
-          description: "Long configuration",
-          slug: String.duplicate("a", 180)
+          description: "Long configuration"
         },
         actor: actor
       )
@@ -206,7 +205,7 @@ defmodule Polly.Polls.DuplicatorTest do
     poll =
       Ash.create!(
         Poll,
-        %{title: title, description: "Reusable poll details", slug: slug(title)},
+        %{title: title, description: "Reusable poll details"},
         actor: actor
       )
 
@@ -254,6 +253,4 @@ defmodule Polly.Polls.DuplicatorTest do
 
   defp open!(poll, actor), do: Ash.update!(poll, %{}, action: :open, actor: actor)
   defp close!(poll, actor), do: Ash.update!(poll, %{}, action: :close, actor: actor)
-
-  defp slug(title), do: Polly.Polls.Slug.from_title(title)
 end

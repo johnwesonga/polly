@@ -111,41 +111,26 @@ defmodule Polly.Polls.Duplicator do
       selection_mode: source.selection_mode
     }
 
-    create_with_unique_slug(attributes.title, attributes, actor, 1)
+    create_with_unique_slug(attributes, actor, 1)
   end
 
-  defp create_with_unique_slug(_title, _attributes, _actor, attempt)
+  defp create_with_unique_slug(_attributes, _actor, attempt)
        when attempt > @max_slug_attempts do
     Polly.Repo.rollback(:slug_generation_exhausted)
   end
 
-  defp create_with_unique_slug(title, attributes, actor, attempt) do
-    slug = Slug.candidate_for_title(title, attempt)
+  defp create_with_unique_slug(attributes, actor, attempt) do
+    case Ash.create(Poll, attributes, actor: actor, context: %{audit: :skip}) do
+      {:ok, duplicate} ->
+        duplicate
 
-    if slug_exists?(slug, actor) do
-      create_with_unique_slug(title, attributes, actor, attempt + 1)
-    else
-      case Ash.create(Poll, Map.put(attributes, :slug, slug),
-             actor: actor,
-             context: %{audit: :skip}
-           ) do
-        {:ok, duplicate} ->
-          duplicate
-
-        {:error, error} ->
-          if unique_slug_error?(error) do
-            create_with_unique_slug(title, attributes, actor, attempt + 1)
-          else
-            Polly.Repo.rollback(error)
-          end
-      end
+      {:error, error} ->
+        if unique_slug_error?(error) do
+          create_with_unique_slug(attributes, actor, attempt + 1)
+        else
+          Polly.Repo.rollback(error)
+        end
     end
-  end
-
-  defp slug_exists?(slug, actor) do
-    Poll
-    |> Ash.Query.filter(slug == ^slug)
-    |> Ash.exists?(actor: actor)
   end
 
   defp copy_options(source_id, duplicate_id, actor) do

@@ -136,8 +136,7 @@ defmodule Polly.Polls.BallotsTest do
       Ash.create!(
         Poll,
         %{
-          title: title,
-          slug: "#{Polly.Polls.Slug.from_title(title)}-#{System.unique_integer([:positive])}"
+          title: title
         },
         actor: actor
       )

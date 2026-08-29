@@ -88,7 +88,7 @@ defmodule Polly.Polls.ResultsTest do
     poll =
       Ash.create!(
         Poll,
-        %{title: title, slug: unique_slug(title)},
+        %{title: title},
         actor: actor
       )
 
@@ -111,9 +111,5 @@ defmodule Polly.Polls.ResultsTest do
     grant = Enum.at(fixture.grants, grant_index)
     {:ok, ballot} = Ballots.submit(fixture.poll.id, grant.token, option.id)
     ballot
-  end
-
-  defp unique_slug(title) do
-    "#{Polly.Polls.Slug.from_title(title)}-#{System.unique_integer([:positive])}"
   end
 end

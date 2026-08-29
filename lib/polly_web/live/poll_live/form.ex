@@ -1,7 +1,7 @@
 defmodule PollyWeb.PollLive.Form do
   use PollyWeb, :live_view
 
-  alias Polly.Polls.{Poll, Slug}
+  alias Polly.Polls.{Poll}
 
   on_mount {PollyWeb.LiveUserAuth, {:require_permission, :manage_polls}}
 
@@ -66,13 +66,10 @@ defmodule PollyWeb.PollLive.Form do
 
   @impl true
   def handle_event("validate", %{"poll" => params}, socket) do
-    params = add_slug(params, socket.assigns.poll)
     {:noreply, assign(socket, :form, AshPhoenix.Form.validate(socket.assigns.form, params))}
   end
 
   def handle_event("save", %{"poll" => params}, socket) do
-    params = add_slug(params, socket.assigns.poll)
-
     case AshPhoenix.Form.submit(socket.assigns.form, params: params) do
       {:ok, poll} ->
         {:noreply,
@@ -107,11 +104,4 @@ defmodule PollyWeb.PollLive.Form do
 
     assign(socket, :form, to_form(form))
   end
-
-  defp add_slug(params, nil) do
-    title = params["title"] || ""
-    Map.put(params, "slug", Slug.unique_from_title(title) || Slug.from_title(title))
-  end
-
-  defp add_slug(params, _poll), do: params
 end

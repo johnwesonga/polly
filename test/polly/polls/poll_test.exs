@@ -122,13 +122,13 @@ defmodule Polly.Polls.PollTest do
              Ash.update(poll, %{title: "Changed"}, action: :update_draft)
 
     assert {:error, %Ash.Error.Forbidden{}} =
-             Ash.create(Poll, %{title: "Anonymous", slug: "anonymous"})
+             Ash.create(Poll, %{title: "Anonymous"})
   end
 
   defp create_poll!(actor, title) do
     Ash.create!(
       Poll,
-      %{title: title, description: "Choose a theme", slug: Polly.Polls.Slug.from_title(title)},
+      %{title: title, description: "Choose a theme"},
       actor: actor
     )
   end

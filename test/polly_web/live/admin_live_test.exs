@@ -148,7 +148,7 @@ defmodule PollyWeb.AdminLiveTest do
   defp create_poll!(actor, title) do
     Ash.create!(
       Polly.Polls.Poll,
-      %{title: title, description: "Dashboard summary", slug: Slug.slugify(title)},
+      %{title: title, description: "Dashboard summary"},
       action: :create_draft,
       actor: actor
     )

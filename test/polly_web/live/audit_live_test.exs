@@ -15,7 +15,7 @@ defmodule PollyWeb.AuditLiveTest do
 
   test "lists events and renders safe event details", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn, %{role: :owner})
-    poll = Ash.create!(Poll, %{title: "Visible audit", slug: "visible-audit"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Visible audit"}, actor: actor)
     event = Ash.read_one!(Event, actor: actor)
 
     {:ok, view, _html} = live(conn, ~p"/admin/audit")

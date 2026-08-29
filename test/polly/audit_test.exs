@@ -151,7 +151,7 @@ defmodule Polly.AuditTest do
   end
 
   test "option CRUD and reorder operations each produce semantic events", %{actor: actor} do
-    poll = Ash.create!(Poll, %{title: "Option audit", slug: "option-audit"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Option audit"}, actor: actor)
     first = Ash.create!(Option, %{poll_id: poll.id, label: "First", position: 1}, actor: actor)
     second = Ash.create!(Option, %{poll_id: poll.id, label: "Second", position: 2}, actor: actor)
     first = Ash.update!(first, %{label: "Updated first"}, actor: actor)
@@ -220,7 +220,7 @@ defmodule Polly.AuditTest do
   end
 
   defp configured_poll!(actor) do
-    poll = Ash.create!(Poll, %{title: "Audited poll", slug: "audited-poll"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Audited poll"}, actor: actor)
     Ash.create!(Option, %{poll_id: poll.id, label: "One", position: 1}, actor: actor)
     Ash.create!(Option, %{poll_id: poll.id, label: "Two", position: 2}, actor: actor)
     member = Ash.create!(Member, %{name: "Jamie", email: "jamie@example.com"}, actor: actor)

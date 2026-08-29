@@ -30,7 +30,8 @@ defmodule Polly.Polls.Poll do
 
     create :create_draft do
       primary? true
-      accept [:title, :description, :slug, :selection_mode]
+      accept [:title, :description, :selection_mode]
+      change Polly.Polls.Changes.SetSlugFromTitle
       change {Polly.Audit.Changes.AppendPollEvent, action: "poll.created"}
     end
 

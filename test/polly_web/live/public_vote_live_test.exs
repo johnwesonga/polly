@@ -137,8 +137,7 @@ defmodule PollyWeb.PublicVoteLiveTest do
         Poll,
         %{
           title: title,
-          description: "Choose the direction for our next season.",
-          slug: unique_slug(title)
+          description: "Choose the direction for our next season."
         },
         actor: actor
       )
@@ -155,8 +154,4 @@ defmodule PollyWeb.PublicVoteLiveTest do
   end
 
   defp vote_path(fixture), do: ~p"/polls/#{fixture.poll.id}/vote/#{fixture.grant.token}"
-
-  defp unique_slug(title) do
-    "#{Polly.Polls.Slug.from_title(title)}-#{System.unique_integer([:positive])}"
-  end
 end

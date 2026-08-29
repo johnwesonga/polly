@@ -22,7 +22,7 @@ defmodule Polly.Administration.DashboardTest do
     draft =
       Ash.create!(
         Polly.Polls.Poll,
-        %{title: "Needs setup", slug: "needs-setup"},
+        %{title: "Needs setup"},
         action: :create_draft,
         actor: owner
       )
@@ -30,7 +30,7 @@ defmodule Polly.Administration.DashboardTest do
     closed =
       Ash.create!(
         Polly.Polls.Poll,
-        %{title: "Needs publication", slug: "needs-publication"},
+        %{title: "Needs publication"},
         action: :create_draft,
         actor: owner
       )
@@ -81,7 +81,7 @@ defmodule Polly.Administration.DashboardTest do
       poll =
         Ash.create!(
           Polly.Polls.Poll,
-          %{title: "Open poll #{number}", slug: "open-poll-#{number}"},
+          %{title: "Open poll #{number}"},
           action: :create_draft,
           actor: owner
         )
@@ -113,7 +113,7 @@ defmodule Polly.Administration.DashboardTest do
     poll =
       Ash.create!(
         Polly.Polls.Poll,
-        %{title: "Active dashboard poll", slug: "active-dashboard-poll"},
+        %{title: "Active dashboard poll"},
         action: :create_draft,
         actor: actor
       )

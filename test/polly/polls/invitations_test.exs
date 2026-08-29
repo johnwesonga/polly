@@ -118,7 +118,7 @@ defmodule Polly.Polls.InvitationsTest do
   end
 
   defp draft_poll!(actor) do
-    poll = Ash.create!(Poll, %{title: "Board Election", slug: "board-election"}, actor: actor)
+    poll = Ash.create!(Poll, %{title: "Board Election"}, actor: actor)
     Ash.create!(Option, %{poll_id: poll.id, label: "One", position: 1}, actor: actor)
     Ash.create!(Option, %{poll_id: poll.id, label: "Two", position: 2}, actor: actor)
     poll

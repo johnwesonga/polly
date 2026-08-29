@@ -48,7 +48,7 @@ defmodule Polly.Accounts.AuthorizationTest do
     actors = Map.new(Map.keys(@expected), &{&1, create_user!(&1)})
     owner = actors.owner
     member = Ash.create!(Member, %{name: "Visible member"}, actor: owner)
-    poll = Ash.create!(Poll, %{title: "Visible poll", slug: "visible-poll"}, actor: owner)
+    poll = Ash.create!(Poll, %{title: "Visible poll"}, actor: owner)
 
     option =
       Ash.create!(Option, %{poll_id: poll.id, label: "Visible option", position: 1}, actor: owner)
@@ -144,14 +144,14 @@ defmodule Polly.Accounts.AuthorizationTest do
       actor = create_user!(role)
 
       assert {:ok, %Poll{}} =
-               Ash.create(Poll, %{title: "#{role} poll", slug: "#{role}-poll"}, actor: actor)
+               Ash.create(Poll, %{title: "#{role} poll"}, actor: actor)
     end
 
     for role <- [:auditor, :operator] do
       actor = create_user!(role)
 
       assert {:error, %Ash.Error.Forbidden{}} =
-               Ash.create(Poll, %{title: "Denied #{role}", slug: "denied-#{role}"}, actor: actor)
+               Ash.create(Poll, %{title: "Denied #{role}"}, actor: actor)
     end
   end
 
