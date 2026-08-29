@@ -15,7 +15,7 @@ Run these aliases once at the beginning of the session:
 ```elixir
 alias Polly.Accounts.User
 alias Polly.Members.Member
-alias Polly.Polls.{AccessGrant, Eligibility, Option, Poll}
+alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, Option, Poll}
 
 require Ash.Query
 ```
@@ -293,3 +293,125 @@ usable_access_grants =
 ```
 
 Access-grant tokens are sensitive credentials. Avoid inspecting `grant.token` unless it is necessary, and never paste tokens into logs, screenshots, issue trackers, or shared chat.
+
+## 9. Retrieve poll invitations
+
+Poll invitation activity is persisted as `InvitationDelivery` records. These records track delivery state and attempts without storing the private voting URL:
+
+```elixir
+invitation_deliveries =
+  InvitationDelivery
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.Query.load(:member)
+  |> Ash.Query.sort(requested_at: :desc)
+  |> Ash.read!(actor: actor)
+```
+
+Inspect delivery details:
+
+```elixir
+Enum.map(invitation_deliveries, fn delivery ->
+  %{
+    id: delivery.id,
+    member_id: delivery.member_id,
+    member_name: delivery.member.name,
+    status: delivery.status,
+    kind: delivery.kind,
+    attempt_count: delivery.attempt_count,
+    last_error_code: delivery.last_error_code,
+    requested_at: delivery.requested_at,
+    accepted_at: delivery.accepted_at,
+    failed_at: delivery.failed_at
+  }
+end)
+```
+
+Retrieve only failed deliveries:
+
+```elixir
+failed_deliveries =
+  InvitationDelivery
+  |> Ash.Query.filter(poll_id == ^poll_id and status == :failed)
+  |> Ash.Query.load(:member)
+  |> Ash.Query.sort(failed_at: :desc)
+  |> Ash.read!(actor: actor)
+```
+
+For trusted debugging without authorization:
+
+```elixir
+invitation_deliveries =
+  InvitationDelivery
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.Query.load(:member)
+  |> Ash.read!(authorize?: false)
+```
+
+The `recipient_email` and `provider_message_id` fields have additional field-level protection. Depending on the actor's permissions, Ash may return those fields as forbidden or redacted. Avoid printing them unless they are required for a specific delivery investigation.
+
+## 10. Retrieve ballots
+
+Retrieve ballots for one poll:
+
+```elixir
+ballots =
+  Ballot
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.Query.sort(submitted_at: :desc)
+  |> Ash.read!(actor: actor)
+```
+
+Count submitted ballots without loading every record:
+
+```elixir
+ballot_count =
+  Ballot
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.count!(actor: actor)
+```
+
+To investigate the current identified-ballot model, load each ballot's member and selected option:
+
+```elixir
+ballots =
+  Ballot
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.Query.load([
+    :member,
+    selections: [:option]
+  ])
+  |> Ash.Query.sort(submitted_at: :desc)
+  |> Ash.read!(actor: actor)
+```
+
+Inspect a constrained representation:
+
+```elixir
+Enum.map(ballots, fn ballot ->
+  %{
+    ballot_id: ballot.id,
+    member_id: ballot.member_id,
+    member_name: ballot.member.name,
+    submitted_at: ballot.submitted_at,
+    selections:
+      Enum.map(ballot.selections, fn selection ->
+        %{
+          option_id: selection.option_id,
+          option_label: selection.option.label
+        }
+      end)
+  }
+end)
+```
+
+For trusted debugging without authorization:
+
+```elixir
+ballots =
+  Ballot
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.Query.load([:member, selections: [:option]])
+  |> Ash.read!(authorize?: false)
+```
+
+Ballot data is private. The current identified-ballot model can associate a member with a selection, so do not copy this output into logs, screenshots, tickets, or shared chat. Prefer aggregate result queries unless individual-record debugging is strictly necessary.
