@@ -151,6 +151,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         {:trusted, "signed administrator invitation credential"},
       {Polly.Accounts.AdministratorInvitations, :verify} =>
         {:trusted, "signed administrator invitation credential"},
+      {Polly.Administration.Dashboard, :load} => {:permission, :view_results},
       {Polly.Members.MemberImport, :commit} => {:permission, :manage_members},
       {Polly.Polls.Options, :reorder} => {:permission, :manage_polls},
       {Polly.Polls.Invitations, :preview} => {:permission, :send_invitations},

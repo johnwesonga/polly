@@ -167,6 +167,7 @@ defmodule PollyWeb.PollLive.Index do
   defp apply_status_filter(query, :all), do: query
   defp apply_status_filter(query, :draft), do: Ash.Query.filter(query, status == :draft)
   defp apply_status_filter(query, :open), do: Ash.Query.filter(query, status == :open)
+  defp apply_status_filter(query, :all_closed), do: Ash.Query.filter(query, status == :closed)
 
   defp apply_status_filter(query, :closed),
     do: Ash.Query.filter(query, status == :closed and is_nil(results_published_at))
@@ -176,6 +177,7 @@ defmodule PollyWeb.PollLive.Index do
 
   defp status_filter(%{"status" => "draft"}), do: :draft
   defp status_filter(%{"status" => "open"}), do: :open
+  defp status_filter(%{"status" => "all_closed"}), do: :all_closed
   defp status_filter(%{"status" => "closed"}), do: :closed
   defp status_filter(%{"status" => "published"}), do: :published
   defp status_filter(_params), do: :all
@@ -237,6 +239,7 @@ defmodule PollyWeb.PollLive.Index do
   defp empty_title(:all), do: "No polls yet"
   defp empty_title(:draft), do: "No draft polls"
   defp empty_title(:open), do: "No open polls"
+  defp empty_title(:all_closed), do: "No closed polls"
   defp empty_title(:closed), do: "No closed polls"
   defp empty_title(:published), do: "No published polls"
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Specified; implementation proposed in seven independently testable phases.
+Phases 0–2 implemented; phases 3–6 proposed.
 
 ## Summary
 

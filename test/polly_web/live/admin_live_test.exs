@@ -54,6 +54,69 @@ defmodule PollyWeb.AdminLiveTest do
     assert has_element?(owner_view, "#admin-nav-background-jobs")
   end
 
+  test "shows database-backed poll summary counts to permitted users", %{conn: conn} do
+    owner = create_user!(:owner, "summary-owner@example.com")
+
+    draft = create_poll!(owner, "Dashboard draft")
+    open = create_poll!(owner, "Dashboard open")
+    unpublished = create_poll!(owner, "Dashboard unpublished")
+    published = create_poll!(owner, "Dashboard published")
+
+    set_poll_state!(open.id, "open", nil)
+    set_poll_state!(unpublished.id, "closed", nil)
+    set_poll_state!(published.id, "closed", DateTime.utc_now())
+
+    view = conn |> sign_in(owner) |> mount()
+
+    assert has_element?(view, "#dashboard-poll-summary")
+    assert has_element?(view, "#dashboard-draft-polls[href='/admin/polls?status=draft']", "1")
+    assert has_element?(view, "#dashboard-open-polls[href='/admin/polls?status=open']", "1")
+
+    assert has_element?(
+             view,
+             "#dashboard-closed-polls[href='/admin/polls?status=all_closed']",
+             "2"
+           )
+
+    assert has_element?(
+             view,
+             "#dashboard-unpublished-polls[href='/admin/polls?status=closed']",
+             "1"
+           )
+
+    assert has_element?(view, "#dashboard-attention-missing_options", "1 draft needs options")
+    assert has_element?(view, "#dashboard-attention-missing_electorate", "1 draft needs members")
+
+    assert has_element?(
+             view,
+             "#dashboard-attention-unsent_invitations",
+             "1 open poll has no accepted deliveries"
+           )
+
+    assert has_element?(
+             view,
+             "#dashboard-attention-unpublished_results",
+             "1 result awaits publication"
+           )
+
+    assert draft.status == :draft
+  end
+
+  test "shows a positive attention empty state", %{conn: conn} do
+    owner = create_user!(:owner, "clear-dashboard-owner@example.com")
+    view = conn |> sign_in(owner) |> mount()
+
+    assert has_element?(view, "#dashboard-attention")
+    assert has_element?(view, "#dashboard-attention-empty", "Nothing needs attention")
+  end
+
+  test "does not reveal poll counts to operators", %{conn: conn} do
+    operator = create_user!(:operator, "summary-operator@example.com")
+    view = conn |> sign_in(operator) |> mount()
+
+    refute has_element?(view, "#dashboard-poll-summary")
+  end
+
   test "does not expose public administrator registration", %{conn: conn} do
     assert conn |> get("/register") |> response(404)
   end
@@ -69,6 +132,22 @@ defmodule PollyWeb.AdminLiveTest do
       },
       action: :register_with_password,
       authorize?: false
+    )
+  end
+
+  defp create_poll!(actor, title) do
+    Ash.create!(
+      Polly.Polls.Poll,
+      %{title: title, description: "Dashboard summary", slug: Slug.slugify(title)},
+      action: :create_draft,
+      actor: actor
+    )
+  end
+
+  defp set_poll_state!(id, status, results_published_at) do
+    Polly.Repo.query!(
+      "UPDATE polls SET status = ?, results_published_at = ? WHERE id = ?",
+      [status, results_published_at, id]
     )
   end
 
