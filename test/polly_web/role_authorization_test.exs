@@ -22,7 +22,7 @@ defmodule PollyWeb.RoleAuthorizationTest do
 
     assert has_element?(view, "#admin-nav-background-jobs")
     assert has_element?(view, "#admin-nav-background-jobs .hero-circle-stack")
-    assert has_element?(view, "#job-monitoring-card")
+    assert has_element?(view, "#view-jobs-action[href='/admin/oban']")
     refute has_element?(view, "#admin-nav-members")
     refute has_element?(view, "#admin-nav-polls")
     refute has_element?(view, "#admin-nav-administrators")

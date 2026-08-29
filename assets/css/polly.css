@@ -306,6 +306,36 @@
      letter-spacing: 0.03em;
  }
 
+ .dashboard-heading {
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     gap: 24px;
+ }
+
+ .dashboard-heading-copy {
+     flex: 1 1 360px;
+ }
+
+ .dashboard-heading-copy .laneline {
+     margin-top: 14px;
+ }
+
+ .dashboard-quick-actions {
+     display: flex;
+     flex-wrap: wrap;
+     justify-content: flex-end;
+     gap: 10px;
+     max-width: 620px;
+ }
+
+ .dashboard-quick-actions .btn {
+     display: inline-flex;
+     align-items: center;
+     gap: 7px;
+     white-space: nowrap;
+ }
+
  .btn {
      font-family: 'Inter', sans-serif;
      font-weight: 600;
@@ -1835,6 +1865,16 @@
          flex-direction: column;
          align-items: flex-start;
          gap: 10px;
+     }
+
+     .dashboard-heading {
+         flex-direction: column;
+         gap: 16px;
+     }
+
+     .dashboard-quick-actions {
+         justify-content: flex-start;
+         width: 100%;
      }
 
      .detail-header {
