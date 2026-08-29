@@ -61,15 +61,25 @@ defmodule PollyWeb.PollLive.Electorate do
                 <h3 style="margin:0;">Eligible members</h3>
                 <div id="eligible-count" class="poll-meta">{@eligible_count} selected</div>
               </div>
-              <button
-                :if={@poll.status == :draft}
-                id="select-all-members"
-                type="button"
-                phx-click="select-all"
-                class="btn btn-outline btn-sm"
-              >
-                Select all active
-              </button>
+              <div :if={@poll.status == :draft} class="poll-actions">
+                <button
+                  id="select-all-members"
+                  type="button"
+                  phx-click="select-all"
+                  class="btn btn-outline btn-sm"
+                >
+                  Select all active
+                </button>
+                <button
+                  :if={@eligible_count > 0}
+                  id="unselect-all-members"
+                  type="button"
+                  phx-click="unselect-all"
+                  class="btn btn-ghost btn-sm"
+                >
+                  Unselect all
+                </button>
+              </div>
             </div>
 
             <div id="electorate-members" phx-update="stream">
@@ -151,6 +161,16 @@ defmodule PollyWeb.PollLive.Electorate do
     |> list_members()
     |> Enum.filter(&(&1.active and not MapSet.member?(socket.assigns.eligible_ids, &1.id)))
     |> Enum.each(&Electorate.include_member(socket.assigns.poll, &1, actor))
+
+    {:noreply, reload_eligibilities(socket)}
+  end
+
+  def handle_event("unselect-all", _params, socket) do
+    actor = socket.assigns.current_user
+
+    socket.assigns.poll
+    |> list_eligibilities(actor)
+    |> Enum.each(&Electorate.exclude_member(socket.assigns.poll, &1, actor))
 
     {:noreply, reload_eligibilities(socket)}
   end

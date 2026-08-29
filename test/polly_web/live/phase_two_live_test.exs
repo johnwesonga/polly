@@ -65,6 +65,42 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     refute Enum.find(updated_grants, &is_nil(&1.revoked_at)).token == grant.token
   end
 
+  test "selects and unselects all active electorate members", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    poll = create_poll!(actor)
+
+    first = Ash.create!(Member, %{name: "First member", email: "first@example.com"}, actor: actor)
+
+    second =
+      Ash.create!(Member, %{name: "Second member", email: "second@example.com"}, actor: actor)
+
+    _inactive =
+      Member
+      |> Ash.create!(%{name: "Inactive member"}, actor: actor)
+      |> Ash.update!(%{active: false}, actor: actor)
+
+    {:ok, electorate, _html} = live(conn, ~p"/admin/polls/#{poll.id}/electorate")
+
+    refute has_element?(electorate, "#unselect-all-members")
+    electorate |> element("#select-all-members") |> render_click()
+
+    assert has_element?(electorate, "#eligible-count", "2 selected")
+    assert has_element?(electorate, "#toggle-eligibility-#{first.id}", "Selected")
+    assert has_element?(electorate, "#toggle-eligibility-#{second.id}", "Selected")
+    assert has_element?(electorate, "#unselect-all-members")
+
+    electorate |> element("#unselect-all-members") |> render_click()
+
+    assert has_element?(electorate, "#eligible-count", "0 selected")
+    assert has_element?(electorate, "#toggle-eligibility-#{first.id}", "Select")
+    assert has_element?(electorate, "#toggle-eligibility-#{second.id}", "Select")
+    refute has_element?(electorate, "#unselect-all-members")
+
+    grants = Ash.read!(AccessGrant, actor: actor)
+    assert length(grants) == 2
+    assert Enum.all?(grants, & &1.revoked_at)
+  end
+
   defp create_poll!(actor) do
     Ash.create!(Poll, %{title: "Team Theme"}, actor: actor)
   end
