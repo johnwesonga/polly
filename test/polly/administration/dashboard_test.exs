@@ -10,7 +10,8 @@ defmodule Polly.Administration.DashboardTest do
     assert {:ok,
             %{
               poll_counts: %{draft: 0, open: 0, closed: 0, unpublished: 0},
-              attention_items: []
+              attention_items: [],
+              active_polls: []
             }} =
              Dashboard.load(actor)
   end
@@ -54,6 +55,44 @@ defmodule Polly.Administration.DashboardTest do
     assert {:error, :forbidden} = Dashboard.load(nil)
   end
 
+  test "returns batched turnout and permission-aware destinations for open polls" do
+    owner = create_user!(:owner, "active-owner@example.com")
+    poll = create_ready_poll!(owner)
+
+    assert {:ok, _ballot} =
+             Polly.Polls.Ballots.submit(poll.id, poll.grant.token, poll.option.id)
+
+    assert {:ok, %{active_polls: [active]}} = Dashboard.load(owner)
+    assert active.id == poll.id
+    assert active.ballot_count == 1
+    assert active.eligible_count == 1
+    assert active.turnout_percentage == 100.0
+    assert active.destination == "/admin/polls/#{poll.id}/access"
+
+    auditor = create_user!(:auditor, "active-auditor@example.com")
+    assert {:ok, %{active_polls: [read_only]}} = Dashboard.load(auditor)
+    assert read_only.destination == "/admin/polls/#{poll.id}/results"
+  end
+
+  test "limits active polls to the five most recently updated" do
+    owner = create_user!(:owner, "active-limit-owner@example.com")
+
+    for number <- 1..6 do
+      poll =
+        Ash.create!(
+          Polly.Polls.Poll,
+          %{title: "Open poll #{number}", slug: "open-poll-#{number}"},
+          action: :create_draft,
+          actor: owner
+        )
+
+      Polly.Repo.query!("UPDATE polls SET status = 'open' WHERE id = ?", [poll.id])
+    end
+
+    assert {:ok, %{active_polls: active_polls}} = Dashboard.load(owner)
+    assert length(active_polls) == 5
+  end
+
   defp create_user!(role, email) do
     Ash.create!(
       User,
@@ -69,4 +108,38 @@ defmodule Polly.Administration.DashboardTest do
   end
 
   defp find_item(items, kind), do: Enum.find(items, &(&1.kind == kind))
+
+  defp create_ready_poll!(actor) do
+    poll =
+      Ash.create!(
+        Polly.Polls.Poll,
+        %{title: "Active dashboard poll", slug: "active-dashboard-poll"},
+        action: :create_draft,
+        actor: actor
+      )
+
+    option =
+      Ash.create!(
+        Polly.Polls.Option,
+        %{poll_id: poll.id, label: "First", position: 1},
+        actor: actor
+      )
+
+    Ash.create!(
+      Polly.Polls.Option,
+      %{poll_id: poll.id, label: "Second", position: 2},
+      actor: actor
+    )
+
+    member =
+      Ash.create!(
+        Polly.Members.Member,
+        %{name: "Dashboard voter", email: "dashboard-voter@example.com"},
+        actor: actor
+      )
+
+    {_eligibility, grant} = Polly.Polls.Electorate.include_member(poll, member, actor)
+    poll = Ash.update!(poll, %{}, action: :open, actor: actor)
+    %{id: poll.id, option: option, grant: grant}
+  end
 end

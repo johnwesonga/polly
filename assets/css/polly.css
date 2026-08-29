@@ -469,6 +469,60 @@
 
  .dashboard-metric-icon.attention { background: rgba(230, 165, 48, 0.16); color: #9a6710; }
 
+ .dashboard-panel { padding: 20px; }
+
+ .dashboard-panel-heading {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 16px;
+ }
+
+ .dashboard-panel-heading .dashboard-section-heading,
+ .dashboard-panel-heading .dashboard-card-link { margin-top: 0; }
+
+ .dashboard-active-poll-row {
+     display: grid;
+     grid-template-columns: minmax(180px, 1fr) minmax(170px, .8fr) minmax(130px, auto) auto;
+     align-items: center;
+     gap: 20px;
+     padding: 14px 0;
+     border-bottom: 1px solid var(--line);
+     color: inherit;
+     text-decoration: none;
+ }
+
+ .dashboard-active-poll-row:last-child { border-bottom: 0; }
+
+ .dashboard-active-poll-row h3 { margin: 0 0 4px; font-size: 13px; font-weight: 800; }
+
+ .dashboard-active-poll-row span,
+ .dashboard-delivery-summary { color: var(--slate); font-size: 11px; }
+
+ .dashboard-turnout strong {
+     display: block;
+     margin-bottom: 7px;
+     color: var(--green);
+     font-size: 11px;
+     font-weight: 600;
+ }
+
+ .dashboard-turnout progress {
+     display: block;
+     width: 100%;
+     height: 7px;
+     overflow: hidden;
+     border: 0;
+     border-radius: 99px;
+     background: var(--water);
+ }
+
+ .dashboard-turnout progress::-webkit-progress-bar { background: var(--water); }
+ .dashboard-turnout progress::-webkit-progress-value { border-radius: 99px; background: var(--green); }
+ .dashboard-turnout progress::-moz-progress-bar { border-radius: 99px; background: var(--green); }
+
+ .dashboard-panel-empty { padding: 20px 0 4px; color: var(--slate); font-size: 12px; }
+
  .btn {
      font-family: 'Inter', sans-serif;
      font-weight: 600;
@@ -1899,6 +1953,11 @@
      .dashboard-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
      .dashboard-attention-grid { grid-template-columns: 1fr; }
+
+     .dashboard-active-poll-row { grid-template-columns: minmax(180px, 1fr) auto; }
+
+     .dashboard-turnout,
+     .dashboard-delivery-summary { grid-column: 1 / -1; }
 
      body {
          padding: 0;

@@ -13,6 +13,7 @@ defmodule PollyWeb.AdminLive do
      |> assign(:page_title, "Administration")
      |> assign(:poll_counts, dashboard.poll_counts)
      |> assign(:attention_items, dashboard.attention_items)
+     |> assign(:active_polls, dashboard.active_polls)
      |> assign(:quick_actions, quick_actions(actor))}
   end
 
@@ -139,6 +140,51 @@ defmodule PollyWeb.AdminLive do
             </.link>
           </div>
         </section>
+
+        <section
+          :if={@active_polls != nil}
+          id="dashboard-active-polls"
+          class="dashboard-section card dashboard-panel"
+        >
+          <div class="dashboard-panel-heading">
+            <h2 class="dashboard-section-heading">Active polls</h2>
+            <.link
+              :if={@active_polls != []}
+              navigate={~p"/admin/polls?status=open"}
+              class="dashboard-card-link"
+            >
+              View all polls <.icon name="hero-arrow-right" />
+            </.link>
+          </div>
+          <div
+            :if={@active_polls == []}
+            id="dashboard-active-polls-empty"
+            class="dashboard-panel-empty"
+          >
+            No polls are currently open.
+          </div>
+          <div :if={@active_polls != []} class="dashboard-active-poll-list">
+            <.link
+              :for={poll <- @active_polls}
+              id={"dashboard-active-poll-#{poll.id}"}
+              navigate={poll.destination}
+              class="dashboard-active-poll-row"
+            >
+              <div>
+                <h3>{poll.title}</h3>
+                <span>{poll.ballot_count} of {poll.eligible_count} votes</span>
+              </div>
+              <div class="dashboard-turnout">
+                <strong>{format_percentage(poll.turnout_percentage)} turnout</strong>
+                <progress max="100" value={poll.turnout_percentage}>
+                  {poll.turnout_percentage}%
+                </progress>
+              </div>
+              <div class="dashboard-delivery-summary">{delivery_summary(poll)}</div>
+              <span class="pill open"><span class="dotlive"></span>Open</span>
+            </.link>
+          </div>
+        </section>
       </section>
     </Layouts.app>
     """
@@ -147,7 +193,7 @@ defmodule PollyWeb.AdminLive do
   defp load_dashboard(actor) do
     case Polly.Administration.Dashboard.load(actor) do
       {:ok, dashboard} -> dashboard
-      {:error, :forbidden} -> %{poll_counts: nil, attention_items: nil}
+      {:error, :forbidden} -> %{poll_counts: nil, attention_items: nil, active_polls: nil}
     end
   end
 
@@ -194,6 +240,17 @@ defmodule PollyWeb.AdminLive do
   defp attention_link(:unsent_invitations), do: "View open polls"
   defp attention_link(:failed_deliveries), do: "View deliveries"
   defp attention_link(:unpublished_results), do: "Review results"
+
+  defp format_percentage(percentage), do: :erlang.float_to_binary(percentage, decimals: 1) <> "%"
+
+  defp delivery_summary(%{failed_deliveries: failed}) when failed > 0,
+    do: "#{failed} failed"
+
+  defp delivery_summary(%{accepted_deliveries: accepted, pending_deliveries: pending})
+       when accepted > 0 or pending > 0,
+       do: "#{accepted} accepted · #{pending} pending"
+
+  defp delivery_summary(_poll), do: "No deliveries"
 
   defp quick_actions(actor) do
     actions =

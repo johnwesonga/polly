@@ -99,6 +99,15 @@ defmodule PollyWeb.AdminLiveTest do
              "1 result awaits publication"
            )
 
+    assert has_element?(
+             view,
+             "#dashboard-active-poll-#{open.id}[href='/admin/polls/#{open.id}/access']",
+             "0 of 0 votes"
+           )
+
+    assert has_element?(view, "#dashboard-active-poll-#{open.id}", "0.0% turnout")
+    assert has_element?(view, "#dashboard-active-poll-#{open.id}", "No deliveries")
+
     assert draft.status == :draft
   end
 
@@ -108,6 +117,7 @@ defmodule PollyWeb.AdminLiveTest do
 
     assert has_element?(view, "#dashboard-attention")
     assert has_element?(view, "#dashboard-attention-empty", "Nothing needs attention")
+    assert has_element?(view, "#dashboard-active-polls-empty", "No polls are currently open")
   end
 
   test "does not reveal poll counts to operators", %{conn: conn} do

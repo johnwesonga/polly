@@ -16,15 +16,33 @@ defmodule Polly.Administration.Dashboard do
           destination: String.t()
         }
 
+  @type active_poll :: %{
+          id: Ecto.UUID.t(),
+          title: String.t(),
+          ballot_count: non_neg_integer(),
+          eligible_count: non_neg_integer(),
+          turnout_percentage: float(),
+          accepted_deliveries: non_neg_integer(),
+          pending_deliveries: non_neg_integer(),
+          failed_deliveries: non_neg_integer(),
+          destination: String.t()
+        }
+
   @spec load(User.t()) ::
-          {:ok, %{poll_counts: poll_counts(), attention_items: [attention_item()]}}
+          {:ok,
+           %{
+             poll_counts: poll_counts(),
+             attention_items: [attention_item()],
+             active_polls: [active_poll()]
+           }}
           | {:error, :forbidden}
   def load(%User{} = actor) do
     with :ok <- Authorization.authorize(actor, :view_results) do
       {:ok,
        %{
          poll_counts: poll_counts(),
-         attention_items: attention_items(actor)
+         attention_items: attention_items(actor),
+         active_polls: active_polls(actor)
        }}
     end
   end
@@ -102,4 +120,52 @@ defmodule Polly.Administration.Dashboard do
 
   defp item(_kind, 0, _destination), do: nil
   defp item(kind, count, destination), do: %{kind: kind, count: count, destination: destination}
+
+  defp active_polls(actor) do
+    destination =
+      if Authorization.allowed?(actor, :manage_access_grants),
+        do: :access,
+        else: :results
+
+    %{rows: rows} =
+      Polly.Repo.query!("""
+      WITH active_polls AS (
+        SELECT id, title, updated_at
+        FROM polls
+        WHERE status = 'open'
+        ORDER BY updated_at DESC, title ASC
+        LIMIT 5
+      )
+      SELECT
+        p.id,
+        p.title,
+        (SELECT COUNT(*) FROM poll_ballots b WHERE b.poll_id = p.id),
+        (SELECT COUNT(*) FROM poll_eligibilities e WHERE e.poll_id = p.id),
+        (SELECT COUNT(*) FROM poll_invitation_deliveries d
+         WHERE d.poll_id = p.id AND d.status = 'accepted'),
+        (SELECT COUNT(*) FROM poll_invitation_deliveries d
+         WHERE d.poll_id = p.id AND d.status IN ('queued', 'sending')),
+        (SELECT COUNT(*) FROM poll_invitation_deliveries d
+         WHERE d.poll_id = p.id AND d.status = 'failed')
+      FROM active_polls p
+      ORDER BY p.updated_at DESC, p.title ASC
+      """)
+
+    Enum.map(rows, fn [id, title, ballots, eligible, accepted, pending, failed] ->
+      %{
+        id: id,
+        title: title,
+        ballot_count: ballots,
+        eligible_count: eligible,
+        turnout_percentage: percentage(ballots, eligible),
+        accepted_deliveries: accepted,
+        pending_deliveries: pending,
+        failed_deliveries: failed,
+        destination: "/admin/polls/#{id}/#{destination}"
+      }
+    end)
+  end
+
+  defp percentage(_part, 0), do: 0.0
+  defp percentage(part, whole), do: Float.round(part / whole * 100, 1)
 end
