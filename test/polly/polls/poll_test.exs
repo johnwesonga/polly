@@ -46,6 +46,136 @@ defmodule Polly.Polls.PollTest do
     assert poll.maximum_selections == 1
   end
 
+  test "creates and updates valid multiple-choice selection ranges", %{actor: actor} do
+    poll =
+      Ash.create!(
+        Poll,
+        %{
+          title: "Committee priorities",
+          selection_mode: :multiple,
+          minimum_selections: 1,
+          maximum_selections: 3
+        },
+        action: :create_draft,
+        actor: actor
+      )
+
+    updated =
+      Ash.update!(
+        poll,
+        %{minimum_selections: 2, maximum_selections: 4},
+        action: :update_draft,
+        actor: actor
+      )
+
+    assert updated.selection_mode == :multiple
+    assert updated.minimum_selections == 2
+    assert updated.maximum_selections == 4
+  end
+
+  test "rejects inconsistent or non-positive selection ranges", %{actor: actor} do
+    assert {:error, single_error} =
+             Ash.create(
+               Poll,
+               %{
+                 title: "Invalid single choice",
+                 selection_mode: :single,
+                 minimum_selections: 1,
+                 maximum_selections: 2
+               },
+               action: :create_draft,
+               actor: actor
+             )
+
+    assert Exception.message(single_error) =~
+             "single-choice polls must require exactly one selection"
+
+    assert {:error, range_error} =
+             Ash.create(
+               Poll,
+               %{
+                 title: "Invalid range",
+                 selection_mode: :multiple,
+                 minimum_selections: 3,
+                 maximum_selections: 2
+               },
+               action: :create_draft,
+               actor: actor
+             )
+
+    assert Exception.message(range_error) =~
+             "must be greater than or equal to the minimum selections"
+
+    assert {:error, positive_error} =
+             Ash.create(
+               Poll,
+               %{
+                 title: "Non-positive range",
+                 selection_mode: :multiple,
+                 minimum_selections: 0,
+                 maximum_selections: 2
+               },
+               action: :create_draft,
+               actor: actor
+             )
+
+    assert Exception.message(positive_error) =~ "must be greater than or equal to 1"
+
+    assert {:error, maximum_error} =
+             Ash.create(
+               Poll,
+               %{
+                 title: "Non-positive maximum",
+                 selection_mode: :multiple,
+                 minimum_selections: 1,
+                 maximum_selections: 0
+               },
+               action: :create_draft,
+               actor: actor
+             )
+
+    assert Exception.message(maximum_error) =~ "must be greater than or equal to 1"
+  end
+
+  test "selection limits cannot exceed active options when opening", %{actor: actor} do
+    poll =
+      Ash.create!(
+        Poll,
+        %{
+          title: "Pick three",
+          selection_mode: :multiple,
+          minimum_selections: 1,
+          maximum_selections: 3
+        },
+        actor: actor
+      )
+
+    create_option!(poll, actor, "Under the Sea", 1)
+    create_option!(poll, actor, "Retro Arcade", 2)
+    create_eligibility!(poll, actor)
+
+    assert {:error, error} = Ash.update(poll, %{}, action: :open, actor: actor)
+    assert Exception.message(error) =~ "maximum_selections"
+    assert Exception.message(error) =~ "cannot exceed the 2 active options"
+
+    exact_three =
+      Ash.update!(
+        poll,
+        %{minimum_selections: 3, maximum_selections: 3},
+        action: :update_draft,
+        actor: actor
+      )
+
+    assert {:error, minimum_error} =
+             Ash.update(exact_three, %{}, action: :open, actor: actor)
+
+    assert Exception.message(minimum_error) =~ "minimum_selections"
+    assert Exception.message(minimum_error) =~ "cannot exceed the 2 active options"
+
+    create_option!(poll, actor, "Wild West", 3)
+    assert Ash.update!(exact_three, %{}, action: :open, actor: actor).status == :open
+  end
+
   test "requires two active options before opening", %{actor: actor} do
     poll = create_poll!(actor, "Team Theme")
     create_option!(poll, actor, "Under the Sea", 1)
@@ -89,7 +219,12 @@ defmodule Polly.Polls.PollTest do
     opened = Ash.update!(poll, %{}, action: :open, actor: actor)
 
     assert {:error, poll_error} =
-             Ash.update(opened, %{title: "Changed"}, action: :update_draft, actor: actor)
+             Ash.update(
+               opened,
+               %{title: "Changed", maximum_selections: 2},
+               action: :update_draft,
+               actor: actor
+             )
 
     assert Exception.message(poll_error) =~ "can only be edited while in draft"
 

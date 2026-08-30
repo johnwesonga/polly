@@ -5,8 +5,10 @@
 In progress. The data-model foundation now includes poll selection-limit
 columns with `1..1` defaults, a ballot-and-option selection identity, and the
 `:multiple` selection mode. The ballot service now accepts an option-ID list
-and enforces the stored range atomically; configurable ranges and the
-multiple-choice voting UI remain disabled until later slices.
+and enforces the stored range atomically. Draft actions now validate and persist
+selection ranges, opening verifies those limits against active options, and
+duplication preserves the configuration. The administrator and voting UIs
+remain single-choice until later slices.
 
 ## Summary
 

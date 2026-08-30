@@ -108,7 +108,9 @@ defmodule Polly.Polls.Duplicator do
     attributes = %{
       title: copy_title(source.title),
       description: source.description,
-      selection_mode: source.selection_mode
+      selection_mode: source.selection_mode,
+      minimum_selections: source.minimum_selections,
+      maximum_selections: source.maximum_selections
     }
 
     create_with_unique_slug(attributes, actor, 1)

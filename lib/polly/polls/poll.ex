@@ -30,15 +30,32 @@ defmodule Polly.Polls.Poll do
 
     create :create_draft do
       primary? true
-      accept [:title, :description, :selection_mode]
+
+      accept [
+        :title,
+        :description,
+        :selection_mode,
+        :minimum_selections,
+        :maximum_selections
+      ]
+
+      validate Polly.Polls.Validations.SelectionRulesAreValid
       change Polly.Polls.Changes.SetSlugFromTitle
       change {Polly.Audit.Changes.AppendPollEvent, action: "poll.created"}
     end
 
     update :update_draft do
-      accept [:title, :description]
+      accept [
+        :title,
+        :description,
+        :selection_mode,
+        :minimum_selections,
+        :maximum_selections
+      ]
+
       require_atomic? false
       validate attribute_equals(:status, :draft), message: "can only be edited while in draft"
+      validate Polly.Polls.Validations.SelectionRulesAreValid
       change Polly.Polls.Changes.SetSlugFromTitle
       change {Polly.Audit.Changes.AppendPollEvent, action: "poll.updated"}
     end
@@ -47,7 +64,9 @@ defmodule Polly.Polls.Poll do
       accept []
       require_atomic? false
       validate attribute_equals(:status, :draft), message: "must be a draft to open"
+      validate Polly.Polls.Validations.SelectionRulesAreValid
       validate Polly.Polls.Validations.HasMinimumOptions
+      validate Polly.Polls.Validations.SelectionLimitsFitOptions
       validate Polly.Polls.Validations.HasEligibleMembers
       change set_attribute(:status, :open)
       change set_attribute(:opened_at, &DateTime.utc_now/0)

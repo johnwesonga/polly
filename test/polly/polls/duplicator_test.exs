@@ -36,6 +36,16 @@ defmodule Polly.Polls.DuplicatorTest do
 
   test "duplicates only poll details into an independent draft", %{actor: actor} do
     fixture = configured_poll!(actor, "Annual Theme")
+
+    configured_poll =
+      Ash.update!(
+        fixture.poll,
+        %{selection_mode: :multiple, minimum_selections: 1, maximum_selections: 2},
+        action: :update_draft,
+        actor: actor
+      )
+
+    fixture = %{fixture | poll: configured_poll}
     opened = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
     {:ok, _ballot} = Ballots.submit(opened.id, fixture.grant.token, [fixture.option.id])
     source = Ash.update!(opened, %{}, action: :close, actor: actor)
@@ -52,6 +62,8 @@ defmodule Polly.Polls.DuplicatorTest do
     assert duplicate.title == "Copy of Annual Theme"
     assert duplicate.description == source.description
     assert duplicate.selection_mode == source.selection_mode
+    assert duplicate.minimum_selections == source.minimum_selections
+    assert duplicate.maximum_selections == source.maximum_selections
     assert duplicate.slug == "copy-of-annual-theme"
     assert duplicate.status == :draft
     refute duplicate.opened_at

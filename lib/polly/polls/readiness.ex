@@ -24,10 +24,14 @@ defmodule Polly.Polls.Readiness do
 
   @doc "Returns whether a poll has enough active options to open."
   def has_minimum_options?(poll_id) do
+    active_option_count(poll_id) >= @minimum_options
+  end
+
+  @doc "Returns the number of active options currently configured for a poll."
+  def active_option_count(poll_id) do
     Option
     |> Ash.Query.filter(poll_id == ^poll_id and active == true)
     |> Ash.count!(authorize?: false)
-    |> Kernel.>=(@minimum_options)
   end
 
   @doc "Returns whether a poll has at least one eligible member."
