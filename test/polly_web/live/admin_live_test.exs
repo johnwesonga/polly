@@ -85,6 +85,7 @@ defmodule PollyWeb.AdminLiveTest do
            )
 
     assert has_element?(view, "#dashboard-attention-missing_options", "1 draft needs options")
+    assert has_element?(view, "#dashboard-attention-items[phx-update='stream']")
     assert has_element?(view, "#dashboard-attention-missing_electorate", "1 draft needs members")
 
     assert has_element?(
@@ -104,6 +105,8 @@ defmodule PollyWeb.AdminLiveTest do
              "#dashboard-active-poll-#{open.id}[href='/admin/polls/#{open.id}/access']",
              "0 of 0 votes"
            )
+
+    assert has_element?(view, "#dashboard-active-poll-list[phx-update='stream']")
 
     assert has_element?(view, "#dashboard-active-poll-#{open.id}", "0.0% turnout")
     assert has_element?(view, "#dashboard-active-poll-#{open.id}", "No deliveries")

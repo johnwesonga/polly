@@ -12,12 +12,18 @@ defmodule PollyWeb.AdminLive do
      socket
      |> assign(:page_title, "Administration")
      |> assign(:poll_counts, dashboard.poll_counts)
-     |> assign(:attention_items, dashboard.attention_items)
-     |> assign(:active_polls, dashboard.active_polls)
+     |> assign(:attention_visible?, dashboard.attention_items != nil)
+     |> assign(:attention_empty?, dashboard.attention_items == [])
+     |> assign(:active_polls_visible?, dashboard.active_polls != nil)
+     |> assign(:active_polls_empty?, dashboard.active_polls == [])
      |> assign(:recent_activity_visible?, dashboard.recent_events != nil)
      |> assign(:recent_activity_empty?, dashboard.recent_events == [])
      |> assign(:account_health, dashboard.account_health)
      |> assign(:quick_actions, quick_actions(actor))
+     |> stream_configure(:attention_items, dom_id: &"dashboard-attention-#{&1.kind}")
+     |> stream(:attention_items, dashboard.attention_items || [])
+     |> stream_configure(:active_polls, dom_id: &"dashboard-active-poll-#{&1.id}")
+     |> stream(:active_polls, dashboard.active_polls || [])
      |> stream(:recent_events, dashboard.recent_events || [])}
   end
 
@@ -60,30 +66,36 @@ defmodule PollyWeb.AdminLive do
           </nav>
         </header>
 
-        <section :if={@attention_items != nil} id="dashboard-attention" class="dashboard-section">
+        <section :if={@attention_visible?} id="dashboard-attention" class="dashboard-section">
           <h2 class="dashboard-section-heading">Action required</h2>
           <div
-            :if={@attention_items == []}
-            id="dashboard-attention-empty"
-            class="card dashboard-attention-empty"
+            id="dashboard-attention-items"
+            class="dashboard-attention-grid"
+            phx-update="stream"
           >
-            <span class="dashboard-attention-ok"><.icon name="hero-check-circle" /></span>
-            <div>
-              <strong>Nothing needs attention</strong>
-              <p>Poll configuration and results are up to date.</p>
+            <div
+              :if={@attention_empty?}
+              id="dashboard-attention-empty"
+              class="card dashboard-attention-empty"
+            >
+              <span class="dashboard-attention-ok"><.icon name="hero-check-circle" /></span>
+              <div>
+                <strong>Nothing needs attention</strong>
+                <p>Poll configuration and results are up to date.</p>
+              </div>
             </div>
-          </div>
-          <div :if={@attention_items != []} class="dashboard-attention-grid">
             <article
-              :for={item <- @attention_items}
-              id={"dashboard-attention-#{item.kind}"}
+              :for={{id, item} <- @streams.attention_items}
+              id={id}
               class={[
                 "card",
                 "dashboard-attention-card",
                 item.kind == :failed_deliveries && "critical"
               ]}
             >
-              <span class="dashboard-attention-icon"><.icon name="hero-exclamation-triangle" /></span>
+              <span class="dashboard-attention-icon">
+                <.icon name="hero-exclamation-triangle" />
+              </span>
               <div>
                 <h3>{attention_title(item)}</h3>
                 <p>{attention_description(item.kind)}</p>
@@ -146,14 +158,14 @@ defmodule PollyWeb.AdminLive do
         </section>
 
         <section
-          :if={@active_polls != nil}
+          :if={@active_polls_visible?}
           id="dashboard-active-polls"
           class="dashboard-section card dashboard-panel"
         >
           <div class="dashboard-panel-heading">
             <h2 class="dashboard-section-heading">Active polls</h2>
             <.link
-              :if={@active_polls != []}
+              :if={!@active_polls_empty?}
               navigate={~p"/admin/polls?status=open"}
               class="dashboard-card-link"
             >
@@ -161,16 +173,21 @@ defmodule PollyWeb.AdminLive do
             </.link>
           </div>
           <div
-            :if={@active_polls == []}
+            :if={@active_polls_empty?}
             id="dashboard-active-polls-empty"
             class="dashboard-panel-empty"
           >
             No polls are currently open.
           </div>
-          <div :if={@active_polls != []} class="dashboard-active-poll-list">
+          <div
+            :if={!@active_polls_empty?}
+            id="dashboard-active-poll-list"
+            class="dashboard-active-poll-list"
+            phx-update="stream"
+          >
             <.link
-              :for={poll <- @active_polls}
-              id={"dashboard-active-poll-#{poll.id}"}
+              :for={{id, poll} <- @streams.active_polls}
+              id={id}
               navigate={poll.destination}
               class="dashboard-active-poll-row"
             >

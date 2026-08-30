@@ -164,6 +164,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Polls.Electorate, :issue} => {:permission, :manage_access_grants},
       {Polly.Polls.Electorate, :revoke} => {:permission, :manage_access_grants},
       {Polly.Polls.Results, :for_poll} => {:permission, :view_results},
+      {Polly.Polls.Readiness, :attention_counts} => {:permission, :view_results},
       {Polly.Polls.ResultExport, :generate} => {:permission, :export_results},
       {Polly.Polls.Ballots, :submit} => {:trusted, "public voting credential flow"},
       {Polly.Audit, :append} => {:trusted, "authorized domain action audit hook"}
@@ -209,17 +210,13 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         count: 5,
         reason: "aggregate result builder called from protected boundaries"
       },
+      "lib/polly/polls/readiness.ex" => %{
+        count: 2,
+        reason: "shared invariant queries used by authorized poll actions"
+      },
       "lib/polly/polls/slug.ex" => %{
         count: 1,
         reason: "internal uniqueness check used by poll changes"
-      },
-      "lib/polly/polls/validations/has_eligible_members.ex" => %{
-        count: 1,
-        reason: "invariant query within an authorized poll action"
-      },
-      "lib/polly/polls/validations/has_minimum_options.ex" => %{
-        count: 1,
-        reason: "invariant query within an authorized poll action"
       },
       "lib/polly/polls/validations/member_is_eligible.ex" => %{
         count: 1,

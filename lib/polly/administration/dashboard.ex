@@ -125,7 +125,7 @@ defmodule Polly.Administration.Dashboard do
   end
 
   defp attention_items(actor) do
-    counts = attention_counts()
+    {:ok, counts} = Polly.Polls.Readiness.attention_counts(actor)
 
     manager_items =
       if Authorization.allowed?(actor, :manage_polls) do
@@ -144,42 +144,8 @@ defmodule Polly.Administration.Dashboard do
     |> Enum.reject(&is_nil/1)
   end
 
-  defp attention_counts do
-    %{rows: [[missing_options, missing_electorate, unsent, failed, unpublished]]} =
-      Polly.Repo.query!("""
-      SELECT
-        (SELECT COUNT(*) FROM polls p
-         WHERE p.status = 'draft'
-           AND (SELECT COUNT(*) FROM poll_options o WHERE o.poll_id = p.id AND o.active = 1) < 2),
-        (SELECT COUNT(*) FROM polls p
-         WHERE p.status = 'draft'
-           AND NOT EXISTS (SELECT 1 FROM poll_eligibilities e WHERE e.poll_id = p.id)),
-        (SELECT COUNT(*) FROM polls p
-         WHERE p.status = 'open'
-           AND NOT EXISTS (
-             SELECT 1 FROM poll_invitation_deliveries d
-             WHERE d.poll_id = p.id AND d.status = 'accepted'
-           )),
-        (SELECT COUNT(*) FROM polls p
-         WHERE p.status = 'open'
-           AND EXISTS (
-             SELECT 1 FROM poll_invitation_deliveries d
-             WHERE d.poll_id = p.id AND d.status = 'failed'
-           )),
-        (SELECT COUNT(*) FROM polls p
-         WHERE p.status = 'closed' AND p.results_published_at IS NULL)
-      """)
-
-    %{
-      missing_options: missing_options,
-      missing_electorate: missing_electorate,
-      unsent_invitations: unsent,
-      failed_deliveries: failed,
-      unpublished_results: unpublished
-    }
-  end
-
   defp item(_kind, 0, _destination), do: nil
+  defp item(_kind, nil, _destination), do: nil
   defp item(kind, count, destination), do: %{kind: kind, count: count, destination: destination}
 
   defp active_polls(actor) do
@@ -218,7 +184,7 @@ defmodule Polly.Administration.Dashboard do
         title: title,
         ballot_count: ballots,
         eligible_count: eligible,
-        turnout_percentage: percentage(ballots, eligible),
+        turnout_percentage: Polly.Polls.Results.turnout_percentage(ballots, eligible),
         accepted_deliveries: accepted,
         pending_deliveries: pending,
         failed_deliveries: failed,
@@ -226,7 +192,4 @@ defmodule Polly.Administration.Dashboard do
       }
     end)
   end
-
-  defp percentage(_part, 0), do: 0.0
-  defp percentage(part, whole), do: Float.round(part / whole * 100, 1)
 end

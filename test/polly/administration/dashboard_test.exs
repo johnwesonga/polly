@@ -52,9 +52,78 @@ defmodule Polly.Administration.DashboardTest do
 
   test "rejects actors without poll visibility" do
     operator = create_user!(:operator, "dashboard-operator@example.com")
+    disabled = create_user!(:administrator, "dashboard-disabled@example.com")
+    Polly.Repo.query!("UPDATE users SET status = 'disabled' WHERE id = ?", [disabled.id])
 
     assert {:error, :forbidden} = Dashboard.load(operator)
+    assert {:error, :forbidden} = Dashboard.load(%{disabled | status: :disabled})
     assert {:error, :forbidden} = Dashboard.load(nil)
+  end
+
+  test "counts every poll lifecycle and publication combination" do
+    owner = create_user!(:owner, "count-owner@example.com")
+    draft = create_poll!(owner, "Count draft")
+    open = create_poll!(owner, "Count open")
+    unpublished = create_poll!(owner, "Count unpublished")
+    published = create_poll!(owner, "Count published")
+
+    set_poll_state!(open.id, "open", nil)
+    set_poll_state!(unpublished.id, "closed", nil)
+    set_poll_state!(published.id, "closed", DateTime.utc_now())
+
+    assert {:ok, %{poll_counts: %{draft: 1, open: 1, closed: 2, unpublished: 1}}} =
+             Dashboard.load(owner)
+
+    assert draft.status == :draft
+  end
+
+  test "tracks unsent and failed invitation conditions from current delivery state" do
+    owner = create_user!(:owner, "delivery-attention-owner@example.com")
+    poll = create_ready_poll!(owner)
+
+    assert {:ok, %{attention_items: items}} = Dashboard.load(owner)
+    assert %{count: 1} = find_item(items, :unsent_invitations)
+    refute find_item(items, :failed_deliveries)
+
+    delivery =
+      Ash.create!(
+        Polly.Polls.InvitationDelivery,
+        %{
+          poll_id: poll.id,
+          member_id: poll.member.id,
+          access_grant_id: poll.grant.id,
+          requested_by_id: owner.id,
+          operation_id: Ash.UUID.generate(),
+          kind: :initial,
+          dedupe_key: "dashboard-delivery-attention",
+          recipient_email: "dashboard-voter@example.com"
+        },
+        action: :queue,
+        actor: owner
+      )
+
+    failed =
+      Ash.update!(
+        delivery,
+        %{attempt_count: 1, last_error_code: "provider_rejected"},
+        action: :fail,
+        authorize?: false
+      )
+
+    assert {:ok, %{attention_items: failed_items}} = Dashboard.load(owner)
+    assert %{count: 1} = find_item(failed_items, :unsent_invitations)
+    assert %{count: 1} = find_item(failed_items, :failed_deliveries)
+
+    Ash.update!(
+      failed,
+      %{attempt_count: 2, provider_message_id: "provider-message"},
+      action: :accept,
+      authorize?: false
+    )
+
+    assert {:ok, %{attention_items: accepted_items}} = Dashboard.load(owner)
+    refute find_item(accepted_items, :unsent_invitations)
+    refute find_item(accepted_items, :failed_deliveries)
   end
 
   test "returns batched turnout and permission-aware destinations for open polls" do
@@ -68,7 +137,7 @@ defmodule Polly.Administration.DashboardTest do
     assert active.id == poll.id
     assert active.ballot_count == 1
     assert active.eligible_count == 1
-    assert active.turnout_percentage == 100.0
+    assert active.turnout_percentage == Polly.Polls.Results.for_poll(poll.id).turnout_percentage
     assert active.destination == "/admin/polls/#{poll.id}/access"
 
     auditor = create_user!(:auditor, "active-auditor@example.com")
@@ -79,20 +148,29 @@ defmodule Polly.Administration.DashboardTest do
   test "limits active polls to the five most recently updated" do
     owner = create_user!(:owner, "active-limit-owner@example.com")
 
-    for number <- 1..6 do
-      poll =
-        Ash.create!(
-          Polly.Polls.Poll,
-          %{title: "Open poll #{number}"},
-          action: :create_draft,
-          actor: owner
-        )
+    polls =
+      for number <- 1..6 do
+        poll =
+          Ash.create!(
+            Polly.Polls.Poll,
+            %{title: "Open poll #{number}"},
+            action: :create_draft,
+            actor: owner
+          )
 
-      Polly.Repo.query!("UPDATE polls SET status = 'open' WHERE id = ?", [poll.id])
-    end
+        Polly.Repo.query!("UPDATE polls SET status = 'open' WHERE id = ?", [poll.id])
+        poll
+      end
+
+    timestamp = DateTime.utc_now()
+
+    Enum.each(polls, fn poll ->
+      Polly.Repo.query!("UPDATE polls SET updated_at = ? WHERE id = ?", [timestamp, poll.id])
+    end)
 
     assert {:ok, %{active_polls: active_polls}} = Dashboard.load(owner)
     assert length(active_polls) == 5
+    assert Enum.map(active_polls, & &1.title) == Enum.map(1..5, &"Open poll #{&1}")
   end
 
   test "returns the five most recent audit events only to permitted actors" do
@@ -166,6 +244,22 @@ defmodule Polly.Administration.DashboardTest do
 
   defp find_item(items, kind), do: Enum.find(items, &(&1.kind == kind))
 
+  defp create_poll!(actor, title) do
+    Ash.create!(
+      Polly.Polls.Poll,
+      %{title: title},
+      action: :create_draft,
+      actor: actor
+    )
+  end
+
+  defp set_poll_state!(id, status, results_published_at) do
+    Polly.Repo.query!(
+      "UPDATE polls SET status = ?, results_published_at = ? WHERE id = ?",
+      [status, results_published_at, id]
+    )
+  end
+
   defp create_ready_poll!(actor) do
     poll =
       Ash.create!(
@@ -197,6 +291,6 @@ defmodule Polly.Administration.DashboardTest do
 
     {_eligibility, grant} = Polly.Polls.Electorate.include_member(poll, member, actor)
     poll = Ash.update!(poll, %{}, action: :open, actor: actor)
-    %{id: poll.id, option: option, grant: grant}
+    %{id: poll.id, option: option, grant: grant, member: member}
   end
 end

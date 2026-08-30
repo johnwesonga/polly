@@ -9,19 +9,12 @@ defmodule Polly.Polls.Validations.HasEligibleMembers do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  alias Polly.Polls.Eligibility
-
   @impl true
   def init(opts), do: {:ok, opts}
 
   @impl true
   def validate(changeset, _opts, _context) do
-    eligible? =
-      Eligibility
-      |> Ash.Query.filter(poll_id == ^changeset.data.id)
-      |> Ash.exists?(authorize?: false)
-
-    if eligible? do
+    if Polly.Polls.Readiness.has_eligible_members?(changeset.data.id) do
       :ok
     else
       {:error,

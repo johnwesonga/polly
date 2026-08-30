@@ -9,21 +9,12 @@ defmodule Polly.Polls.Validations.HasMinimumOptions do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  alias Polly.Polls.Option
-
   @impl true
   def init(opts), do: {:ok, opts}
 
   @impl true
   def validate(changeset, _opts, _context) do
-    poll_id = changeset.data.id
-
-    count =
-      Option
-      |> Ash.Query.filter(poll_id == ^poll_id and active == true)
-      |> Ash.count!(authorize?: false)
-
-    if count >= 2 do
+    if Polly.Polls.Readiness.has_minimum_options?(changeset.data.id) do
       :ok
     else
       {:error,

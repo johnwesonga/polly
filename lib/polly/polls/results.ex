@@ -31,6 +31,13 @@ defmodule Polly.Polls.Results do
     |> build()
   end
 
+  @doc "Calculates turnout using the same rounding semantics as poll results."
+  @spec turnout_percentage(non_neg_integer(), non_neg_integer()) :: float()
+  def turnout_percentage(_ballot_count, 0), do: 0.0
+
+  def turnout_percentage(ballot_count, eligible_count),
+    do: percentage(ballot_count, eligible_count)
+
   defp build(poll) do
     options = list_options(poll.id)
     vote_counts = vote_counts(poll.id)
@@ -58,7 +65,7 @@ defmodule Polly.Polls.Results do
       options: option_results,
       ballot_count: ballot_count,
       eligible_count: eligible_count,
-      turnout_percentage: percentage(ballot_count, eligible_count),
+      turnout_percentage: turnout_percentage(ballot_count, eligible_count),
       winner_labels:
         option_results
         |> Enum.filter(& &1.winner?)
