@@ -42,6 +42,51 @@ defmodule PollyWeb.PollResultsLiveTest do
     assert has_element?(view, "#turnout-percentage", "100.0%")
     assert has_element?(view, "#result-#{fixture.option.id}")
     assert has_element?(view, "#winner-summary", "Leading: Under the Sea")
+
+    assert has_element?(
+             view,
+             "#results-percentage-explanation",
+             "share of submitted ballots"
+           )
+
+    refute has_element?(view, "#total-selections")
+  end
+
+  test "presents multiple-choice results as ballot support rates", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    fixture = draft_multiple_choice_poll!(actor, "Committee priorities")
+    poll = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
+
+    assert {:ok, _ballot} =
+             Ballots.submit(
+               poll.id,
+               fixture.grant.token,
+               [fixture.first_option.id, fixture.second_option.id]
+             )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/results")
+
+    assert has_element?(view, "#ballot-count", "1")
+    assert has_element?(view, "#total-selections", "2")
+    assert has_element?(view, "#winner-summary", "Most selected (tie)")
+
+    assert has_element?(
+             view,
+             "#results-percentage-explanation",
+             "may total more than 100%"
+           )
+
+    assert has_element?(
+             view,
+             "#result-#{fixture.first_option.id} .result-num",
+             "1 selection · selected by 100.0%"
+           )
+
+    assert has_element?(
+             view,
+             "#result-#{fixture.second_option.id} .result-num",
+             "1 selection · selected by 100.0%"
+           )
   end
 
   test "links to duplication configuration from the results page", %{conn: conn} do
@@ -106,5 +151,37 @@ defmodule PollyWeb.PollResultsLiveTest do
     {_eligibility, grant} = Electorate.include_member(poll, member, actor)
 
     %{poll: poll, option: option, grant: grant}
+  end
+
+  defp draft_multiple_choice_poll!(actor, title) do
+    poll =
+      Ash.create!(
+        Poll,
+        %{
+          title: title,
+          selection_mode: :multiple,
+          minimum_selections: 2,
+          maximum_selections: 2
+        },
+        actor: actor
+      )
+
+    first_option =
+      Ash.create!(Option, %{poll_id: poll.id, label: "First priority", position: 1}, actor: actor)
+
+    second_option =
+      Ash.create!(Option, %{poll_id: poll.id, label: "Second priority", position: 2},
+        actor: actor
+      )
+
+    member = Ash.create!(Member, %{name: "Multiple-choice results voter"}, actor: actor)
+    {_eligibility, grant} = Electorate.include_member(poll, member, actor)
+
+    %{
+      poll: poll,
+      first_option: first_option,
+      second_option: second_option,
+      grant: grant
+    }
   end
 end

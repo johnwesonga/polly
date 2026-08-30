@@ -214,6 +214,10 @@ defmodule PollyWeb.PollLive.Results do
             <span>Turnout</span>
             <strong id="turnout-percentage">{format_percentage(@result.turnout_percentage)}</strong>
           </div>
+          <div :if={@result.selection_mode == :multiple} class="card card-pad metric-card">
+            <span>Total selections</span>
+            <strong id="total-selections">{@result.total_selections}</strong>
+          </div>
         </div>
 
         <div class="card card-pad">
@@ -223,6 +227,9 @@ defmodule PollyWeb.PollLive.Results do
               {@winner_summary}
             </span>
           </div>
+          <p id="results-percentage-explanation" class="poll-meta">
+            {percentage_explanation(@result.selection_mode)}
+          </p>
           <div id="poll-results" phx-update="stream">
             <div id="poll-results-empty" class="empty-state hidden only:block">
               <h2>No active options</h2>
@@ -239,7 +246,7 @@ defmodule PollyWeb.PollLive.Results do
                   {row.option.label}
                 </span>
                 <span class="result-num">
-                  {row.votes} · {format_percentage(row.percentage)}
+                  {result_value(row, @result.selection_mode)}
                 </span>
               </div>
               <div class="result-track">
@@ -313,8 +320,29 @@ defmodule PollyWeb.PollLive.Results do
   end
 
   defp winner_summary(%{ballot_count: 0}), do: nil
+
+  defp winner_summary(%{selection_mode: :multiple, winner_labels: [option]}),
+    do: "Most selected: #{option}"
+
+  defp winner_summary(%{selection_mode: :multiple, winner_labels: options}),
+    do: "Most selected (tie): #{Enum.join(options, " · ")}"
+
   defp winner_summary(%{winner_labels: [winner]}), do: "Leading: #{winner}"
   defp winner_summary(%{winner_labels: winners}), do: "Tie: #{Enum.join(winners, " · ")}"
+
+  defp percentage_explanation(:multiple),
+    do:
+      "Percentages show the share of submitted ballots that selected each option and may total more than 100%."
+
+  defp percentage_explanation(:single),
+    do: "Percentages show each option's share of submitted ballots."
+
+  defp result_value(row, :multiple) do
+    selection_label = if row.votes == 1, do: "selection", else: "selections"
+    "#{row.votes} #{selection_label} · selected by #{format_percentage(row.percentage)}"
+  end
+
+  defp result_value(row, :single), do: "#{row.votes} · #{format_percentage(row.percentage)}"
 
   defp lifecycle_copy(%Poll{status: :draft}),
     do: "Opening freezes options and electorate and makes private voting links live."
