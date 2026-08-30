@@ -10,7 +10,9 @@ selection ranges, opening verifies those limits against active options, and
 duplication preserves the configuration. The administrator and voting UIs
 remain separate delivery slices; the draft form now exposes mode and range
 configuration, and poll listings use shared plain-language rule summaries. The
-member voting UI remains single-choice.
+member voting UI now supports mode-aware controls, live counts, review, and
+atomic multiple-selection submission. Results presentation remains a later
+slice.
 
 ## Summary
 

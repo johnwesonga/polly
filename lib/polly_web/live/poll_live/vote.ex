@@ -3,7 +3,7 @@ defmodule PollyWeb.PollLive.Vote do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Ballot, Ballots, Events}
+  alias Polly.Polls.{AccessGrant, Ballot, Ballots, Events, SelectionRules}
   alias Polly.Polls.Results, as: PollResults
 
   @impl true
@@ -16,8 +16,9 @@ defmodule PollyWeb.PollLive.Vote do
      |> assign(:page_title, "Vote")
      |> assign(:poll_id, poll_id)
      |> assign(:token, token)
-     |> assign(:selected_option_id, nil)
-     |> assign(:selected_option, nil)
+     |> assign(:selected_option_ids, [])
+     |> assign(:selected_options, [])
+     |> assign(:selection_input_valid?, true)
      |> assign(:ballot, nil)
      |> assign(:submission_error, nil)
      |> load_access()}
@@ -55,41 +56,58 @@ defmodule PollyWeb.PollLive.Vote do
               </div>
               <h1 class="m-title">{@poll.title}</h1>
               <p class="m-desc">
-                {@poll.description || "Choose one option below."}
+                {@poll.description || "Make your selection below."}
                 <br />One vote per member—you won't be
                 able to change it after you submit.
+              </p>
+              <p id="selection-instructions" class="vote-selection-instructions">
+                {SelectionRules.summary(@poll)}.
               </p>
 
               <.form for={@form} id="ballot-form" phx-change="select-option" phx-submit="review">
                 <fieldset class="vote-options">
-                  <legend class="sr-only">Choose one option</legend>
+                  <legend class="sr-only">{SelectionRules.summary(@poll)}</legend>
                   <label
                     :for={option <- @options}
                     id={"option-card-#{option.id}"}
                     class={[
                       "touch-option",
-                      @selected_option_id == option.id && "picked"
+                      option.id in @selected_option_ids && "picked",
+                      option_disabled?(@poll, @selected_option_ids, option.id) && "disabled"
                     ]}
                   >
                     <input
                       id={"ballot-option-#{option.id}"}
-                      type="radio"
-                      name={@form[:option_id].name}
+                      type={if(@poll.selection_mode == :single, do: "radio", else: "checkbox")}
+                      name={option_input_name(@form, @poll)}
                       value={option.id}
-                      checked={@selected_option_id == option.id}
+                      checked={option.id in @selected_option_ids}
+                      disabled={option_disabled?(@poll, @selected_option_ids, option.id)}
                     />
                     <span class="box" aria-hidden="true">
-                      {if(@selected_option_id == option.id, do: "✓", else: "")}
+                      {if(option.id in @selected_option_ids, do: "✓", else: "")}
                     </span>
                     <span class="opt-text">{option.label}</span>
                   </label>
                 </fieldset>
 
+                <p
+                  :if={@poll.selection_mode == :multiple}
+                  id="selection-count"
+                  class="vote-selection-count"
+                  aria-live="polite"
+                >
+                  {selection_count_message(@poll, @selected_option_ids)}
+                </p>
+
                 <button
                   id="review-ballot-button"
                   type="submit"
                   class="m-submit"
-                  disabled={is_nil(@selected_option_id)}
+                  disabled={
+                    !@selection_input_valid? ||
+                      !valid_selection_count?(@poll, @selected_option_ids)
+                  }
                 >
                   Review my vote
                 </button>
@@ -106,14 +124,29 @@ defmodule PollyWeb.PollLive.Vote do
                 Once you confirm, this ballot is final. There's no edit or resubmit.
               </p>
               <div class="review-card">
-                <div class="review-label">Your selection</div>
-                <div id="reviewed-option" class="review-value">{@selected_option.label}</div>
+                <div class="review-label">
+                  {if(length(@selected_options) == 1, do: "Your selection", else: "Your selections")}
+                </div>
+                <div id="reviewed-options">
+                  <div
+                    :for={option <- @selected_options}
+                    id={"reviewed-option-#{option.id}"}
+                    class="review-value"
+                  >
+                    {option.label}
+                  </div>
+                </div>
               </div>
               <p :if={@submission_error} id="submission-error" class="vote-error">
                 We couldn't record your ballot. Please try again.
               </p>
               <.form for={@form} id="confirm-ballot-form" phx-submit="submit-ballot">
-                <input type="hidden" name={@form[:option_id].name} value={@selected_option_id} />
+                <input
+                  :for={option_id <- @selected_option_ids}
+                  type="hidden"
+                  name={option_input_name(@form, @poll)}
+                  value={option_id}
+                />
                 <button id="confirm-ballot-button" type="submit" class="m-submit">
                   Confirm and submit
                 </button>
@@ -139,8 +172,8 @@ defmodule PollyWeb.PollLive.Vote do
                 <div><span>Poll</span><span>{@poll.title}</span></div>
                 <div><span>Voted as</span><span>{@member.name}</span></div>
                 <div><span>Submitted</span><span>{format_datetime(@ballot.submitted_at)}</span></div>
-                <div :if={@selected_option}>
-                  <span>Selection</span><span>{@selected_option.label}</span>
+                <div :for={option <- @selected_options} id={"receipt-selection-#{option.id}"}>
+                  <span>Selection</span><span>{option.label}</span>
                 </div>
               </div>
             </div>
@@ -196,17 +229,20 @@ defmodule PollyWeb.PollLive.Vote do
   end
 
   @impl true
-  def handle_event("select-option", %{"ballot" => %{"option_id" => option_id}}, socket) do
-    case option_for_id(socket.assigns.options, option_id) do
-      nil -> {:noreply, socket}
-      option -> {:noreply, assign_selection(socket, option)}
-    end
+  def handle_event("select-option", event_params, socket) do
+    params = Map.get(event_params, "ballot", %{})
+    {:noreply, assign_selections(socket, selected_ids_from_params(params, socket.assigns.poll))}
   end
 
-  def handle_event("review", %{"ballot" => %{"option_id" => option_id}}, socket) do
-    case option_for_id(socket.assigns.options, option_id) do
-      nil -> {:noreply, put_flash(socket, :error, "Choose an option before continuing")}
-      option -> {:noreply, socket |> assign_selection(option) |> assign(:state, :review)}
+  def handle_event("review", event_params, socket) do
+    params = Map.get(event_params, "ballot", %{})
+    socket = assign_selections(socket, selected_ids_from_params(params, socket.assigns.poll))
+
+    if socket.assigns.selection_input_valid? and
+         valid_selection_count?(socket.assigns.poll, socket.assigns.selected_option_ids) do
+      {:noreply, assign(socket, :state, :review)}
+    else
+      {:noreply, put_flash(socket, :error, selection_error_message(socket.assigns.poll))}
     end
   end
 
@@ -214,13 +250,18 @@ defmodule PollyWeb.PollLive.Vote do
     {:noreply, assign(socket, :state, :voting)}
   end
 
-  def handle_event("submit-ballot", %{"ballot" => %{"option_id" => option_id}}, socket) do
-    case option_for_id(socket.assigns.options, option_id) do
-      nil ->
-        {:noreply, socket |> assign(:state, :voting) |> put_flash(:error, "Choose an option")}
+  def handle_event("submit-ballot", event_params, socket) do
+    params = Map.get(event_params, "ballot", %{})
+    socket = assign_selections(socket, selected_ids_from_params(params, socket.assigns.poll))
 
-      option ->
-        submit(socket, option)
+    if socket.assigns.selection_input_valid? and
+         valid_selection_count?(socket.assigns.poll, socket.assigns.selected_option_ids) do
+      submit(socket)
+    else
+      {:noreply,
+       socket
+       |> assign(:state, :voting)
+       |> put_flash(:error, selection_error_message(socket.assigns.poll))}
     end
   end
 
@@ -237,12 +278,15 @@ defmodule PollyWeb.PollLive.Vote do
 
   def handle_info({:poll_results_changed, _poll_id}, socket), do: {:noreply, socket}
 
-  defp submit(socket, option) do
-    case Ballots.submit(socket.assigns.poll.id, socket.assigns.token, [option.id]) do
+  defp submit(socket) do
+    case Ballots.submit(
+           socket.assigns.poll.id,
+           socket.assigns.token,
+           socket.assigns.selected_option_ids
+         ) do
       {:ok, ballot} ->
         {:noreply,
          socket
-         |> assign_selection(option)
          |> assign(:ballot, ballot)
          |> assign(:state, :submitted)}
 
@@ -298,12 +342,17 @@ defmodule PollyWeb.PollLive.Vote do
 
   defp assign_existing_ballot(socket, ballot) do
     ballot = Ash.load!(ballot, [selections: [:option]], authorize?: false)
-    selection = List.first(ballot.selections)
+
+    selected_options =
+      ballot.selections
+      |> Enum.map(& &1.option)
+      |> Enum.sort_by(& &1.position)
 
     socket
     |> assign(:ballot, ballot)
-    |> assign(:selected_option, selection && selection.option)
-    |> assign(:selected_option_id, selection && selection.option_id)
+    |> assign(:selected_options, selected_options)
+    |> assign(:selected_option_ids, Enum.map(selected_options, & &1.id))
+    |> assign(:selection_input_valid?, true)
     |> assign(:state, :already_submitted)
   end
 
@@ -323,10 +372,18 @@ defmodule PollyWeb.PollLive.Vote do
     |> Ash.read_one!(authorize?: false)
   end
 
-  defp assign_selection(socket, option) do
+  defp assign_selections(socket, option_ids) do
+    selected_options = Enum.filter(socket.assigns.options, &(&1.id in option_ids))
+    selected_ids = Enum.map(selected_options, & &1.id)
+
     socket
-    |> assign(:selected_option_id, option.id)
-    |> assign(:selected_option, option)
+    |> assign(:selected_option_ids, selected_ids)
+    |> assign(:selected_options, selected_options)
+    |> assign(
+      :selection_input_valid?,
+      length(option_ids) == length(selected_ids) and
+        MapSet.new(option_ids) == MapSet.new(selected_ids)
+    )
     |> assign_form()
   end
 
@@ -334,11 +391,61 @@ defmodule PollyWeb.PollLive.Vote do
     assign(
       socket,
       :form,
-      to_form(%{"option_id" => socket.assigns.selected_option_id}, as: :ballot)
+      to_form(
+        %{
+          "option_id" => List.first(socket.assigns.selected_option_ids),
+          "option_ids" => socket.assigns.selected_option_ids
+        },
+        as: :ballot
+      )
     )
   end
 
-  defp option_for_id(options, option_id), do: Enum.find(options, &(&1.id == option_id))
+  defp selected_ids_from_params(params, %{selection_mode: :single}) do
+    case Map.get(params, "option_id") do
+      option_id when is_binary(option_id) -> [option_id]
+      _other -> []
+    end
+  end
+
+  defp selected_ids_from_params(params, %{selection_mode: :multiple}) do
+    case Map.get(params, "option_ids", []) do
+      option_ids when is_list(option_ids) -> option_ids
+      option_id when is_binary(option_id) -> [option_id]
+      _other -> []
+    end
+  end
+
+  defp option_input_name(form, %{selection_mode: :single}), do: form[:option_id].name
+  defp option_input_name(_form, %{selection_mode: :multiple}), do: "ballot[option_ids][]"
+
+  defp valid_selection_count?(poll, option_ids) do
+    count = length(option_ids)
+    count >= poll.minimum_selections and count <= poll.maximum_selections
+  end
+
+  defp option_disabled?(%{selection_mode: :single}, _selected_ids, _option_id), do: false
+
+  defp option_disabled?(poll, selected_ids, option_id) do
+    length(selected_ids) >= poll.maximum_selections and option_id not in selected_ids
+  end
+
+  defp selection_count_message(poll, option_ids) do
+    count = length(option_ids)
+
+    if poll.minimum_selections == poll.maximum_selections do
+      "#{count} of #{poll.maximum_selections} selected"
+    else
+      "#{count} selected · choose #{poll.minimum_selections}–#{poll.maximum_selections}"
+    end
+  end
+
+  defp selection_error_message(%{minimum_selections: minimum, maximum_selections: maximum})
+       when minimum == maximum,
+       do: "Choose exactly #{minimum} options before continuing"
+
+  defp selection_error_message(%{minimum_selections: minimum, maximum_selections: maximum}),
+    do: "Choose between #{minimum} and #{maximum} options before continuing"
 
   defp format_datetime(datetime) do
     Calendar.strftime(datetime, "%b %-d, %Y %-I:%M %p UTC")

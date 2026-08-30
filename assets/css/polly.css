@@ -1766,7 +1766,8 @@
      background: #fff;
  }
 
- .touch-option input[type="radio"] {
+ .touch-option input[type="radio"],
+ .touch-option input[type="checkbox"] {
      position: absolute;
      width: 1px;
      height: 1px;
@@ -1801,6 +1802,11 @@
      border-color: var(--coral);
  }
 
+ .touch-option.disabled {
+     cursor: not-allowed;
+     opacity: .55;
+ }
+
  .touch-option:has(input:focus-visible) {
      outline: 2px solid var(--ink);
      outline-offset: 3px;
@@ -1809,6 +1815,26 @@
  .touch-option .opt-text {
      font-weight: 600;
      font-size: 14.5px;
+ }
+
+ .vote-selection-instructions {
+     margin: -8px 0 14px;
+     color: var(--ink);
+     font-size: 12px;
+     font-weight: 700;
+ }
+
+ .vote-selection-count {
+     margin: 4px 0 13px;
+     color: var(--slate);
+     font-family: 'IBM Plex Mono', monospace;
+     font-size: 10.5px;
+ }
+
+ #reviewed-options .review-value + .review-value {
+     margin-top: 7px;
+     padding-top: 7px;
+     border-top: 1px solid var(--line);
  }
 
  .public-vote-page {
