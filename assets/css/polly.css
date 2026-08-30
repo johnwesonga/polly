@@ -911,12 +911,19 @@
 
  .poll-selection-rules legend {
      padding: 0 7px;
-     font-family: 'Bebas Neue', sans-serif;
-     font-size: 19px;
-     letter-spacing: .035em;
+     font-family: 'Inter', sans-serif;
+     font-size: 14px;
+     font-weight: 700;
+     letter-spacing: .01em;
  }
 
- .poll-selection-rules > .field-help { margin: -2px 0 14px; }
+ .poll-selection-rules > .field-help {
+     margin: -2px 0 14px;
+     color: var(--slate);
+     font-family: 'Inter', sans-serif;
+     font-size: 12px;
+     line-height: 1.5;
+ }
 
  .poll-selection-limit-grid {
      display: grid;

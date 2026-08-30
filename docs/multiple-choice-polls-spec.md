@@ -9,7 +9,8 @@ and enforces the stored range atomically. Draft actions now validate and persist
 selection ranges, opening verifies those limits against active options, and
 duplication preserves the configuration. The administrator and voting UIs
 remain separate delivery slices; the draft form now exposes mode and range
-configuration, while the member voting UI remains single-choice.
+configuration, and poll listings use shared plain-language rule summaries. The
+member voting UI remains single-choice.
 
 ## Summary
 

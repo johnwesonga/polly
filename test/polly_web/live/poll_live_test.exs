@@ -203,6 +203,29 @@ defmodule PollyWeb.PollLiveTest do
     refute has_element?(view, "#polls-#{closed.id}")
   end
 
+  test "summarizes each poll's configured selection rules", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    single = Ash.create!(Poll, %{title: "Single summary"}, actor: actor)
+
+    multiple =
+      Ash.create!(
+        Poll,
+        %{
+          title: "Multiple summary",
+          selection_mode: :multiple,
+          minimum_selections: 2,
+          maximum_selections: 4
+        },
+        actor: actor
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls")
+
+    assert has_element?(view, "#poll-selection-rules-#{single.id}", "Choose one")
+    assert has_element?(view, "#poll-selection-rules-#{multiple.id}", "Choose 2–4")
+  end
+
   test "regenerates a unique slug when a draft title changes", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)

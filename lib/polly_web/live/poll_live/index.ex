@@ -3,7 +3,7 @@ defmodule PollyWeb.PollLive.Index do
 
   require Ash.Query
 
-  alias Polly.Polls.Poll
+  alias Polly.Polls.{Poll, SelectionRules}
 
   @page_size 25
 
@@ -92,7 +92,9 @@ defmodule PollyWeb.PollLive.Index do
               class="poll-card-link"
             >
               <div class="poll-name">{poll.title}</div>
-              <div class="poll-meta">Single choice · {poll.slug}</div>
+              <div id={"poll-selection-rules-#{poll.id}"} class="poll-meta">
+                {SelectionRules.summary(poll)} · {poll.slug}
+              </div>
             </.link>
             <span id={"poll-status-#{poll.id}"} class={status_class(poll)}>
               <span :if={poll.status == :open} class="dotlive"></span>
