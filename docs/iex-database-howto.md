@@ -15,7 +15,7 @@ Run these aliases once at the beginning of the session:
 ```elixir
 alias Polly.Accounts.User
 alias Polly.Members.Member
-alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, Option, Poll}
+alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, Option, Poll, Selection}
 
 require Ash.Query
 ```
@@ -47,6 +47,9 @@ erDiagram
         string title
         string slug UK
         string status
+        string selection_mode
+        integer minimum_selections
+        integer maximum_selections
     }
 
     MEMBER {
@@ -122,6 +125,37 @@ poll =
   )
 ```
 
+Polls default to single choice with exactly one required selection:
+
+```elixir
+%{
+  selection_mode: poll.selection_mode,
+  minimum_selections: poll.minimum_selections,
+  maximum_selections: poll.maximum_selections
+}
+# => %{selection_mode: :single, minimum_selections: 1, maximum_selections: 1}
+```
+
+To create a multiple-choice draft, include its selection limits:
+
+```elixir
+multiple_choice_poll =
+  Ash.create!(
+    Poll,
+    %{
+      title: "2027 Community Priorities",
+      description: "Choose between two and three priorities.",
+      selection_mode: :multiple,
+      minimum_selections: 2,
+      maximum_selections: 3
+    },
+    action: :create_draft,
+    actor: actor
+  )
+```
+
+Selection rules must be internally consistent: single-choice polls require `1` and `1`, while multiple-choice limits must be positive and the minimum cannot exceed the maximum. Before a poll opens, its maximum must also fit within the number of active options.
+
 The `:create_draft` action generates a unique slug from the title. Do not supply `:slug` yourself.
 
 Prefer an authorized operation whenever an administrator can be identified. That preserves both policy enforcement and audit attribution.
@@ -180,6 +214,27 @@ poll =
 ```
 
 Use `Ash.read_one!/2` when one result is expected. `Ash.read!/2` returns a list.
+
+### Update a draft's selection rules
+
+Poll details and selection rules can only be changed through `:update_draft` while the poll remains a draft:
+
+```elixir
+poll =
+  poll
+  |> Ash.Changeset.for_update(
+    :update_draft,
+    %{
+      selection_mode: :multiple,
+      minimum_selections: 1,
+      maximum_selections: 2
+    },
+    actor: actor
+  )
+  |> Ash.update!()
+```
+
+Changing the poll title through this action also regenerates its slug while it is a draft. The slug remains stable after the poll opens.
 
 ## 4. Add options to the poll
 
@@ -499,3 +554,104 @@ ballots =
 ```
 
 Ballot data is private. The current identified-ballot model can associate a member with a selection, so do not copy this output into logs, screenshots, tickets, or shared chat. Prefer aggregate result queries unless individual-record debugging is strictly necessary.
+
+## 11. Submit a ballot
+
+Use the ballot service rather than creating `Ballot` and `Selection` records independently. The service validates the access grant, poll state, electorate membership, selection limits, selected options, and duplicate submission protection in one transaction.
+
+The poll must be open before it can accept a ballot:
+
+```elixir
+poll =
+  poll
+  |> Ash.Changeset.for_update(:open, %{}, actor: actor)
+  |> Ash.update!()
+```
+
+Submit one option to a single-choice poll:
+
+```elixir
+{:ok, ballot} =
+  Polly.Polls.Ballots.submit(
+    poll.id,
+    access_grant.token,
+    [first_option.id]
+  )
+```
+
+For a multiple-choice poll, pass every selected option ID in one list:
+
+```elixir
+{:ok, ballot} =
+  Polly.Polls.Ballots.submit(
+    multiple_choice_poll.id,
+    multiple_choice_access_grant.token,
+    [first_choice.id, second_choice.id]
+  )
+```
+
+Each ballot is final. Submitting too few or too many choices, repeating an option ID, selecting an option from another poll, or submitting a second ballot returns an error and rolls back the transaction.
+
+The scalar form remains temporarily supported for single-choice compatibility:
+
+```elixir
+Polly.Polls.Ballots.submit(poll.id, access_grant.token, first_option.id)
+```
+
+New code should prefer the list form because it works for both selection modes. Treat `access_grant.token` as a password: do not print it or retain it in shell history unnecessarily.
+
+Load the selections created for a submitted ballot:
+
+```elixir
+ballot = Ash.load!(ballot, selections: [:option], authorize?: false)
+
+Enum.map(ballot.selections, fn selection ->
+  %{
+    selection_id: selection.id,
+    option_id: selection.option_id,
+    option_label: selection.option.label
+  }
+end)
+```
+
+## 12. Retrieve aggregate results
+
+Use the shared results projection instead of calculating counts independently:
+
+```elixir
+results = Polly.Polls.Results.for_poll(poll.id)
+```
+
+Inspect poll-level totals:
+
+```elixir
+%{
+  selection_mode: results.selection_mode,
+  eligible_members: results.eligible_count,
+  submitted_ballots: results.ballot_count,
+  total_selections: results.total_selections,
+  turnout_percentage: results.turnout_percentage,
+  leading_options: results.winner_labels
+}
+```
+
+Inspect the aggregate result for each option:
+
+```elixir
+Enum.map(results.options, fn result ->
+  %{
+    option_id: result.option.id,
+    label: result.option.label,
+    selections: result.votes,
+    percentage_of_ballots: result.percentage,
+    rank: result.rank,
+    leading?: result.winner?
+  }
+end)
+```
+
+Turnout is always submitted ballots divided by eligible members. An option's percentage is the number of submitted ballots that selected it divided by the total submitted ballots.
+
+For single-choice polls, option percentages behave like vote share and normally total 100%. For multiple-choice polls, one ballot can select several options, so `total_selections` may exceed `ballot_count` and option percentages may total more than 100%.
+
+`winner_labels` currently identifies the highest-count option or tied options. It does not apply tie-breaking, quorum, seat-allocation, or election-certification rules.
