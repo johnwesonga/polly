@@ -20,6 +20,90 @@ alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, Option,
 require Ash.Query
 ```
 
+## Resource relationships
+
+The following diagram shows the poll-related resources used throughout this guide:
+
+```mermaid
+erDiagram
+    POLL ||--o{ OPTION : "defines"
+    POLL ||--o{ ELIGIBILITY : "has electorate"
+    MEMBER ||--o{ ELIGIBILITY : "is included through"
+
+    POLL ||--o{ ACCESS_GRANT : "issues"
+    MEMBER ||--o{ ACCESS_GRANT : "receives"
+
+    POLL ||--o{ INVITATION_DELIVERY : "tracks"
+    MEMBER ||--o{ INVITATION_DELIVERY : "receives"
+    ACCESS_GRANT ||--o{ INVITATION_DELIVERY : "is delivered through"
+
+    POLL ||--o{ BALLOT : "receives"
+    MEMBER ||--o{ BALLOT : "submits"
+    BALLOT ||--o{ SELECTION : "contains"
+    OPTION ||--o{ SELECTION : "is chosen by"
+
+    POLL {
+        uuid id PK
+        string title
+        string slug UK
+        string status
+    }
+
+    MEMBER {
+        uuid id PK
+        string name
+        string email UK
+        boolean active
+    }
+
+    OPTION {
+        uuid id PK
+        uuid poll_id FK
+        string label
+        integer position
+        boolean active
+    }
+
+    ELIGIBILITY {
+        uuid id PK
+        uuid poll_id FK
+        uuid member_id FK
+    }
+
+    ACCESS_GRANT {
+        uuid id PK
+        uuid poll_id FK
+        uuid member_id FK
+        string token "sensitive"
+        datetime revoked_at
+        datetime expires_at
+    }
+
+    INVITATION_DELIVERY {
+        uuid id PK
+        uuid poll_id FK
+        uuid member_id FK
+        uuid access_grant_id FK
+        string status
+        integer attempt_count
+    }
+
+    BALLOT {
+        uuid id PK
+        uuid poll_id FK
+        uuid member_id FK
+        datetime submitted_at
+    }
+
+    SELECTION {
+        uuid id PK
+        uuid ballot_id FK
+        uuid option_id FK
+    }
+```
+
+`Eligibility` is the join resource between a poll and a member. `AccessGrant`, `Ballot`, and `InvitationDelivery` also reference both resources for their respective access, participation, and delivery responsibilities. A ballot's chosen option is represented by `Selection` rather than stored directly on the ballot.
+
 ## 1. Create a poll without authorization
 
 Bypassing authorization is appropriate only for trusted maintenance or debugging. Poll creation normally writes an attributed audit event, so an actorless operation must explicitly skip that audit hook:
