@@ -902,6 +902,28 @@
      max-width: 720px;
  }
 
+ .poll-selection-rules {
+     padding: 18px;
+     border: 1px solid var(--line);
+     border-radius: 11px;
+     background: var(--paper-dark);
+ }
+
+ .poll-selection-rules legend {
+     padding: 0 7px;
+     font-family: 'Bebas Neue', sans-serif;
+     font-size: 19px;
+     letter-spacing: .035em;
+ }
+
+ .poll-selection-rules > .field-help { margin: -2px 0 14px; }
+
+ .poll-selection-limit-grid {
+     display: grid;
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 14px;
+ }
+
  .form-actions {
      display: flex;
      justify-content: flex-end;
@@ -2062,6 +2084,8 @@
      .dashboard-attention-grid { grid-template-columns: 1fr; }
 
      .dashboard-secondary-grid { grid-template-columns: 1fr; }
+
+     .poll-selection-limit-grid { grid-template-columns: 1fr; }
 
      .dashboard-active-poll-row { grid-template-columns: minmax(180px, 1fr) auto; }
 

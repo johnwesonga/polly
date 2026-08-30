@@ -34,6 +34,69 @@ defmodule PollyWeb.PollLiveTest do
     assert poll.slug == "2027-team-theme"
   end
 
+  test "configures multiple-choice rules on a new draft", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/new")
+
+    assert has_element?(view, "#poll-selection-rules")
+    assert has_element?(view, "#poll_selection_mode")
+    assert has_element?(view, "#single-choice-summary")
+    refute has_element?(view, "#multiple-choice-limits")
+
+    view
+    |> form("#poll-form", poll: %{selection_mode: "multiple"})
+    |> render_change()
+
+    assert has_element?(view, "#multiple-choice-limits")
+    assert has_element?(view, "#poll_minimum_selections[type='number']")
+    assert has_element?(view, "#poll_maximum_selections[type='number']")
+    refute has_element?(view, "#single-choice-summary")
+
+    view
+    |> form("#poll-form",
+      poll: %{
+        title: "Board priorities",
+        selection_mode: "multiple",
+        minimum_selections: "2",
+        maximum_selections: "4"
+      }
+    )
+    |> render_submit()
+
+    poll = Ash.read_one!(Poll, actor: actor)
+    assert poll.selection_mode == :multiple
+    assert poll.minimum_selections == 2
+    assert poll.maximum_selections == 4
+  end
+
+  test "switching a draft back to single choice resets its limits", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    poll =
+      Ash.create!(
+        Poll,
+        %{
+          title: "Multiple draft",
+          selection_mode: :multiple,
+          minimum_selections: 2,
+          maximum_selections: 4
+        },
+        actor: actor
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/edit")
+    assert has_element?(view, "#multiple-choice-limits")
+
+    view
+    |> form("#poll-form", poll: %{selection_mode: "single"})
+    |> render_submit()
+
+    updated = Ash.get!(Poll, poll.id, actor: actor)
+    assert updated.selection_mode == :single
+    assert updated.minimum_selections == 1
+    assert updated.maximum_selections == 1
+  end
+
   test "lists and edits draft polls", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)

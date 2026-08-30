@@ -49,6 +49,44 @@ defmodule PollyWeb.PollLive.Form do
             label="Description"
             placeholder="Explain what members are choosing."
           />
+          <fieldset id="poll-selection-rules" class="poll-selection-rules">
+            <legend>Selection rules</legend>
+            <p class="field-help">
+              Choose how many distinct options each member may select.
+            </p>
+            <.input
+              field={@form[:selection_mode]}
+              type="select"
+              label="Selection mode"
+              options={[
+                {"Single choice — choose exactly one", :single},
+                {"Multiple choice — choose more than one", :multiple}
+              ]}
+            />
+            <div
+              :if={multiple_choice?(@form)}
+              id="multiple-choice-limits"
+              class="poll-selection-limit-grid"
+            >
+              <.input
+                field={@form[:minimum_selections]}
+                type="number"
+                label="Minimum choices"
+                min="1"
+                step="1"
+              />
+              <.input
+                field={@form[:maximum_selections]}
+                type="number"
+                label="Maximum choices"
+                min="1"
+                step="1"
+              />
+            </div>
+            <p :if={!multiple_choice?(@form)} id="single-choice-summary" class="field-help">
+              Members choose exactly one option.
+            </p>
+          </fieldset>
           <p :if={!@poll} class="text-sm text-base-content/60">
             A stable URL slug will be generated from the title.
           </p>
@@ -66,10 +104,13 @@ defmodule PollyWeb.PollLive.Form do
 
   @impl true
   def handle_event("validate", %{"poll" => params}, socket) do
+    params = normalize_selection_params(params)
     {:noreply, assign(socket, :form, AshPhoenix.Form.validate(socket.assigns.form, params))}
   end
 
   def handle_event("save", %{"poll" => params}, socket) do
+    params = normalize_selection_params(params)
+
     case AshPhoenix.Form.submit(socket.assigns.form, params: params) do
       {:ok, poll} ->
         {:noreply,
@@ -104,4 +145,14 @@ defmodule PollyWeb.PollLive.Form do
 
     assign(socket, :form, to_form(form))
   end
+
+  defp normalize_selection_params(%{"selection_mode" => "single"} = params) do
+    params
+    |> Map.put("minimum_selections", "1")
+    |> Map.put("maximum_selections", "1")
+  end
+
+  defp normalize_selection_params(params), do: params
+
+  defp multiple_choice?(form), do: to_string(form[:selection_mode].value) == "multiple"
 end

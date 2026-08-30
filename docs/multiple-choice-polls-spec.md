@@ -8,7 +8,8 @@ columns with `1..1` defaults, a ballot-and-option selection identity, and the
 and enforces the stored range atomically. Draft actions now validate and persist
 selection ranges, opening verifies those limits against active options, and
 duplication preserves the configuration. The administrator and voting UIs
-remain single-choice until later slices.
+remain separate delivery slices; the draft form now exposes mode and range
+configuration, while the member voting UI remains single-choice.
 
 ## Summary
 
