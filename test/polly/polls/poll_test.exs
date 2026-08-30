@@ -26,6 +26,8 @@ defmodule Polly.Polls.PollTest do
 
     assert poll.status == :draft
     assert poll.selection_mode == :single
+    assert poll.minimum_selections == 1
+    assert poll.maximum_selections == 1
     assert poll.slug == "team-theme"
   end
 

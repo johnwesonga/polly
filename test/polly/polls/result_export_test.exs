@@ -48,6 +48,9 @@ defmodule Polly.Polls.ResultExportTest do
     assert Enum.at(first, 0) == poll.id
     assert Enum.at(first, 1) == "'=Quarterly Results"
     assert Enum.at(first, 3) == "provisional"
+    assert Enum.at(first, 4) == "single"
+    assert Enum.at(first, 5) == "1"
+    assert Enum.at(first, 6) == "1"
     assert Enum.at(first, 8) == "1"
     assert Enum.at(first, 9) == "50.0"
     assert Enum.at(first, 12) == "'+Formula option"

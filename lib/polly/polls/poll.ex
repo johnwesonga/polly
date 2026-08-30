@@ -126,6 +126,20 @@ defmodule Polly.Polls.Poll do
       default :single
     end
 
+    attribute :minimum_selections, :integer do
+      allow_nil? false
+      public? true
+      default 1
+      constraints min: 1
+    end
+
+    attribute :maximum_selections, :integer do
+      allow_nil? false
+      public? true
+      default 1
+      constraints min: 1
+    end
+
     attribute :opened_at, :utc_datetime_usec, public?: true
     attribute :closed_at, :utc_datetime_usec, public?: true
     attribute :results_published_at, :utc_datetime_usec, public?: true

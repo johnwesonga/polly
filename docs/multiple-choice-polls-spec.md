@@ -2,7 +2,10 @@
 
 ## Status
 
-Proposed.
+In progress. The first implementation slice adds the poll selection-limit
+columns with `1..1` defaults while preserving single-choice behavior. Selection
+configuration and multiple-selection submission remain disabled until later
+slices.
 
 ## Summary
 
