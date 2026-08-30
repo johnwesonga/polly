@@ -54,7 +54,7 @@ Status labels:
 - **Proposed — Quorum requirements.**
 - **Proposed — Configurable tie-handling rules.**
 - **Proposed — Result publication notes.**
-- **Proposed — Public result pages without voting credentials.**
+- **Specified — [Public result pages without voting credentials](public-result-pages-spec.md):** expose only closed, published aggregate results through an explicitly enabled, credential-free URL.
 - **Proposed — Embeddable result charts.**
 
 ## Access and security
