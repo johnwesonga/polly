@@ -131,7 +131,7 @@ defmodule Polly.Administration.DashboardTest do
     poll = create_ready_poll!(owner)
 
     assert {:ok, _ballot} =
-             Polly.Polls.Ballots.submit(poll.id, poll.grant.token, poll.option.id)
+             Polly.Polls.Ballots.submit(poll.id, poll.grant.token, [poll.option.id])
 
     assert {:ok, %{active_polls: [active]}} = Dashboard.load(owner)
     assert active.id == poll.id

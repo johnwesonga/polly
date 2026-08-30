@@ -33,7 +33,7 @@ defmodule PollyWeb.PollResultsLiveTest do
     {conn, actor} = register_and_log_in_administrator(conn)
     fixture = draft_poll!(actor, "Admin results")
     poll = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
-    assert {:ok, _ballot} = Ballots.submit(poll.id, fixture.grant.token, fixture.option.id)
+    assert {:ok, _ballot} = Ballots.submit(poll.id, fixture.grant.token, [fixture.option.id])
 
     {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/results")
 

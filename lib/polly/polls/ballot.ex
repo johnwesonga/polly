@@ -3,7 +3,8 @@ defmodule Polly.Polls.Ballot do
   Records a member's final submission for a poll.
 
   Ballots are created only by `Polly.Polls.Ballots.submit/3`; their database
-  identity is the final guard against concurrent duplicate submissions.
+  identity is the final guard against concurrent duplicate submissions. Each
+  ballot may own one or more distinct selections.
   """
 
   use Ash.Resource,

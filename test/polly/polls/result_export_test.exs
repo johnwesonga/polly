@@ -29,7 +29,7 @@ defmodule Polly.Polls.ResultExportTest do
     poll = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
 
     {:ok, _ballot} =
-      Ballots.submit(poll.id, fixture.grants |> hd() |> Map.fetch!(:token), fixture.first.id)
+      Ballots.submit(poll.id, fixture.grants |> hd() |> Map.fetch!(:token), [fixture.first.id])
 
     now = ~U[2026-08-26 18:30:00.000000Z]
 

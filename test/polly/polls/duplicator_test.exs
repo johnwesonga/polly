@@ -37,7 +37,7 @@ defmodule Polly.Polls.DuplicatorTest do
   test "duplicates only poll details into an independent draft", %{actor: actor} do
     fixture = configured_poll!(actor, "Annual Theme")
     opened = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
-    {:ok, _ballot} = Ballots.submit(opened.id, fixture.grant.token, fixture.option.id)
+    {:ok, _ballot} = Ballots.submit(opened.id, fixture.grant.token, [fixture.option.id])
     source = Ash.update!(opened, %{}, action: :close, actor: actor)
     source = Ash.update!(source, %{}, action: :publish_results, actor: actor)
 

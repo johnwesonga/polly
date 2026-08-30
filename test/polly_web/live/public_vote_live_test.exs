@@ -47,7 +47,7 @@ defmodule PollyWeb.PublicVoteLiveTest do
     fixture = open_poll!(actor, "Final vote")
 
     assert {:ok, _ballot} =
-             Ballots.submit(fixture.poll.id, fixture.grant.token, fixture.option.id)
+             Ballots.submit(fixture.poll.id, fixture.grant.token, [fixture.option.id])
 
     {:ok, view, _html} = live(conn, vote_path(fixture))
 
@@ -97,7 +97,7 @@ defmodule PollyWeb.PublicVoteLiveTest do
     fixture = open_poll!(actor, "Published vote")
 
     assert {:ok, _ballot} =
-             Ballots.submit(fixture.poll.id, fixture.grant.token, fixture.option.id)
+             Ballots.submit(fixture.poll.id, fixture.grant.token, [fixture.option.id])
 
     fixture.poll
     |> Ash.update!(%{}, action: :close, actor: actor)

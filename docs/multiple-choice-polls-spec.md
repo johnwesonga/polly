@@ -4,8 +4,9 @@
 
 In progress. The data-model foundation now includes poll selection-limit
 columns with `1..1` defaults, a ballot-and-option selection identity, and the
-`:multiple` selection mode. Limit configuration and multiple-selection
-submission remain disabled until later slices.
+`:multiple` selection mode. The ballot service now accepts an option-ID list
+and enforces the stored range atomically; configurable ranges and the
+multiple-choice voting UI remain disabled until later slices.
 
 ## Summary
 

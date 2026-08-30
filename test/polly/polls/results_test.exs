@@ -109,7 +109,7 @@ defmodule Polly.Polls.ResultsTest do
 
   defp submit!(fixture, grant_index, option) do
     grant = Enum.at(fixture.grants, grant_index)
-    {:ok, ballot} = Ballots.submit(fixture.poll.id, grant.token, option.id)
+    {:ok, ballot} = Ballots.submit(fixture.poll.id, grant.token, [option.id])
     ballot
   end
 end

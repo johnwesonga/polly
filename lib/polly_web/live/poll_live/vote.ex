@@ -238,7 +238,7 @@ defmodule PollyWeb.PollLive.Vote do
   def handle_info({:poll_results_changed, _poll_id}, socket), do: {:noreply, socket}
 
   defp submit(socket, option) do
-    case Ballots.submit(socket.assigns.poll.id, socket.assigns.token, option.id) do
+    case Ballots.submit(socket.assigns.poll.id, socket.assigns.token, [option.id]) do
       {:ok, ballot} ->
         {:noreply,
          socket
