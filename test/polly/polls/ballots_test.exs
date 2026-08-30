@@ -48,6 +48,36 @@ defmodule Polly.Polls.BallotsTest do
     assert selection.option_id == option.id
   end
 
+  test "selection storage permits distinct options but rejects the same option twice", %{
+    actor: actor
+  } do
+    %{poll: poll, grant: grant, option: option, other_option: other_option} = open_poll!(actor)
+    assert {:ok, ballot} = Ballots.submit(poll.id, grant.token, option.id)
+
+    assert {:ok, second_selection} =
+             Ash.create(
+               Selection,
+               %{ballot_id: ballot.id, option_id: other_option.id},
+               action: :select
+             )
+
+    assert second_selection.option_id == other_option.id
+
+    assert {:error, duplicate_error} =
+             Ash.create(
+               Selection,
+               %{ballot_id: ballot.id, option_id: option.id},
+               action: :select
+             )
+
+    assert Exception.message(duplicate_error) =~ "has already been taken"
+
+    assert 2 ==
+             Selection
+             |> Ash.Query.filter(ballot_id == ^ballot.id)
+             |> Ash.count!(authorize?: false)
+  end
+
   test "rejects invalid, cross-poll, and revoked grants", %{actor: actor} do
     first = open_poll!(actor, "First ballot")
     second = open_poll!(actor, "Second ballot")

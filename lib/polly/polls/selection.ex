@@ -1,5 +1,10 @@
 defmodule Polly.Polls.Selection do
-  @moduledoc "Stores an immutable option choice belonging to a submitted ballot."
+  @moduledoc """
+  Stores one immutable, distinct option choice belonging to a submitted ballot.
+
+  A ballot may contain multiple selections, but it cannot select the same
+  option more than once.
+  """
 
   use Ash.Resource,
     otp_app: :polly,
@@ -49,6 +54,6 @@ defmodule Polly.Polls.Selection do
   end
 
   identities do
-    identity :one_selection_per_ballot, [:ballot_id]
+    identity :unique_option_per_ballot, [:ballot_id, :option_id]
   end
 end
