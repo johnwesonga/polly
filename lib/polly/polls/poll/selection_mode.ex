@@ -2,11 +2,10 @@ defmodule Polly.Polls.Poll.SelectionMode do
   @moduledoc """
   Defines how many options a voter may select when submitting a ballot.
 
-  The current `:single` mode allows exactly one option per ballot. Keeping the
-  value in a dedicated Ash enum makes the poll configuration explicit and
-  provides a controlled extension point for future modes such as multiple or
-  ranked selection.
+  `:single` represents exactly one option per ballot. `:multiple` represents a
+  configurable selection range, although configuration and submission support
+  are introduced through later implementation slices.
   """
 
-  use Ash.Type.Enum, values: [:single]
+  use Ash.Type.Enum, values: [:single, :multiple]
 end

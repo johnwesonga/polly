@@ -31,6 +31,21 @@ defmodule Polly.Polls.PollTest do
     assert poll.slug == "team-theme"
   end
 
+  test "stores multiple-choice mode on a draft without changing safe defaults", %{actor: actor} do
+    poll =
+      Ash.create!(
+        Poll,
+        %{title: "Committee priorities", selection_mode: :multiple},
+        action: :create_draft,
+        actor: actor
+      )
+
+    assert poll.status == :draft
+    assert poll.selection_mode == :multiple
+    assert poll.minimum_selections == 1
+    assert poll.maximum_selections == 1
+  end
+
   test "requires two active options before opening", %{actor: actor} do
     poll = create_poll!(actor, "Team Theme")
     create_option!(poll, actor, "Under the Sea", 1)
