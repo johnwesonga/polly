@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 0–3 implemented; phases 4–6 proposed.
+Phases 0–4 implemented; phases 5–6 proposed.
 
 ## Summary
 

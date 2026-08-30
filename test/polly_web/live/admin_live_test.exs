@@ -127,6 +127,68 @@ defmodule PollyWeb.AdminLiveTest do
     refute has_element?(view, "#dashboard-poll-summary")
   end
 
+  test "shows recent activity and account security to owners", %{conn: conn} do
+    owner = create_user!(:owner, "phase-four-owner@example.com")
+    _poll = create_poll!(owner, "Dashboard activity")
+
+    Ash.create!(
+      Polly.Accounts.AdministratorInvitation,
+      %{
+        email: "dashboard-expiring@example.com",
+        role: :administrator,
+        invited_by_id: owner.id,
+        expires_at: DateTime.add(DateTime.utc_now(), 24, :hour)
+      },
+      action: :invite,
+      authorize?: false
+    )
+
+    view = conn |> sign_in(owner) |> mount()
+
+    assert has_element?(view, "#dashboard-recent-activity")
+    assert has_element?(view, "#dashboard-recent-events[phx-update='stream']")
+
+    assert has_element?(view, "#dashboard-recent-activity a[href='/admin/audit']")
+    assert has_element?(view, "#dashboard-recent-activity", "created poll “Dashboard activity”")
+    assert has_element?(view, "#dashboard-account-health")
+
+    assert has_element?(
+             view,
+             "#dashboard-account-health a[href='/admin/administrators']"
+           )
+
+    assert has_element?(view, "#dashboard-active-owner-count", "1")
+    assert has_element?(view, "#dashboard-final-owner-warning", "Only one active owner remains")
+
+    assert has_element?(
+             view,
+             "#dashboard-expiring-invitations-warning",
+             "1 administrator invitation expires within 48 hours"
+           )
+  end
+
+  test "shows authorized audit activity without leaking account health", %{conn: conn} do
+    owner = create_user!(:owner, "activity-source-owner@example.com")
+    _poll = create_poll!(owner, "Auditor-visible activity")
+
+    auditor_view =
+      conn
+      |> sign_in(create_user!(:auditor, "phase-four-auditor@example.com"))
+      |> mount()
+
+    assert has_element?(auditor_view, "#dashboard-recent-activity")
+    assert has_element?(auditor_view, "#dashboard-recent-activity", "Auditor-visible activity")
+    refute has_element?(auditor_view, "#dashboard-account-health")
+
+    administrator_view =
+      conn
+      |> sign_in(create_user!(:administrator, "phase-four-administrator@example.com"))
+      |> mount()
+
+    refute has_element?(administrator_view, "#dashboard-recent-activity")
+    refute has_element?(administrator_view, "#dashboard-account-health")
+  end
+
   test "does not expose public administrator registration", %{conn: conn} do
     assert conn |> get("/register") |> response(404)
   end

@@ -11,7 +11,9 @@ defmodule Polly.Administration.DashboardTest do
             %{
               poll_counts: %{draft: 0, open: 0, closed: 0, unpublished: 0},
               attention_items: [],
-              active_polls: []
+              active_polls: [],
+              recent_events: [],
+              account_health: nil
             }} =
              Dashboard.load(actor)
   end
@@ -91,6 +93,61 @@ defmodule Polly.Administration.DashboardTest do
 
     assert {:ok, %{active_polls: active_polls}} = Dashboard.load(owner)
     assert length(active_polls) == 5
+  end
+
+  test "returns the five most recent audit events only to permitted actors" do
+    owner = create_user!(:owner, "activity-owner@example.com")
+
+    for number <- 1..6 do
+      Ash.create!(
+        Polly.Polls.Poll,
+        %{title: "Recent activity #{number}"},
+        action: :create_draft,
+        actor: owner
+      )
+    end
+
+    assert {:ok, %{recent_events: owner_events}} = Dashboard.load(owner)
+    assert length(owner_events) == 5
+    assert Enum.all?(owner_events, &(&1.action == "poll.created"))
+    refute Enum.any?(owner_events, &(&1.target_label == "Recent activity 1"))
+
+    auditor = create_user!(:auditor, "activity-auditor@example.com")
+    assert {:ok, %{recent_events: auditor_events}} = Dashboard.load(auditor)
+    assert Enum.map(auditor_events, & &1.id) == Enum.map(owner_events, & &1.id)
+
+    administrator = create_user!(:administrator, "activity-administrator@example.com")
+    assert {:ok, %{recent_events: nil}} = Dashboard.load(administrator)
+  end
+
+  test "returns account security counts only to owners" do
+    owner = create_user!(:owner, "security-owner@example.com")
+    administrator = create_user!(:administrator, "security-administrator@example.com")
+
+    Polly.Repo.query!("UPDATE users SET status = 'disabled' WHERE id = ?", [administrator.id])
+
+    Ash.create!(
+      Polly.Accounts.AdministratorInvitation,
+      %{
+        email: "expiring-invitation@example.com",
+        role: :auditor,
+        invited_by_id: owner.id,
+        expires_at: DateTime.add(DateTime.utc_now(), 24, :hour)
+      },
+      action: :invite,
+      authorize?: false
+    )
+
+    assert {:ok, %{account_health: health}} = Dashboard.load(owner)
+    assert health.active_owners == 1
+    assert health.disabled_accounts == 1
+    assert health.unconfirmed_accounts == 2
+    assert health.pending_invitations == 1
+    assert health.expiring_invitations == 1
+    assert health.final_owner?
+
+    auditor = create_user!(:auditor, "security-auditor@example.com")
+    assert {:ok, %{account_health: nil}} = Dashboard.load(auditor)
   end
 
   defp create_user!(role, email) do

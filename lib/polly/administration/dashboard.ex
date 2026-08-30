@@ -1,7 +1,10 @@
 defmodule Polly.Administration.Dashboard do
   @moduledoc "Permission-aware projections for the administration dashboard."
 
+  require Ash.Query
+
   alias Polly.Accounts.{Authorization, User}
+  alias Polly.Audit.Event
 
   @type poll_counts :: %{
           draft: non_neg_integer(),
@@ -28,12 +31,23 @@ defmodule Polly.Administration.Dashboard do
           destination: String.t()
         }
 
+  @type account_health :: %{
+          active_owners: non_neg_integer(),
+          disabled_accounts: non_neg_integer(),
+          unconfirmed_accounts: non_neg_integer(),
+          pending_invitations: non_neg_integer(),
+          expiring_invitations: non_neg_integer(),
+          final_owner?: boolean()
+        }
+
   @spec load(User.t()) ::
           {:ok,
            %{
              poll_counts: poll_counts(),
              attention_items: [attention_item()],
-             active_polls: [active_poll()]
+             active_polls: [active_poll()],
+             recent_events: [Event.t()] | nil,
+             account_health: account_health() | nil
            }}
           | {:error, :forbidden}
   def load(%User{} = actor) do
@@ -42,12 +56,59 @@ defmodule Polly.Administration.Dashboard do
        %{
          poll_counts: poll_counts(),
          attention_items: attention_items(actor),
-         active_polls: active_polls(actor)
+         active_polls: active_polls(actor),
+         recent_events: recent_events(actor),
+         account_health: account_health(actor)
        }}
     end
   end
 
   def load(_actor), do: {:error, :forbidden}
+
+  defp recent_events(actor) do
+    if Authorization.allowed?(actor, :view_audit) do
+      page =
+        Event
+        |> Ash.Query.sort(occurred_at: :desc, id: :desc)
+        |> Ash.read!(actor: actor, page: [limit: 5])
+
+      page.results
+    end
+  end
+
+  defp account_health(actor) do
+    if Authorization.allowed?(actor, :manage_administrators) do
+      now = DateTime.utc_now()
+      expiring_before = DateTime.add(now, 48, :hour)
+
+      %{rows: [[owners, disabled, unconfirmed, pending, expiring]]} =
+        Polly.Repo.query!(
+          """
+          SELECT
+            (SELECT COUNT(*) FROM users
+             WHERE role = 'owner' AND status = 'active'),
+            (SELECT COUNT(*) FROM users
+             WHERE status = 'disabled'),
+            (SELECT COUNT(*) FROM users
+             WHERE confirmed_at IS NULL),
+            (SELECT COUNT(*) FROM administrator_invitations
+             WHERE status = 'pending' AND expires_at > ?),
+            (SELECT COUNT(*) FROM administrator_invitations
+             WHERE status = 'pending' AND expires_at > ? AND expires_at <= ?)
+          """,
+          [now, now, expiring_before]
+        )
+
+      %{
+        active_owners: owners,
+        disabled_accounts: disabled,
+        unconfirmed_accounts: unconfirmed,
+        pending_invitations: pending,
+        expiring_invitations: expiring,
+        final_owner?: owners == 1
+      }
+    end
+  end
 
   defp poll_counts do
     %{rows: [[draft, open, closed, unpublished]]} =

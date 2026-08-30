@@ -14,7 +14,11 @@ defmodule PollyWeb.AdminLive do
      |> assign(:poll_counts, dashboard.poll_counts)
      |> assign(:attention_items, dashboard.attention_items)
      |> assign(:active_polls, dashboard.active_polls)
-     |> assign(:quick_actions, quick_actions(actor))}
+     |> assign(:recent_activity_visible?, dashboard.recent_events != nil)
+     |> assign(:recent_activity_empty?, dashboard.recent_events == [])
+     |> assign(:account_health, dashboard.account_health)
+     |> assign(:quick_actions, quick_actions(actor))
+     |> stream(:recent_events, dashboard.recent_events || [])}
   end
 
   @impl true
@@ -185,6 +189,115 @@ defmodule PollyWeb.AdminLive do
             </.link>
           </div>
         </section>
+
+        <div
+          :if={@recent_activity_visible? || @account_health != nil}
+          class="dashboard-secondary-grid"
+        >
+          <section
+            :if={@recent_activity_visible?}
+            id="dashboard-recent-activity"
+            class="dashboard-section card dashboard-panel"
+          >
+            <div class="dashboard-panel-heading">
+              <h2 class="dashboard-section-heading">Recent activity</h2>
+              <.link navigate={~p"/admin/audit"} class="dashboard-card-link">
+                View audit trail <.icon name="hero-arrow-right" />
+              </.link>
+            </div>
+            <div
+              :if={@recent_activity_empty?}
+              id="dashboard-recent-activity-empty"
+              class="dashboard-panel-empty"
+            >
+              No administrator activity has been recorded yet.
+            </div>
+            <div id="dashboard-recent-events" phx-update="stream">
+              <.link
+                :for={{id, event} <- @streams.recent_events}
+                id={id}
+                navigate={~p"/admin/audit/#{event.id}"}
+                class="dashboard-activity-row"
+              >
+                <span class="dashboard-activity-icon">
+                  <.icon name="hero-document-text" />
+                </span>
+                <span class="dashboard-activity-copy">
+                  <strong>{event.actor_label}</strong>
+                  <span>{Polly.Audit.humanize(event)}</span>
+                </span>
+                <time datetime={DateTime.to_iso8601(event.occurred_at)}>
+                  {format_datetime(event.occurred_at)}
+                </time>
+              </.link>
+            </div>
+          </section>
+
+          <section
+            :if={@account_health != nil}
+            id="dashboard-account-health"
+            class="dashboard-section card dashboard-panel"
+          >
+            <div class="dashboard-panel-heading">
+              <h2 class="dashboard-section-heading">Account security</h2>
+              <.link navigate={~p"/admin/administrators"} class="dashboard-card-link">
+                Manage administrators <.icon name="hero-arrow-right" />
+              </.link>
+            </div>
+
+            <div
+              :if={@account_health.final_owner?}
+              id="dashboard-final-owner-warning"
+              class="dashboard-security-warning"
+            >
+              <span><.icon name="hero-exclamation-triangle" /></span>
+              <div>
+                <strong>Only one active owner remains</strong>
+                <p>Add another owner to protect administrator access.</p>
+              </div>
+            </div>
+
+            <div
+              :if={@account_health.expiring_invitations > 0}
+              id="dashboard-expiring-invitations-warning"
+              class="dashboard-security-warning invitation"
+            >
+              <span><.icon name="hero-clock" /></span>
+              <div>
+                <strong>{expiring_invitation_warning(@account_health.expiring_invitations)}</strong>
+                <p>Review or renew the invitations before they expire.</p>
+              </div>
+            </div>
+
+            <dl class="dashboard-account-metrics">
+              <div id="dashboard-active-owner-count">
+                <dt>Active owners</dt>
+                <dd>{@account_health.active_owners}</dd>
+              </div>
+              <div id="dashboard-disabled-account-count">
+                <dt>Disabled accounts</dt>
+                <dd>{@account_health.disabled_accounts}</dd>
+              </div>
+              <div id="dashboard-unconfirmed-account-count">
+                <dt>Unconfirmed accounts</dt>
+                <dd>{@account_health.unconfirmed_accounts}</dd>
+              </div>
+              <div id="dashboard-pending-administrator-invitation-count">
+                <dt>Pending invitations</dt>
+                <dd>{@account_health.pending_invitations}</dd>
+              </div>
+              <div
+                id="dashboard-expiring-administrator-invitation-count"
+                class={[
+                  @account_health.expiring_invitations > 0 && "attention"
+                ]}
+              >
+                <dt>Expiring within 48 hours</dt>
+                <dd>{@account_health.expiring_invitations}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
       </section>
     </Layouts.app>
     """
@@ -192,8 +305,17 @@ defmodule PollyWeb.AdminLive do
 
   defp load_dashboard(actor) do
     case Polly.Administration.Dashboard.load(actor) do
-      {:ok, dashboard} -> dashboard
-      {:error, :forbidden} -> %{poll_counts: nil, attention_items: nil, active_polls: nil}
+      {:ok, dashboard} ->
+        dashboard
+
+      {:error, :forbidden} ->
+        %{
+          poll_counts: nil,
+          attention_items: nil,
+          active_polls: nil,
+          recent_events: nil,
+          account_health: nil
+        }
     end
   end
 
@@ -251,6 +373,13 @@ defmodule PollyWeb.AdminLive do
        do: "#{accepted} accepted · #{pending} pending"
 
   defp delivery_summary(_poll), do: "No deliveries"
+
+  defp format_datetime(datetime), do: Calendar.strftime(datetime, "%b %d, %Y · %H:%M")
+
+  defp expiring_invitation_warning(1), do: "1 administrator invitation expires within 48 hours"
+
+  defp expiring_invitation_warning(count),
+    do: "#{count} administrator invitations expire within 48 hours"
 
   defp quick_actions(actor) do
     actions =
