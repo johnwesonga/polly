@@ -12,7 +12,8 @@ remain separate delivery slices; the draft form now exposes mode and range
 configuration, and poll listings use shared plain-language rule summaries. The
 member voting UI now supports mode-aware controls, live counts, review, and
 atomic multiple-selection submission. Results presentation remains a later
-slice.
+slice; the result projection now exposes selection mode and total selections
+with ballot-based support rates.
 
 ## Summary
 

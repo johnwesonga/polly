@@ -33,6 +33,8 @@ defmodule Polly.Polls.ResultsTest do
 
     result = Results.for_poll(fixture.poll)
 
+    assert result.selection_mode == :single
+    assert result.total_selections == 4
     assert result.ballot_count == 4
     assert result.eligible_count == 5
     assert result.turnout_percentage == 80.0
@@ -43,6 +45,34 @@ defmodule Polly.Polls.ResultsTest do
     assert %{votes: 2, percentage: 50.0, rank: 1, winner?: true} = second
     assert %{votes: 0, rank: 3, winner?: false} = third
     assert third.percentage == 0.0
+  end
+
+  test "uses ballots as the support-rate denominator for multiple-choice polls", %{
+    actor: actor
+  } do
+    fixture =
+      open_poll!(actor, "Multiple-choice results", 2, %{
+        selection_mode: :multiple,
+        minimum_selections: 2,
+        maximum_selections: 2
+      })
+
+    submit_options!(fixture, 0, [fixture.first, fixture.second])
+    submit_options!(fixture, 1, [fixture.first, fixture.third])
+
+    result = Results.for_poll(fixture.poll)
+
+    assert result.selection_mode == :multiple
+    assert result.ballot_count == 2
+    assert result.total_selections == 4
+    assert result.eligible_count == 2
+    assert result.turnout_percentage == 100.0
+
+    assert [first, second, third] = result.options
+    assert %{option: %{label: "Alpha"}, votes: 2, percentage: 100.0} = first
+    assert %{option: %{label: "Beta"}, votes: 1, percentage: 50.0} = second
+    assert %{option: %{label: "Gamma"}, votes: 1, percentage: 50.0} = third
+    assert Enum.sum(Enum.map(result.options, & &1.percentage)) == 200.0
   end
 
   test "publishes only closed polls and cannot publish twice", %{actor: actor} do
@@ -84,11 +114,11 @@ defmodule Polly.Polls.ResultsTest do
     assert poll_id == first.poll.id
   end
 
-  defp open_poll!(actor, title, member_count) do
+  defp open_poll!(actor, title, member_count, poll_attributes \\ %{}) do
     poll =
       Ash.create!(
         Poll,
-        %{title: title},
+        Map.put(poll_attributes, :title, title),
         actor: actor
       )
 
@@ -108,8 +138,12 @@ defmodule Polly.Polls.ResultsTest do
   end
 
   defp submit!(fixture, grant_index, option) do
+    submit_options!(fixture, grant_index, [option])
+  end
+
+  defp submit_options!(fixture, grant_index, options) do
     grant = Enum.at(fixture.grants, grant_index)
-    {:ok, ballot} = Ballots.submit(fixture.poll.id, grant.token, [option.id])
+    {:ok, ballot} = Ballots.submit(fixture.poll.id, grant.token, Enum.map(options, & &1.id))
     ballot
   end
 end

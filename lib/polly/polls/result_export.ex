@@ -91,7 +91,6 @@ defmodule Polly.Polls.ResultExport do
   defp has_options?(_result), do: :ok
 
   defp rows(poll, result, result_state, now) do
-    total_selections = Enum.sum(Enum.map(result.options, & &1.votes))
     exported_at = DateTime.to_iso8601(now)
 
     result.options
@@ -110,7 +109,7 @@ defmodule Polly.Polls.ResultExport do
         result.eligible_count,
         result.ballot_count,
         decimal(result.turnout_percentage),
-        total_selections,
+        result.total_selections,
         row.option.position,
         safe_text(row.option.label),
         row.votes,

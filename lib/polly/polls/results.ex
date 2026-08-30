@@ -15,7 +15,9 @@ defmodule Polly.Polls.Results do
 
   @type t :: %{
           poll: Poll.t(),
+          selection_mode: :single | :multiple,
           options: [option_result()],
+          total_selections: non_neg_integer(),
           ballot_count: non_neg_integer(),
           eligible_count: non_neg_integer(),
           turnout_percentage: float(),
@@ -41,6 +43,7 @@ defmodule Polly.Polls.Results do
   defp build(poll) do
     options = list_options(poll.id)
     vote_counts = vote_counts(poll.id)
+    total_selections = vote_counts |> Map.values() |> Enum.sum()
     ballot_count = count_ballots(poll.id)
     eligible_count = count_eligible(poll.id)
     highest_count = vote_counts |> Map.values() |> Enum.max(fn -> 0 end)
@@ -62,7 +65,9 @@ defmodule Polly.Polls.Results do
 
     %{
       poll: poll,
+      selection_mode: poll.selection_mode,
       options: option_results,
+      total_selections: total_selections,
       ballot_count: ballot_count,
       eligible_count: eligible_count,
       turnout_percentage: turnout_percentage(ballot_count, eligible_count),
