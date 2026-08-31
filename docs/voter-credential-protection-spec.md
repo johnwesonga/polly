@@ -2,7 +2,12 @@
 
 ## Status
 
-Specified for future implementation.
+In progress. Phase 1 administrator UI containment is implemented: working
+voting URLs and Copy controls are no longer rendered, administrator-facing
+queries avoid selecting the token, lifecycle and email-delivery controls remain
+available, and regression tests assert that credentials do not appear in the
+administrator HTML. Plaintext database storage and worker-time token access
+remain until the derived-credential phases are implemented.
 
 ## Summary
 
@@ -336,6 +341,8 @@ Schema removal does not erase tokens from old backups. Backup retention and acce
 No production behavior changes in this phase.
 
 ### Phase 1 — Administrator UI containment
+
+Implemented.
 
 - Remove full access URLs and Copy controls from the access LiveView.
 - Prevent new private-link CSV export work.

@@ -62,6 +62,13 @@ defmodule Polly.Polls.InvitationsTest do
     assert all_enqueued() == []
   end
 
+  test "readiness previews do not load voting credentials", %{actor: actor} do
+    {poll, _member, _grant} = open_poll_with_member!(actor)
+
+    assert %{recipients: [%{grant: grant}]} = Invitations.preview(poll, actor)
+    assert %Ash.NotLoaded{} = grant.token
+  end
+
   test "worker sends the individualized private link and marks the delivery accepted", %{
     actor: actor
   } do

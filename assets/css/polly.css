@@ -1257,6 +1257,16 @@
      font-size: 11px;
  }
 
+ .access-protected-message {
+     display: inline-flex;
+     align-items: center;
+     gap: 7px;
+     min-width: 0;
+     color: var(--slate);
+     font-size: 12px;
+     font-weight: 600;
+ }
+
  .access-actions {
      display: flex;
      align-items: center;

@@ -2,6 +2,8 @@ defmodule PollyWeb.RoleAuthorizationTest do
   use PollyWeb.ConnCase, async: false
 
   alias Polly.Accounts.User
+  alias Polly.Members.Member
+  alias Polly.Polls.Poll
 
   test "auditors can view polls and audit history but not configuration", %{conn: conn} do
     auditor = create_user!(:auditor)
@@ -50,6 +52,30 @@ defmodule PollyWeb.RoleAuthorizationTest do
       |> get(~p"/admin/polls/#{poll_id}/results.csv")
 
     assert response(auditor_conn, 404) == "Not found"
+  end
+
+  test "access-managing roles cannot retrieve voting credentials from the UI", %{conn: conn} do
+    owner = create_user!(:owner)
+    poll = Ash.create!(Poll, %{title: "Protected credentials"}, actor: owner)
+
+    member =
+      Ash.create!(Member, %{name: "Protected voter", email: "voter@example.com"}, actor: owner)
+
+    {_eligibility, grant} = Polly.Polls.Electorate.include_member(poll, member, owner)
+
+    for role <- [:owner, :administrator] do
+      user = if role == :owner, do: owner, else: create_user!(role)
+      {:ok, view, _html} = conn |> sign_in(user) |> live(~p"/admin/polls/#{poll.id}/access")
+
+      assert has_element?(view, "#protected-access-#{member.id}")
+      refute has_element?(view, "#copy-access-link-#{member.id}")
+      refute render(view) =~ grant.token
+    end
+
+    assert {:error, {:redirect, %{to: "/admin"}}} =
+             conn
+             |> sign_in(create_user!(:auditor))
+             |> live(~p"/admin/polls/#{poll.id}/access")
   end
 
   test "Oban Web is read-only only for owners and operators" do

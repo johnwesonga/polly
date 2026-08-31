@@ -14,7 +14,7 @@ defmodule PollyWeb.PollLive.Access do
 
     {:ok,
      socket
-     |> assign(:page_title, "#{poll.title} access links")
+     |> assign(:page_title, "#{poll.title} voter access")
      |> assign(:poll, poll)
      |> assign(:confirming_bulk?, false)
      |> assign(:status_refresh_scheduled?, false)
@@ -33,7 +33,7 @@ defmodule PollyWeb.PollLive.Access do
           <div>
             <div class="admin-h2">{String.upcase(@poll.title)}</div>
             <p class="admin-sub" style="margin:4px 0 0;">
-              Copy, revoke, or reissue private member links.
+              Deliver, revoke, or reissue private member access.
             </p>
           </div>
           <span id="active-grant-count" class="pill open">
@@ -46,13 +46,16 @@ defmodule PollyWeb.PollLive.Access do
           <.link navigate={~p"/admin/polls/#{@poll.id}/electorate"} class="phase-tab">
             Electorate
           </.link>
-          <span class="phase-tab current">Access links</span>
+          <span class="phase-tab current">Voter access</span>
           <.link navigate={~p"/admin/polls/#{@poll.id}/results"} class="phase-tab">Results</.link>
         </div>
 
-        <div class="callout amber">
-          <.icon name="hero-key" class="size-5" />
-          <span>Each link is a credential for one member and one poll. Share it privately.</span>
+        <div id="protected-voting-credentials" class="callout green">
+          <.icon name="hero-shield-check" class="size-5" />
+          <span>
+            Voting links are delivered directly to members and cannot be viewed or copied by
+            administrators.
+          </span>
         </div>
 
         <div id="email-invitations" class="card card-pad" style="margin-bottom:16px;">
@@ -153,7 +156,7 @@ defmodule PollyWeb.PollLive.Access do
           <div id="access-members" phx-update="stream">
             <div id="access-members-empty" class="empty-state hidden only:block">
               <h2>No eligible members</h2>
-              <p>Select an electorate first; a link is generated for every selected member.</p>
+              <p>Select an electorate first; private access is issued for every selected member.</p>
               <.link
                 id="configure-electorate-link"
                 navigate={~p"/admin/polls/#{@poll.id}/electorate"}
@@ -206,24 +209,13 @@ defmodule PollyWeb.PollLive.Access do
                 :if={grant = Map.get(@grants_by_member, eligibility.member_id)}
                 class="access-link-controls"
               >
-                <code
-                  id={"access-link-#{eligibility.member_id}"}
-                  class="access-url-preview"
-                  title={access_url(@poll, grant)}
-                  data-url={access_url(@poll, grant)}
+                <div
+                  id={"protected-access-#{eligibility.member_id}"}
+                  class="access-protected-message"
                 >
-                  {access_url_preview(@poll, grant)}
-                </code>
-                <button
-                  id={"copy-access-link-#{eligibility.member_id}"}
-                  type="button"
-                  class="btn btn-outline btn-sm"
-                  phx-click={JS.dispatch("phx:copy")}
-                  data-copy-value={access_url(@poll, grant)}
-                  aria-live="polite"
-                >
-                  Copy
-                </button>
+                  <.icon name="hero-lock-closed" class="size-4" />
+                  <span>Private credential hidden · deliver by email</span>
+                </div>
                 <div class="access-actions">
                   <button
                     :if={recipient.state == :ready}
@@ -251,7 +243,7 @@ defmodule PollyWeb.PollLive.Access do
                     type="button"
                     phx-click="revoke"
                     phx-value-id={grant.id}
-                    data-confirm="Revoke this voting link?"
+                    data-confirm="Revoke this member's voting access? Their current emailed link will stop working."
                     class="btn btn-outline btn-sm access-revoke"
                   >
                     Revoke
@@ -261,10 +253,10 @@ defmodule PollyWeb.PollLive.Access do
                     type="button"
                     phx-click="reissue"
                     phx-value-id={grant.id}
-                    data-confirm="Reissue this link? The current link will stop working."
+                    data-confirm="Reissue this member's access? Their current emailed link will stop working and the replacement must be emailed."
                     class="btn btn-coral btn-sm"
                   >
-                    Reissue
+                    Reissue access
                   </button>
                 </div>
               </div>
@@ -272,7 +264,7 @@ defmodule PollyWeb.PollLive.Access do
                 :if={!Map.has_key?(@grants_by_member, eligibility.member_id)}
                 class="access-revoked-message"
               >
-                This link no longer grants access.
+                This member's previous credential no longer grants access.
               </div>
               <button
                 :if={!Map.has_key?(@grants_by_member, eligibility.member_id)}
@@ -282,7 +274,7 @@ defmodule PollyWeb.PollLive.Access do
                 phx-value-member-id={eligibility.member_id}
                 class="btn btn-coral btn-sm access-issue"
               >
-                Issue new link
+                Issue access
               </button>
             </div>
           </div>
@@ -294,21 +286,24 @@ defmodule PollyWeb.PollLive.Access do
 
   @impl true
   def handle_event("revoke", %{"id" => id}, socket) do
-    grant = Ash.get!(AccessGrant, id, actor: socket.assigns.current_user)
+    grant = get_safe_grant!(id, socket.assigns.current_user)
     Electorate.revoke(grant, socket.assigns.current_user)
-    {:noreply, socket |> put_flash(:info, "Access link revoked") |> load_access()}
+    {:noreply, socket |> put_flash(:info, "Voting access revoked") |> load_access()}
   end
 
   def handle_event("reissue", %{"id" => id}, socket) do
-    grant = Ash.get!(AccessGrant, id, actor: socket.assigns.current_user)
+    grant = get_safe_grant!(id, socket.assigns.current_user)
     Electorate.reissue(grant, socket.assigns.current_user)
-    {:noreply, socket |> put_flash(:info, "Access link reissued") |> load_access()}
+
+    {:noreply,
+     socket |> put_flash(:info, "Voting access reissued; email the replacement") |> load_access()}
   end
 
   def handle_event("issue", %{"member-id" => member_id}, socket) do
     Electorate.issue(socket.assigns.poll.id, member_id, socket.assigns.current_user)
 
-    {:noreply, socket |> put_flash(:info, "Access link issued") |> load_access()}
+    {:noreply,
+     socket |> put_flash(:info, "Voting access issued; email the credential") |> load_access()}
   end
 
   def handle_event("send-invitations", _params, socket) do
@@ -367,6 +362,7 @@ defmodule PollyWeb.PollLive.Access do
     grants =
       AccessGrant
       |> Ash.Query.filter(poll_id == ^poll.id and is_nil(revoked_at))
+      |> Ash.Query.select([:id, :poll_id, :member_id, :revoked_at, :expires_at, :inserted_at])
       |> Ash.Query.sort(inserted_at: :desc)
       |> Ash.read!(actor: actor)
 
@@ -390,7 +386,7 @@ defmodule PollyWeb.PollLive.Access do
   end
 
   defp enqueue_one(socket, grant_id, kind) do
-    grant = Ash.get!(AccessGrant, grant_id, actor: socket.assigns.current_user)
+    grant = get_safe_grant!(grant_id, socket.assigns.current_user)
 
     case Invitations.enqueue_one(grant, socket.assigns.current_user, kind) do
       {:ok, _delivery} ->
@@ -497,6 +493,13 @@ defmodule PollyWeb.PollLive.Access do
     Calendar.strftime(datetime, "%b %-d, %Y at %-I:%M %p UTC")
   end
 
+  defp get_safe_grant!(id, actor) do
+    AccessGrant
+    |> Ash.Query.filter(id == ^id)
+    |> Ash.Query.select([:id, :poll_id, :member_id, :revoked_at, :expires_at, :inserted_at])
+    |> Ash.read_one!(actor: actor)
+  end
+
   defp maybe_schedule_status_refresh(socket, recipients) do
     in_flight? =
       Enum.any?(recipients, fn
@@ -510,14 +513,6 @@ defmodule PollyWeb.PollLive.Access do
     else
       socket
     end
-  end
-
-  defp access_url(poll, grant) do
-    PollyWeb.Endpoint.url() <> "/polls/#{poll.id}/vote/#{grant.token}"
-  end
-
-  defp access_url_preview(_poll, grant) do
-    "Voting link · " <> String.slice(grant.token, 0, 30) <> "…"
   end
 
   defp initials(name) do

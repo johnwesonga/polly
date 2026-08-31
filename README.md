@@ -34,7 +34,7 @@ Polly is the successor to Nominator, a swimmer-award proof of concept. The curre
 - Results remain private until an administrator explicitly publishes them.
 - Published results are visible to members whose access grants remain valid.
 
-Access links are bearer credentials and must be distributed privately. Polly derives voter identity from the access grant and never trusts a member ID supplied by the browser.
+Voting links are bearer credentials delivered directly to members and are hidden from administrator pages. Polly derives voter identity from the access grant and never trusts a member ID supplied by the browser. Plaintext credential storage remains until the later derived-credential security phase is implemented.
 
 ## Architecture
 
@@ -128,7 +128,7 @@ To exercise the invitation flow:
 2. Create a poll with at least two options.
 3. Add the member to its electorate.
 4. Open the poll.
-5. Visit the poll's **Access links** page and send the invitation.
+5. Visit the poll's **Voter access** page and send the invitation directly to the member.
 6. Open the message in the local mailbox.
 
 ### Background-job diagnostics

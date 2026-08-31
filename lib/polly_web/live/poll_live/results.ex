@@ -63,7 +63,7 @@ defmodule PollyWeb.PollLive.Results do
             navigate={~p"/admin/polls/#{@poll.id}/access"}
             class="phase-tab"
           >
-            Access links
+            Voter access
           </.link>
           <span class="phase-tab current">Results</span>
         </div>

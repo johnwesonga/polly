@@ -335,12 +335,12 @@ Disabled users have no permissions regardless of role.
 | Manage members | Yes | Yes | No | No |
 | Manage polls/options | Yes | Yes | No | No |
 | Manage electorates | Yes | Yes | No | No |
-| View/copy/reissue private access links | Yes | Yes | No | No |
+| Manage, revoke, and reissue voter access (credentials hidden) | Yes | Yes | No | No |
 | Send voter invitations | Yes | Yes | No | No |
 | View aggregate results | Yes | Yes | Yes | No |
 | Close/publish results | Yes | Yes | No | No |
 | Export aggregate results | Yes | Yes | Yes | No |
-| Export credential-bearing access links | Yes | Yes | No | No |
+| Export credential-bearing access links | No | No | No | No |
 | View audit history | Yes | No | Yes | No |
 | View invitation delivery status | Yes | Yes | Yes | Yes |
 | View read-only Oban Web | Yes | No | No | Yes |

@@ -17,7 +17,7 @@ Status labels:
 
 ## High-value next features
 
-- **Specified — [Access-link CSV export](access-link-csv-export-spec.md):** export member names, emails, link status, and private URLs for controlled distribution.
+- **Proposed — Delivery-status CSV export:** export member, eligibility, and invitation status without working voting credentials.
 - **Specified — [Poll archiving](poll-archiving-spec.md):** hide completed polls from normal administration while retaining their history.
 - **Proposed — Scheduled opening and closing:** configure lifecycle timestamps instead of requiring manual actions.
 - **Proposed — Reminder emails:** notify eligible members who have not voted without revealing their selections.

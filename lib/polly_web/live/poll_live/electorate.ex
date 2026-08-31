@@ -45,7 +45,7 @@ defmodule PollyWeb.PollLive.Electorate do
         <div class="detail-tabs" aria-label="Poll configuration sections">
           <.link navigate={~p"/admin/polls/#{@poll.id}/options"} class="phase-tab">Options</.link>
           <span class="phase-tab current">Electorate</span>
-          <.link navigate={~p"/admin/polls/#{@poll.id}/access"} class="phase-tab">Access links</.link>
+          <.link navigate={~p"/admin/polls/#{@poll.id}/access"} class="phase-tab">Voter access</.link>
           <.link navigate={~p"/admin/polls/#{@poll.id}/results"} class="phase-tab">Results</.link>
         </div>
 

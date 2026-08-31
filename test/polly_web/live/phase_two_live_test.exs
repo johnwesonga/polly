@@ -34,7 +34,7 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     refute updated.active
   end
 
-  test "selects an electorate and manages its access link", %{conn: conn} do
+  test "selects an electorate and manages access without exposing its credential", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)
 
@@ -52,11 +52,18 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     assert has_element?(electorate, "#toggle-eligibility-#{member.id}", "Selected")
 
     {:ok, access, _html} = live(conn, ~p"/admin/polls/#{poll.id}/access")
-    assert has_element?(access, "#access-link-#{member.id}")
-    assert has_element?(access, "#access-link-#{member.id}[data-url^='http://localhost']")
+    assert has_element?(access, "#protected-voting-credentials", "cannot be viewed or copied")
+    assert has_element?(access, "#protected-access-#{member.id}", "credential hidden")
+    refute has_element?(access, "#access-link-#{member.id}")
+    refute has_element?(access, "#copy-access-link-#{member.id}")
     assert has_element?(access, "#access-members .pill.open", "Active")
 
     grant = Ash.read_one!(AccessGrant, actor: actor)
+    html = render(access)
+    refute html =~ grant.token
+    refute html =~ "/polls/#{poll.id}/vote/"
+    refute html =~ "data-copy-value"
+
     access |> element("#reissue-access-link-#{member.id}") |> render_click()
 
     updated_grants = Ash.read!(AccessGrant, actor: actor)
