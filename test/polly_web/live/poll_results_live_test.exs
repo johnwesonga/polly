@@ -40,6 +40,8 @@ defmodule PollyWeb.PollResultsLiveTest do
     assert has_element?(view, "#ballot-count", "1")
     assert has_element?(view, "#eligible-count", "1")
     assert has_element?(view, "#turnout-percentage", "100.0%")
+    assert has_element?(view, "#poll-open-timing", "Opened")
+    assert has_element?(view, "#poll-open-timing", "Running for less than a minute")
     assert has_element?(view, "#result-#{fixture.option.id}")
     assert has_element?(view, "#winner-summary", "Leading: Under the Sea")
 

@@ -135,6 +135,7 @@ defmodule Polly.Administration.DashboardTest do
 
     assert {:ok, %{active_polls: [active]}} = Dashboard.load(owner)
     assert active.id == poll.id
+    assert active.opened_at == poll.opened_at
     assert active.ballot_count == 1
     assert active.eligible_count == 1
     assert active.turnout_percentage == Polly.Polls.Results.for_poll(poll.id).turnout_percentage
@@ -291,6 +292,6 @@ defmodule Polly.Administration.DashboardTest do
 
     {_eligibility, grant} = Polly.Polls.Electorate.include_member(poll, member, actor)
     poll = Ash.update!(poll, %{}, action: :open, actor: actor)
-    %{id: poll.id, option: option, grant: grant, member: member}
+    %{id: poll.id, opened_at: poll.opened_at, option: option, grant: grant, member: member}
   end
 end

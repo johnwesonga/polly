@@ -62,7 +62,8 @@ defmodule PollyWeb.AdminLiveTest do
     unpublished = create_poll!(owner, "Dashboard unpublished")
     published = create_poll!(owner, "Dashboard published")
 
-    set_poll_state!(open.id, "open", nil)
+    opened_at = DateTime.add(DateTime.utc_now(), -2, :hour)
+    set_open_poll_state!(open.id, opened_at)
     set_poll_state!(unpublished.id, "closed", nil)
     set_poll_state!(published.id, "closed", DateTime.utc_now())
 
@@ -110,6 +111,12 @@ defmodule PollyWeb.AdminLiveTest do
 
     assert has_element?(view, "#dashboard-active-poll-#{open.id}", "0.0% turnout")
     assert has_element?(view, "#dashboard-active-poll-#{open.id}", "No deliveries")
+
+    assert has_element?(
+             view,
+             "#active-poll-timing-#{open.id}",
+             "Running for 2 hours"
+           )
 
     assert draft.status == :draft
   end
@@ -223,6 +230,13 @@ defmodule PollyWeb.AdminLiveTest do
     Polly.Repo.query!(
       "UPDATE polls SET status = ?, results_published_at = ? WHERE id = ?",
       [status, results_published_at, id]
+    )
+  end
+
+  defp set_open_poll_state!(id, opened_at) do
+    Polly.Repo.query!(
+      "UPDATE polls SET status = 'open', opened_at = ? WHERE id = ?",
+      [opened_at, id]
     )
   end
 

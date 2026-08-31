@@ -194,6 +194,9 @@ defmodule PollyWeb.AdminLive do
               <div>
                 <h3>{poll.title}</h3>
                 <span>{poll.ballot_count} of {poll.eligible_count} votes</span>
+                <span id={"active-poll-timing-#{poll.id}"} class="dashboard-active-poll-timing">
+                  {PollyWeb.PollTiming.summary(poll.opened_at)}
+                </span>
               </div>
               <div class="dashboard-turnout">
                 <strong>{format_percentage(poll.turnout_percentage)} turnout</strong>

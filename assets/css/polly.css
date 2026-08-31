@@ -500,6 +500,11 @@
  .dashboard-active-poll-row span,
  .dashboard-delivery-summary { color: var(--slate); font-size: 11px; }
 
+ .dashboard-active-poll-row .dashboard-active-poll-timing {
+     display: block;
+     margin-top: 3px;
+ }
+
  .dashboard-turnout strong {
      display: block;
      margin-bottom: 7px;

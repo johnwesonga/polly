@@ -22,6 +22,7 @@ defmodule Polly.Administration.Dashboard do
   @type active_poll :: %{
           id: Ecto.UUID.t(),
           title: String.t(),
+          opened_at: DateTime.t() | nil,
           ballot_count: non_neg_integer(),
           eligible_count: non_neg_integer(),
           turnout_percentage: float(),
@@ -157,7 +158,7 @@ defmodule Polly.Administration.Dashboard do
     %{rows: rows} =
       Polly.Repo.query!("""
       WITH active_polls AS (
-        SELECT id, title, updated_at
+        SELECT id, title, opened_at, updated_at
         FROM polls
         WHERE status = 'open'
         ORDER BY updated_at DESC, title ASC
@@ -166,6 +167,7 @@ defmodule Polly.Administration.Dashboard do
       SELECT
         p.id,
         p.title,
+        p.opened_at,
         (SELECT COUNT(*) FROM poll_ballots b WHERE b.poll_id = p.id),
         (SELECT COUNT(*) FROM poll_eligibilities e WHERE e.poll_id = p.id),
         (SELECT COUNT(*) FROM poll_invitation_deliveries d
@@ -178,10 +180,11 @@ defmodule Polly.Administration.Dashboard do
       ORDER BY p.updated_at DESC, p.title ASC
       """)
 
-    Enum.map(rows, fn [id, title, ballots, eligible, accepted, pending, failed] ->
+    Enum.map(rows, fn [id, title, opened_at, ballots, eligible, accepted, pending, failed] ->
       %{
         id: id,
         title: title,
+        opened_at: parse_datetime(opened_at),
         ballot_count: ballots,
         eligible_count: eligible,
         turnout_percentage: Polly.Polls.Results.turnout_percentage(ballots, eligible),
@@ -192,4 +195,23 @@ defmodule Polly.Administration.Dashboard do
       }
     end)
   end
+
+  defp parse_datetime(%DateTime{} = datetime), do: datetime
+
+  defp parse_datetime(%NaiveDateTime{} = datetime),
+    do: DateTime.from_naive!(datetime, "Etc/UTC")
+
+  defp parse_datetime(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} ->
+        datetime
+
+      {:error, _reason} ->
+        value
+        |> NaiveDateTime.from_iso8601!()
+        |> DateTime.from_naive!("Etc/UTC")
+    end
+  end
+
+  defp parse_datetime(nil), do: nil
 end

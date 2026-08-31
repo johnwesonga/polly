@@ -72,6 +72,9 @@ defmodule PollyWeb.PollLive.Results do
           <div>
             <h3>Poll lifecycle</h3>
             <p class="admin-sub lifecycle-copy">{lifecycle_copy(@poll)}</p>
+            <p :if={@poll.status == :open} id="poll-open-timing" class="poll-meta">
+              {PollyWeb.PollTiming.summary(@poll.opened_at)}
+            </p>
           </div>
           <button
             :if={@manage_polls? && @poll.status == :draft}
