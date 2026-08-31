@@ -555,6 +555,53 @@ ballots =
 
 Ballot data is private. The current identified-ballot model can associate a member with a selection, so do not copy this output into logs, screenshots, tickets, or shared chat. Prefer aggregate result queries unless individual-record debugging is strictly necessary.
 
+### Retrieve selections for a specific poll
+
+`Selection` references a ballot rather than storing `poll_id` directly. Filter through the ballot relationship and load each selected option:
+
+```elixir
+selections =
+  Selection
+  |> Ash.Query.filter(ballot.poll_id == ^poll_id)
+  |> Ash.Query.load(:option)
+  |> Ash.read!(actor: actor)
+```
+
+Inspect a constrained representation:
+
+```elixir
+Enum.map(selections, fn selection ->
+  %{
+    selection_id: selection.id,
+    ballot_id: selection.ballot_id,
+    option_id: selection.option_id,
+    option_label: selection.option.label
+  }
+end)
+```
+
+For trusted debugging without authorization:
+
+```elixir
+selections =
+  Selection
+  |> Ash.Query.filter(ballot.poll_id == ^poll_id)
+  |> Ash.Query.load(:option)
+  |> Ash.read!(authorize?: false)
+```
+
+Only load the ballot member when investigating a specific identified-ballot problem:
+
+```elixir
+selections =
+  Selection
+  |> Ash.Query.filter(ballot.poll_id == ^poll_id)
+  |> Ash.Query.load([:option, ballot: [:member]])
+  |> Ash.read!(actor: actor)
+```
+
+That final query links voters to their choices. Treat its output as highly sensitive and prefer `Polly.Polls.Results.for_poll/1` for normal result inspection.
+
 ## 11. Submit a ballot
 
 Use the ballot service rather than creating `Ballot` and `Selection` records independently. The service validates the access grant, poll state, electorate membership, selection limits, selected options, and duplicate submission protection in one transaction.
