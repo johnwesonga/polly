@@ -20,5 +20,10 @@ defmodule PollyWeb.PollTimingTest do
 
     assert PollTiming.summary(nil, now) == "Opening time unavailable"
     assert PollTiming.elapsed(~U[2026-08-31 13:00:00Z], now) == "less than a minute"
+    assert PollTiming.duration(~U[2026-08-29 08:00:00Z], now) == "2 days, 4 hours"
+    assert PollTiming.duration(nil, now) == "Unavailable"
+
+    assert PollTiming.publication_summary(~U[2026-08-31 11:30:00Z]) ==
+             "Published Aug 31, 2026 at 11:30 AM UTC"
   end
 end

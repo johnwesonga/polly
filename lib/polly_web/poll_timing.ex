@@ -7,8 +7,19 @@ defmodule PollyWeb.PollTiming do
   def summary(nil, _now), do: "Opening time unavailable"
 
   def summary(%DateTime{} = opened_at, %DateTime{} = now) do
-    "Opened #{format_date(opened_at)} · Running for #{elapsed(opened_at, now)}"
+    "Opened #{format_datetime(opened_at)} · Running for #{elapsed(opened_at, now)}"
   end
+
+  @spec publication_summary(DateTime.t() | nil) :: String.t() | nil
+  def publication_summary(nil), do: nil
+
+  def publication_summary(%DateTime{} = published_at),
+    do: "Published #{format_datetime(published_at)}"
+
+  @spec duration(DateTime.t() | nil, DateTime.t() | nil) :: String.t()
+  def duration(nil, _ended_at), do: "Unavailable"
+  def duration(_opened_at, nil), do: "Unavailable"
+  def duration(%DateTime{} = opened_at, %DateTime{} = ended_at), do: elapsed(opened_at, ended_at)
 
   @spec elapsed(DateTime.t(), DateTime.t()) :: String.t()
   def elapsed(%DateTime{} = opened_at, %DateTime{} = now) do
@@ -25,7 +36,8 @@ defmodule PollyWeb.PollTiming do
     end
   end
 
-  defp format_date(datetime), do: Calendar.strftime(datetime, "%b %-d, %Y at %-I:%M %p UTC")
+  defp format_datetime(datetime),
+    do: Calendar.strftime(datetime, "%b %-d, %Y at %-I:%M %p UTC")
 
   defp join_parts(parts) do
     parts

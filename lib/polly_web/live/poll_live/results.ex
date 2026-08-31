@@ -75,6 +75,13 @@ defmodule PollyWeb.PollLive.Results do
             <p :if={@poll.status == :open} id="poll-open-timing" class="poll-meta">
               {PollyWeb.PollTiming.summary(@poll.opened_at)}
             </p>
+            <p
+              :if={@poll.results_published_at}
+              id="results-publication-timing"
+              class="poll-meta"
+            >
+              {PollyWeb.PollTiming.publication_summary(@poll.results_published_at)}
+            </p>
           </div>
           <button
             :if={@manage_polls? && @poll.status == :draft}
@@ -274,6 +281,10 @@ defmodule PollyWeb.PollLive.Results do
             <span>Turnout</span>
             <strong id="turnout-percentage">{format_percentage(@result.turnout_percentage)}</strong>
           </div>
+          <div :if={@poll.status != :draft} class="card card-pad metric-card">
+            <span>{duration_label(@poll)}</span>
+            <strong id="poll-duration">{poll_duration(@poll)}</strong>
+          </div>
           <div :if={@result.selection_mode == :multiple} class="card card-pad metric-card">
             <span>Total selections</span>
             <strong id="total-selections">{@result.total_selections}</strong>
@@ -439,6 +450,15 @@ defmodule PollyWeb.PollLive.Results do
 
   defp public_results_url(poll),
     do: PollyWeb.Endpoint.url() <> "/polls/#{poll.slug}/results"
+
+  defp duration_label(%Poll{status: :open}), do: "Running time"
+  defp duration_label(%Poll{}), do: "Poll duration"
+
+  defp poll_duration(%Poll{status: :open, opened_at: opened_at}),
+    do: PollyWeb.PollTiming.duration(opened_at, DateTime.utc_now())
+
+  defp poll_duration(%Poll{opened_at: opened_at, closed_at: closed_at}),
+    do: PollyWeb.PollTiming.duration(opened_at, closed_at)
 
   defp format_percentage(value), do: :erlang.float_to_binary(value, decimals: 1) <> "%"
 

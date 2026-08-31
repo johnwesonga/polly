@@ -26,6 +26,8 @@ defmodule PollyWeb.PollResultsLiveTest do
 
     view |> element("#publish-results-button") |> render_click()
     assert has_element?(view, "#results-published-status")
+    assert has_element?(view, "#results-publication-timing", "Published")
+    assert has_element?(view, "#poll-duration", "less than a minute")
     refute has_element?(view, "#publish-results-button")
   end
 
@@ -134,6 +136,29 @@ defmodule PollyWeb.PollResultsLiveTest do
 
     assert {:error, {:live_redirect, %{to: path}}} = result
     assert path == ~p"/admin/polls/#{fixture.poll.id}/duplicate"
+  end
+
+  test "shows the final number of days a closed poll ran", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    fixture = draft_poll!(actor, "Long-running poll")
+
+    closed =
+      fixture.poll
+      |> Ash.update!(%{}, action: :open, actor: actor)
+      |> Ash.update!(%{}, action: :close, actor: actor)
+
+    closed_at = ~U[2026-08-31 12:00:00Z]
+    opened_at = ~U[2026-08-28 08:00:00Z]
+
+    Polly.Repo.query!(
+      "UPDATE polls SET opened_at = ?, closed_at = ? WHERE id = ?",
+      [opened_at, closed_at, closed.id]
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{closed.id}/results")
+
+    assert has_element?(view, "#poll-duration", "3 days, 4 hours")
+    refute has_element?(view, "#results-publication-timing")
   end
 
   test "confirms provisional and final CSV result exports", %{conn: conn} do
