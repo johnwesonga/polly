@@ -32,10 +32,14 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       PollyWeb.PollLive.Results =>
         {:all, [:view_results],
          event_permissions: [
-           open: :manage_polls,
-           publish: :publish_results,
-           export: :export_results
+           {:open, :manage_polls},
+           {:publish, :publish_results},
+           {:export, :export_results},
+           {:"make-results-public", :publish_results},
+           {:"make-results-credentialed", :publish_results}
          ]},
+      PollyWeb.PublicPollResultsLive =>
+        {:trusted, "closed, published poll explicitly configured for public results"},
       PollyWeb.PollResultsExportController => {:permission, :export_results},
       PollyWeb.ObanWebResolver => {:permission, :view_jobs}
     }
@@ -94,7 +98,9 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         update_draft: {:permission, :manage_polls},
         open: {:permission, :manage_polls},
         close: {:permission, :publish_results},
-        publish_results: {:permission, :publish_results}
+        publish_results: {:permission, :publish_results},
+        make_results_public: {:permission, :publish_results},
+        make_results_credentialed: {:permission, :publish_results}
       },
       Polly.Polls.Option => %{
         read: {:any, [:manage_polls, :view_results]},
@@ -164,6 +170,8 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Polls.Electorate, :issue} => {:permission, :manage_access_grants},
       {Polly.Polls.Electorate, :revoke} => {:permission, :manage_access_grants},
       {Polly.Polls.Results, :for_poll} => {:permission, :view_results},
+      {Polly.Polls.PublicResults, :fetch_by_slug} =>
+        {:trusted, "closed, published poll explicitly configured for public results"},
       {Polly.Polls.Readiness, :attention_counts} => {:permission, :view_results},
       {Polly.Polls.ResultExport, :generate} => {:permission, :export_results},
       {Polly.Polls.Ballots, :submit} => {:trusted, "public voting credential flow"},
@@ -209,6 +217,10 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       "lib/polly/polls/results.ex" => %{
         count: 5,
         reason: "aggregate result builder called from protected boundaries"
+      },
+      "lib/polly/polls/public_results.ex" => %{
+        count: 1,
+        reason: "aggregate-only projection after closed, published, public visibility filtering"
       },
       "lib/polly/polls/readiness.ex" => %{
         count: 2,

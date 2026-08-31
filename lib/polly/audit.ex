@@ -35,6 +35,8 @@ defmodule Polly.Audit do
     "poll.opened" => [:old_status, :new_status],
     "poll.closed" => [:old_status, :new_status],
     "poll.results_published" => [],
+    "poll.results_made_public" => [:old_visibility, :new_visibility],
+    "poll.results_made_credentialed" => [:old_visibility, :new_visibility],
     "poll.results_exported" => [
       :poll_status,
       :result_state,
@@ -150,6 +152,12 @@ defmodule Polly.Audit do
 
       "poll.results_published" ->
         "published results for “#{event.target_label}”"
+
+      "poll.results_made_public" ->
+        "made results public for “#{event.target_label}”"
+
+      "poll.results_made_credentialed" ->
+        "restricted results to voting links for “#{event.target_label}”"
 
       "poll.results_exported" ->
         "exported results for “#{event.target_label}”"

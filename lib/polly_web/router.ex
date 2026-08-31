@@ -26,6 +26,16 @@ defmodule PollyWeb.Router do
     plug PollyWeb.Plugs.RequireAdministrator, permission: :export_results
   end
 
+  pipeline :public_results do
+    plug :put_public_results_headers
+  end
+
+  defp put_public_results_headers(conn, _opts) do
+    conn
+    |> put_resp_header("cache-control", "private, no-store")
+    |> put_resp_header("x-robots-tag", "noindex, nofollow")
+  end
+
   scope "/", PollyWeb do
     get "/health", HealthController, :show
   end
@@ -55,6 +65,12 @@ defmodule PollyWeb.Router do
       live "/admin/polls/:id/access", PollLive.Access, :index
       live "/admin/polls/:id/results", PollLive.Results, :index
     end
+  end
+
+  scope "/", PollyWeb do
+    pipe_through [:browser, :public_results]
+
+    live "/polls/:slug/results", PublicPollResultsLive, :show
   end
 
   scope "/admin" do

@@ -89,6 +89,38 @@ defmodule PollyWeb.PollResultsLiveTest do
            )
   end
 
+  test "enables, shares, and withdraws public result access", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    fixture = draft_poll!(actor, "Public sharing controls")
+
+    poll =
+      fixture.poll
+      |> Ash.update!(%{}, action: :open, actor: actor)
+      |> Ash.update!(%{}, action: :close, actor: actor)
+      |> Ash.update!(%{}, action: :publish_results, actor: actor)
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/results")
+
+    assert has_element?(view, "#result-visibility-description", "require a member's private")
+    assert has_element?(view, "#make-results-public-button")
+    refute has_element?(view, "#public-results-link")
+
+    view |> element("#make-results-public-button") |> render_click()
+
+    assert has_element?(view, "#make-results-credentialed-button")
+    assert has_element?(view, "#public-results-link")
+
+    assert has_element?(
+             view,
+             "#view-public-results-link[href='/polls/#{poll.slug}/results']"
+           )
+
+    view |> element("#make-results-credentialed-button") |> render_click()
+
+    assert has_element?(view, "#make-results-public-button")
+    refute has_element?(view, "#public-results-link")
+  end
+
   test "links to duplication configuration from the results page", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     fixture = draft_poll!(actor, "Reusable results poll")

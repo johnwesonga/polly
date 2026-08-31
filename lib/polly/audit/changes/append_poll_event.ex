@@ -38,5 +38,14 @@ defmodule Polly.Audit.Changes.AppendPollEvent do
   defp metadata(changeset, "poll.closed"),
     do: %{old_status: to_string(changeset.data.status), new_status: "closed"}
 
+  defp metadata(changeset, "poll.results_made_public"),
+    do: %{old_visibility: to_string(changeset.data.result_visibility), new_visibility: "public"}
+
+  defp metadata(changeset, "poll.results_made_credentialed"),
+    do: %{
+      old_visibility: to_string(changeset.data.result_visibility),
+      new_visibility: "credentialed"
+    }
+
   defp metadata(_changeset, _action), do: %{}
 end

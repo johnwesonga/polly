@@ -130,6 +130,63 @@ defmodule PollyWeb.PollLive.Results do
           </button>
         </div>
 
+        <div :if={@poll.status == :closed} id="result-visibility" class="card card-pad lifecycle-card">
+          <div>
+            <h3>Results audience</h3>
+            <p id="result-visibility-description" class="admin-sub lifecycle-copy">
+              {visibility_copy(@poll)}
+            </p>
+            <div
+              :if={public_results_available?(@poll)}
+              id="public-results-link"
+              class="access-link-controls"
+            >
+              <code class="access-url-preview" title={public_results_url(@poll)}>
+                {public_results_url(@poll)}
+              </code>
+              <button
+                id="copy-public-results-link"
+                type="button"
+                class="btn btn-outline btn-sm"
+                phx-click={JS.dispatch("phx:copy")}
+                data-copy-value={public_results_url(@poll)}
+                aria-live="polite"
+              >
+                Copy
+              </button>
+              <.link
+                id="view-public-results-link"
+                href={~p"/polls/#{@poll.slug}/results"}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-outline btn-sm"
+              >
+                View public page
+              </.link>
+            </div>
+          </div>
+          <button
+            :if={@publish_results? && @poll.result_visibility == :credentialed}
+            id="make-results-public-button"
+            type="button"
+            phx-click="make-results-public"
+            data-confirm="Make these results public? Anyone with the URL will be able to view the aggregate results, which may reveal information in a small electorate."
+            class="btn btn-coral"
+          >
+            Allow public access
+          </button>
+          <button
+            :if={@publish_results? && @poll.result_visibility == :public}
+            id="make-results-credentialed-button"
+            type="button"
+            phx-click="make-results-credentialed"
+            data-confirm="Withdraw public access? Voting-link holders will still be able to view published results. Copies already viewed or saved cannot be recalled."
+            class="btn btn-outline"
+          >
+            Require voting links
+          </button>
+        </div>
+
         <p :if={@poll.status == :draft} id="results-export-unavailable" class="poll-meta">
           Open the poll before exporting results.
         </p>
@@ -267,6 +324,12 @@ defmodule PollyWeb.PollLive.Results do
   def handle_event("publish", _params, socket),
     do: transition(socket, :publish_results, "Results published")
 
+  def handle_event("make-results-public", _params, socket),
+    do: transition(socket, :make_results_public, "Public results enabled")
+
+  def handle_event("make-results-credentialed", _params, socket),
+    do: transition(socket, :make_results_credentialed, "Public results withdrawn")
+
   def handle_event("prepare-export", _params, socket) do
     if socket.assigns.poll.status != :draft && socket.assigns.result.options != [] do
       {:noreply, assign(socket, :confirming_export?, true)}
@@ -355,6 +418,24 @@ defmodule PollyWeb.PollLive.Results do
 
   defp lifecycle_copy(%Poll{status: :closed}),
     do: "Voting is closed. Review the final totals before publishing them to members."
+
+  defp visibility_copy(%Poll{result_visibility: :public, results_published_at: nil}),
+    do: "Anyone with the public URL will be able to view aggregate results after publication."
+
+  defp visibility_copy(%Poll{result_visibility: :public}),
+    do: "Anyone with the public URL can view these published aggregate results."
+
+  defp visibility_copy(%Poll{results_published_at: nil}),
+    do: "Published results will require a member's private voting link."
+
+  defp visibility_copy(%Poll{}),
+    do: "Published results require a member's private voting link."
+
+  defp public_results_available?(poll),
+    do: poll.result_visibility == :public and not is_nil(poll.results_published_at)
+
+  defp public_results_url(poll),
+    do: PollyWeb.Endpoint.url() <> "/polls/#{poll.slug}/results"
 
   defp format_percentage(value), do: :erlang.float_to_binary(value, decimals: 1) <> "%"
 

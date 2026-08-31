@@ -2,7 +2,12 @@
 
 ## Status
 
-Proposed.
+Implemented. The initial release includes private-default result visibility,
+audited public/credentialed transitions for closed polls, the aggregate-only
+public projection, the unauthenticated slug route, no-store and no-index
+headers, administrator sharing controls, withdrawal, and automated privacy and
+authorization coverage. Additional telemetry and optional future extensions
+remain follow-up work.
 
 ## Summary
 

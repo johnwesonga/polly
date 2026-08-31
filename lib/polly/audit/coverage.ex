@@ -9,6 +9,8 @@ defmodule Polly.Audit.Coverage do
     {Polly.Polls.Poll, :open} => "poll.opened",
     {Polly.Polls.Poll, :close} => "poll.closed",
     {Polly.Polls.Poll, :publish_results} => "poll.results_published",
+    {Polly.Polls.Poll, :make_results_public} => "poll.results_made_public",
+    {Polly.Polls.Poll, :make_results_credentialed} => "poll.results_made_credentialed",
     {Polly.Polls.Option, :create} => "poll_option.created",
     {Polly.Polls.Option, :update} => "poll_option.updated/poll_option.reordered",
     {Polly.Polls.Option, :destroy} => "poll_option.deleted",

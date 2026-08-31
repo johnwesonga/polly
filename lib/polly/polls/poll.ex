@@ -96,6 +96,32 @@ defmodule Polly.Polls.Poll do
       change {Polly.Audit.Changes.AppendPollEvent, action: "poll.results_published"}
       change after_transaction(&__MODULE__.broadcast_status/3)
     end
+
+    update :make_results_public do
+      accept []
+      require_atomic? false
+      validate attribute_equals(:status, :closed), message: "must be closed to change visibility"
+
+      validate attribute_equals(:result_visibility, :credentialed),
+        message: "results are already public"
+
+      change set_attribute(:result_visibility, :public)
+      change {Polly.Audit.Changes.AppendPollEvent, action: "poll.results_made_public"}
+      change after_transaction(&__MODULE__.broadcast_status/3)
+    end
+
+    update :make_results_credentialed do
+      accept []
+      require_atomic? false
+      validate attribute_equals(:status, :closed), message: "must be closed to change visibility"
+
+      validate attribute_equals(:result_visibility, :public),
+        message: "results already require a voting link"
+
+      change set_attribute(:result_visibility, :credentialed)
+      change {Polly.Audit.Changes.AppendPollEvent, action: "poll.results_made_credentialed"}
+      change after_transaction(&__MODULE__.broadcast_status/3)
+    end
   end
 
   policies do
@@ -108,7 +134,12 @@ defmodule Polly.Polls.Poll do
       authorize_if {Polly.Accounts.Checks.HasPermission, permission: :manage_polls}
     end
 
-    policy action([:close, :publish_results]) do
+    policy action([
+             :close,
+             :publish_results,
+             :make_results_public,
+             :make_results_credentialed
+           ]) do
       authorize_if {Polly.Accounts.Checks.HasPermission, permission: :publish_results}
     end
   end
@@ -162,6 +193,12 @@ defmodule Polly.Polls.Poll do
     attribute :opened_at, :utc_datetime_usec, public?: true
     attribute :closed_at, :utc_datetime_usec, public?: true
     attribute :results_published_at, :utc_datetime_usec, public?: true
+
+    attribute :result_visibility, Polly.Polls.Poll.ResultVisibility do
+      allow_nil? false
+      public? true
+      default :credentialed
+    end
 
     create_timestamp :inserted_at
     update_timestamp :updated_at
