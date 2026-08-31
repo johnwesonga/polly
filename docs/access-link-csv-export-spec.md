@@ -1,5 +1,13 @@
 # Access-link CSV export feature specification
 
+## Status
+
+Superseded before implementation by the
+[voter credential protection specification](voter-credential-protection-spec.md).
+Do not implement the credential-bearing export described below as written.
+A future replacement should export delivery and eligibility status without
+private URLs, tokens, digests, or credential-derivation inputs.
+
 ## Summary
 
 Allow an authenticated administrator to export a poll's member access links as

@@ -60,7 +60,8 @@ Status labels:
 ## Access and security
 
 - **Done — [One-time invitation delivery tracking](email-invitation-delivery-spec.md):** retain safe per-attempt delivery state without persisting private URLs in jobs or audit metadata.
-- **Specified — [Access-link CSV export](access-link-csv-export-spec.md):** controlled export of credential-bearing private links.
+- **Specified — [Voter credential protection](voter-credential-protection-spec.md):** prevent administrators from retrieving working voting links while preserving durable delivery, rotation, revocation, and eligibility enforcement.
+- **Proposed — Delivery-status CSV export:** replace the superseded [credential-bearing access-link export](access-link-csv-export-spec.md) with member, eligibility, and delivery status that contains no private URLs.
 - **Proposed — Expiring voting links.**
 - **Proposed — Bulk link revocation and reissue.**
 - **Specified — [Administrator user management and roles](administrator-user-management-spec.md):** owner-managed invitations, account lifecycle controls, final-owner protection, and role-based authorization.
