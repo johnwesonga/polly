@@ -96,7 +96,8 @@ defmodule Polly.Administration.DashboardTest do
           operation_id: Ash.UUID.generate(),
           kind: :initial,
           dedupe_key: "dashboard-delivery-attention",
-          recipient_email: "dashboard-voter@example.com"
+          recipient_email: "dashboard-voter@example.com",
+          credential_version: poll.grant.credential_version
         },
         action: :queue,
         actor: owner

@@ -30,13 +30,29 @@ defmodule Polly.Polls.InvitationWorker do
     poll = Ash.get!(Poll, delivery.poll_id, authorize?: false)
 
     cond do
-      poll.status != :open -> "poll_not_open"
-      not delivery.member.active -> "member_inactive"
-      delivery.member.email != delivery.recipient_email -> "recipient_changed"
-      delivery.access_grant.revoked_at -> "grant_revoked"
-      expired?(delivery.access_grant.expires_at) -> "grant_expired"
-      ballot_exists?(delivery.poll_id, delivery.member_id) -> "already_voted"
-      true -> nil
+      poll.status != :open ->
+        "poll_not_open"
+
+      not delivery.member.active ->
+        "member_inactive"
+
+      delivery.member.email != delivery.recipient_email ->
+        "recipient_changed"
+
+      delivery.credential_version != delivery.access_grant.credential_version ->
+        "stale_credential"
+
+      delivery.access_grant.revoked_at ->
+        "grant_revoked"
+
+      expired?(delivery.access_grant.expires_at) ->
+        "grant_expired"
+
+      ballot_exists?(delivery.poll_id, delivery.member_id) ->
+        "already_voted"
+
+      true ->
+        nil
     end
   end
 

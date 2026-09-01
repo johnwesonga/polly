@@ -455,6 +455,10 @@ defmodule PollyWeb.PollLive.Access do
   defp error_label("member_inactive"), do: "Cancelled because the member is inactive."
   defp error_label("recipient_changed"), do: "Cancelled because the member email changed."
   defp error_label("grant_revoked"), do: "Cancelled because the access link was revoked."
+
+  defp error_label("stale_credential"),
+    do: "Cancelled because a newer voting credential was issued."
+
   defp error_label("grant_expired"), do: "Cancelled because the access link expired."
   defp error_label("already_voted"), do: "Cancelled because the member already voted."
   defp error_label(_code), do: "Delivery could not be completed."

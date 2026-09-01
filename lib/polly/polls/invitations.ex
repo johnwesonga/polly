@@ -105,7 +105,8 @@ defmodule Polly.Polls.Invitations do
           operation_id: operation_id,
           kind: kind,
           dedupe_key: dedupe_key,
-          recipient_email: recipient.member.email
+          recipient_email: recipient.member.email,
+          credential_version: recipient.grant.credential_version
         },
         action: :queue,
         actor: actor
@@ -125,7 +126,15 @@ defmodule Polly.Polls.Invitations do
     grants_by_member =
       AccessGrant
       |> Ash.Query.filter(poll_id == ^poll.id and is_nil(revoked_at))
-      |> Ash.Query.select([:id, :poll_id, :member_id, :revoked_at, :expires_at, :inserted_at])
+      |> Ash.Query.select([
+        :id,
+        :poll_id,
+        :member_id,
+        :credential_version,
+        :revoked_at,
+        :expires_at,
+        :inserted_at
+      ])
       |> Ash.Query.sort(inserted_at: :desc)
       |> Ash.read!(actor: actor)
       |> Enum.reduce(%{}, &Map.put_new(&2, &1.member_id, &1))

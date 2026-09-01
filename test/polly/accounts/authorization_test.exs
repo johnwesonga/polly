@@ -84,7 +84,8 @@ defmodule Polly.Accounts.AuthorizationTest do
           operation_id: Ash.UUID.generate(),
           kind: :initial,
           dedupe_key: Ash.UUID.generate(),
-          recipient_email: "recipient@example.com"
+          recipient_email: "recipient@example.com",
+          credential_version: grant.credential_version
         },
         action: :queue,
         actor: owner

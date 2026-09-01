@@ -366,9 +366,10 @@ plaintext rows.
 
 ### Phase 3 — Durable delivery and rotation
 
-Partially implemented. Oban jobs contain only the delivery ID, and the worker
-derives a stable credential in memory for the grant's current version. Explicit
-resend rotation and stale-job version rejection remain pending.
+Partially implemented. Oban jobs contain only the delivery ID, each delivery
+pins the expected credential version, and the worker rejects stale jobs before
+deriving a stable credential in memory. Explicit resend rotation remains
+pending.
 
 - Change Oban jobs to carry grant ID and credential version only.
 - Derive URLs only inside the worker process.

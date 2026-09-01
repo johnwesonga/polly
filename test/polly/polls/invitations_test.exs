@@ -35,6 +35,7 @@ defmodule Polly.Polls.InvitationsTest do
     assert {:ok, [delivery]} = Invitations.enqueue_bulk(poll, actor)
     assert delivery.status == :queued
     assert delivery.kind == :initial
+    assert delivery.credential_version == 1
 
     assert [%Oban.Job{args: %{"delivery_id" => delivery_id}}] = all_enqueued()
     assert delivery_id == delivery.id
@@ -112,6 +113,52 @@ defmodule Polly.Polls.InvitationsTest do
 
     assert Ash.get!(InvitationDelivery, delivery.id, actor: actor).status == :cancelled
     refute_email_sent()
+  end
+
+  test "worker cancels a delivery pinned to an older credential version", %{actor: actor} do
+    {poll, _member, grant} = open_poll_with_member!(actor)
+    assert {:ok, [delivery]} = Invitations.enqueue_bulk(poll, actor)
+
+    Polly.Repo.query!(
+      "UPDATE poll_access_grants SET credential_version = ? WHERE id = ?",
+      [grant.credential_version + 1, grant.id]
+    )
+
+    assert :ok =
+             InvitationWorker.perform(%Oban.Job{
+               args: %{"delivery_id" => delivery.id},
+               attempt: 1,
+               max_attempts: 5
+             })
+
+    delivery = Ash.get!(InvitationDelivery, delivery.id, actor: actor)
+    assert delivery.status == :cancelled
+    assert delivery.last_error_code == "stale_credential"
+    refute_email_sent()
+  end
+
+  test "legacy deliveries pin version zero and continue using their plaintext credential", %{
+    actor: actor
+  } do
+    {poll, _member, grant} = open_poll_with_member!(actor)
+    legacy_token = "legacy-" <> Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+
+    Polly.Repo.query!(
+      "UPDATE poll_access_grants SET token = ?, token_digest = NULL, credential_nonce = NULL, credential_version = 0, credential_issued_at = NULL WHERE id = ?",
+      [legacy_token, grant.id]
+    )
+
+    assert {:ok, [delivery]} = Invitations.enqueue_bulk(poll, actor)
+    assert delivery.credential_version == 0
+
+    assert :ok =
+             InvitationWorker.perform(%Oban.Job{
+               args: %{"delivery_id" => delivery.id},
+               attempt: 1,
+               max_attempts: 5
+             })
+
+    assert_email_sent(fn email -> assert email.text_body =~ legacy_token end)
   end
 
   defp open_poll_with_member!(actor) do

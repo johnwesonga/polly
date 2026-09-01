@@ -38,7 +38,8 @@ defmodule Polly.Polls.InvitationDelivery do
         :operation_id,
         :kind,
         :dedupe_key,
-        :recipient_email
+        :recipient_email,
+        :credential_version
       ]
 
       change set_attribute(:status, :queued)
@@ -106,6 +107,7 @@ defmodule Polly.Polls.InvitationDelivery do
     end
 
     attribute :requested_by_id, :uuid, allow_nil?: false, public?: true
+    attribute :credential_version, :integer, allow_nil?: false, public?: true
     attribute :attempt_count, :integer, allow_nil?: false, public?: true, default: 0
     attribute :provider_message_id, :string, sensitive?: true
     attribute :last_error_code, :string, public?: true
