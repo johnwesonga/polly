@@ -258,6 +258,7 @@ fly secrets set \
   --app <app-name> \
   SECRET_KEY_BASE="$(mix phx.gen.secret)" \
   TOKEN_SIGNING_SECRET="$(mix phx.gen.secret)" \
+  POLLY_VOTER_TOKEN_SECRET="$(mix phx.gen.secret)" \
   RESEND_API_KEY="<resend-api-key>" \
   POLLY_FROM_EMAIL="<sender-email>"
 ```

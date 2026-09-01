@@ -1,5 +1,6 @@
 import Config
 config :polly, token_signing_secret: "uNoRLxjjFliR046j7oAAH52/OPlReQU1"
+config :polly, voter_token_secret: "test-only-voter-token-secret-32-bytes-minimum"
 config :bcrypt_elixir, log_rounds: 1
 config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true
 

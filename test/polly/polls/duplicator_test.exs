@@ -47,7 +47,7 @@ defmodule Polly.Polls.DuplicatorTest do
 
     fixture = %{fixture | poll: configured_poll}
     opened = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
-    {:ok, _ballot} = Ballots.submit(opened.id, fixture.grant.token, [fixture.option.id])
+    {:ok, _ballot} = Ballots.submit(opened.id, voting_token(fixture.grant), [fixture.option.id])
     source = Ash.update!(opened, %{}, action: :close, actor: actor)
     source = Ash.update!(source, %{}, action: :publish_results, actor: actor)
 
@@ -207,8 +207,8 @@ defmodule Polly.Polls.DuplicatorTest do
 
     [copied_grant] = list_grants(result.poll.id, actor)
     assert copied_grant.member_id == fixture.member.id
-    assert copied_grant.token != fixture.grant.token
-    assert copied_grant.token != inactive_grant.token
+    assert voting_token(copied_grant) != voting_token(fixture.grant)
+    assert voting_token(copied_grant) != voting_token(inactive_grant)
     assert count_for(Ballot, result.poll.id) == 0
     assert count_selections(result.poll.id) == 0
   end

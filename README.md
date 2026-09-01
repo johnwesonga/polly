@@ -34,7 +34,7 @@ Polly is the successor to Nominator, a swimmer-award proof of concept. The curre
 - Results remain private until an administrator explicitly publishes them.
 - Published results are visible to members whose access grants remain valid.
 
-Voting links are bearer credentials delivered directly to members and are hidden from administrator pages. Polly derives voter identity from the access grant and never trusts a member ID supplied by the browser. Plaintext credential storage remains until the later derived-credential security phase is implemented.
+Voting links are bearer credentials delivered directly to members and are hidden from administrator pages. Polly derives voter identity from the access grant and never trusts a member ID supplied by the browser. Newly issued grants persist only a credential digest and HMAC derivation inputs; legacy grants remain resolvable during the staged migration away from plaintext credentials.
 
 ## Architecture
 
@@ -164,6 +164,7 @@ Required production settings include:
 - `PHX_HOST` and `PHX_SERVER=true`;
 - `SECRET_KEY_BASE`;
 - `TOKEN_SIGNING_SECRET`;
+- `POLLY_VOTER_TOKEN_SECRET` (a dedicated secret of at least 32 bytes);
 - the Resend settings above; and
 - a persistent volume mounted at `/data`.
 

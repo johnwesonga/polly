@@ -29,7 +29,7 @@ defmodule Polly.Polls.ResultExportTest do
     poll = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
 
     {:ok, _ballot} =
-      Ballots.submit(poll.id, fixture.grants |> hd() |> Map.fetch!(:token), [fixture.first.id])
+      Ballots.submit(poll.id, fixture.grants |> hd() |> voting_token(), [fixture.first.id])
 
     now = ~U[2026-08-26 18:30:00.000000Z]
 
@@ -62,7 +62,7 @@ defmodule Polly.Polls.ResultExportTest do
     assert Enum.at(second, 13) == "0"
     assert Enum.at(second, 14) == "0.0"
     refute csv =~ "Voter 1"
-    refute csv =~ hd(fixture.grants).token
+    refute csv =~ voting_token(hd(fixture.grants))
 
     event =
       Event

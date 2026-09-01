@@ -35,7 +35,7 @@ defmodule Polly.Polls.BallotsTest do
   test "submits one final text-option ballot from the grant identity", %{actor: actor} do
     %{poll: poll, member: member, grant: grant, option: option} = open_poll!(actor)
 
-    assert {:ok, ballot} = Ballots.submit(poll.id, grant.token, [option.id])
+    assert {:ok, ballot} = Ballots.submit(poll.id, voting_token(grant), [option.id])
     assert ballot.poll_id == poll.id
     assert ballot.member_id == member.id
     assert ballot.submitted_at
@@ -52,7 +52,7 @@ defmodule Polly.Polls.BallotsTest do
     actor: actor
   } do
     %{poll: poll, grant: grant, option: option, other_option: other_option} = open_poll!(actor)
-    assert {:ok, ballot} = Ballots.submit(poll.id, grant.token, [option.id])
+    assert {:ok, ballot} = Ballots.submit(poll.id, voting_token(grant), [option.id])
 
     assert {:ok, second_selection} =
              Ash.create(
@@ -81,13 +81,13 @@ defmodule Polly.Polls.BallotsTest do
   test "single-choice polls require exactly one distinct option", %{actor: actor} do
     %{poll: poll, grant: grant, option: option, other_option: other_option} = open_poll!(actor)
 
-    assert {:error, :too_few_selections} = Ballots.submit(poll.id, grant.token, [])
+    assert {:error, :too_few_selections} = Ballots.submit(poll.id, voting_token(grant), [])
 
     assert {:error, :too_many_selections} =
-             Ballots.submit(poll.id, grant.token, [option.id, other_option.id])
+             Ballots.submit(poll.id, voting_token(grant), [option.id, other_option.id])
 
     assert {:error, :duplicate_options} =
-             Ballots.submit(poll.id, grant.token, [option.id, option.id])
+             Ballots.submit(poll.id, voting_token(grant), [option.id, option.id])
 
     assert 0 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
   end
@@ -97,7 +97,7 @@ defmodule Polly.Polls.BallotsTest do
     set_selection_range!(poll, 2, 2)
 
     assert {:ok, ballot} =
-             Ballots.submit(poll.id, grant.token, [option.id, other_option.id])
+             Ballots.submit(poll.id, voting_token(grant), [option.id, other_option.id])
 
     selected_ids =
       Selection
@@ -114,7 +114,7 @@ defmodule Polly.Polls.BallotsTest do
     set_selection_range!(poll, 2, 2)
 
     assert {:error, :option_not_in_poll} =
-             Ballots.submit(poll.id, grant.token, [option.id, Ecto.UUID.generate()])
+             Ballots.submit(poll.id, voting_token(grant), [option.id, Ecto.UUID.generate()])
 
     assert 0 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
     assert 0 == Selection |> Ash.count!(authorize?: false)
@@ -122,7 +122,7 @@ defmodule Polly.Polls.BallotsTest do
 
   test "temporarily accepts a scalar option ID for compatibility", %{actor: actor} do
     %{poll: poll, grant: grant, option: option} = open_poll!(actor)
-    assert {:ok, ballot} = Ballots.submit(poll.id, grant.token, option.id)
+    assert {:ok, ballot} = Ballots.submit(poll.id, voting_token(grant), option.id)
     assert ballot.poll_id == poll.id
   end
 
@@ -134,12 +134,12 @@ defmodule Polly.Polls.BallotsTest do
              Ballots.submit(first.poll.id, "not-a-grant", [first.option.id])
 
     assert {:error, :invalid_grant} =
-             Ballots.submit(second.poll.id, first.grant.token, [second.option.id])
+             Ballots.submit(second.poll.id, voting_token(first.grant), [second.option.id])
 
     Ash.update!(first.grant, %{}, action: :revoke, actor: actor)
 
     assert {:error, :invalid_grant} =
-             Ballots.submit(first.poll.id, first.grant.token, [first.option.id])
+             Ballots.submit(first.poll.id, voting_token(first.grant), [first.option.id])
   end
 
   test "rejects an ineligible grant member", %{actor: actor} do
@@ -156,7 +156,8 @@ defmodule Polly.Polls.BallotsTest do
     Ash.destroy!(eligibility, authorize?: false)
     poll = Ash.update!(poll, %{}, action: :open, actor: actor)
 
-    assert {:error, :member_not_eligible} = Ballots.submit(poll.id, grant.token, [option.id])
+    assert {:error, :member_not_eligible} =
+             Ballots.submit(poll.id, voting_token(grant), [option.id])
   end
 
   test "rejects an option belonging to another poll", %{actor: actor} do
@@ -164,22 +165,22 @@ defmodule Polly.Polls.BallotsTest do
     second = open_poll!(actor, "Submitting poll")
 
     assert {:error, :option_not_in_poll} =
-             Ballots.submit(second.poll.id, second.grant.token, [first.option.id])
+             Ballots.submit(second.poll.id, voting_token(second.grant), [first.option.id])
   end
 
   test "requires an open poll", %{actor: actor} do
     %{poll: poll, grant: grant, option: option} = draft_poll!(actor, "Draft ballot")
 
-    assert {:error, :poll_not_open} = Ballots.submit(poll.id, grant.token, [option.id])
+    assert {:error, :poll_not_open} = Ballots.submit(poll.id, voting_token(grant), [option.id])
   end
 
   test "rejects duplicate final submissions without adding another selection", %{actor: actor} do
     %{poll: poll, grant: grant, option: option, other_option: other_option} = open_poll!(actor)
 
-    assert {:ok, _ballot} = Ballots.submit(poll.id, grant.token, [option.id])
+    assert {:ok, _ballot} = Ballots.submit(poll.id, voting_token(grant), [option.id])
 
     assert {:error, :already_submitted} =
-             Ballots.submit(poll.id, grant.token, [other_option.id])
+             Ballots.submit(poll.id, voting_token(grant), [other_option.id])
 
     assert 1 ==
              Ballot
@@ -195,7 +196,7 @@ defmodule Polly.Polls.BallotsTest do
     results =
       1..2
       |> Task.async_stream(
-        fn _ -> Ballots.submit(poll.id, grant.token, [option.id]) end,
+        fn _ -> Ballots.submit(poll.id, voting_token(grant), [option.id]) end,
         max_concurrency: 2,
         ordered: false,
         timeout: :infinity

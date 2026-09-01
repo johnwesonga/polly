@@ -86,8 +86,8 @@ defmodule Polly.AuditTest do
     assert "poll_access_grant.reissued" in Enum.map(events, & &1.action)
     assert "poll_access_grant.revoked" in Enum.map(events, & &1.action)
     assert "poll_access_grant.issued" in Enum.map(events, & &1.action)
-    refute encoded =~ fixture.grant.token
-    refute encoded =~ reissued.token
+    refute encoded =~ voting_token(fixture.grant)
+    refute encoded =~ voting_token(reissued)
   end
 
   test "append boundary rejects anonymous, unknown, and sensitive metadata", %{actor: actor} do

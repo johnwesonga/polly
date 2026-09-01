@@ -5,7 +5,7 @@ defmodule Polly.Polls.InvitationWorker do
 
   require Ash.Query
 
-  alias Polly.Polls.{Ballot, InvitationDelivery, InvitationEmail, Poll}
+  alias Polly.Polls.{AccessGrant, Ballot, InvitationDelivery, InvitationEmail, Poll}
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"delivery_id" => delivery_id}} = job) do
@@ -52,12 +52,13 @@ defmodule Polly.Polls.InvitationWorker do
       )
 
     poll = Ash.get!(Poll, delivery.poll_id, authorize?: false)
+    token = AccessGrant.derive_token_for_delivery(delivery.access_grant)
 
     email =
       InvitationEmail.build(
         poll,
         delivery.member,
-        delivery.access_grant,
+        token,
         delivery.recipient_email
       )
 

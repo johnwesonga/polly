@@ -79,6 +79,7 @@ config :polly, PollyWeb.Endpoint,
 config :polly, Polly.Mailer, adapter: Swoosh.Adapters.Local
 
 config :polly, :invitation_from, {"Polly", "onboarding@resend.dev"}
+config :polly, :voter_token_secret, "development-only-voter-token-secret-change-me"
 
 config :polly, Oban,
   engine: Oban.Engines.Lite,

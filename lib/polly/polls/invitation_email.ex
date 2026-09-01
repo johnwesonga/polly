@@ -4,10 +4,11 @@ defmodule Polly.Polls.InvitationEmail do
   import Swoosh.Email
 
   alias Polly.Members.Member
-  alias Polly.Polls.{AccessGrant, Poll}
+  alias Polly.Polls.Poll
 
-  def build(%Poll{} = poll, %Member{} = member, %AccessGrant{} = grant, recipient_email) do
-    url = PollyWeb.Endpoint.url() <> "/polls/#{poll.id}/vote/#{grant.token}"
+  def build(%Poll{} = poll, %Member{} = member, token, recipient_email)
+      when is_binary(token) do
+    url = PollyWeb.Endpoint.url() <> "/polls/#{poll.id}/vote/#{token}"
     from = Application.fetch_env!(:polly, :invitation_from)
 
     new()

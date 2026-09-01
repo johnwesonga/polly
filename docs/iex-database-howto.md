@@ -431,7 +431,10 @@ usable_access_grants =
   |> Ash.read!(actor: actor)
 ```
 
-Access-grant tokens are sensitive credentials. Avoid inspecting `grant.token` unless it is necessary, and never paste tokens into logs, screenshots, issue trackers, or shared chat.
+New access grants do not store a working token in `grant.token`. They store a
+digest plus HMAC derivation inputs, while legacy rows may temporarily retain a
+plaintext token during migration. Never paste any derived or legacy credential
+into logs, screenshots, issue trackers, or shared chat.
 
 ## 9. Retrieve poll invitations
 
@@ -618,10 +621,14 @@ poll =
 Submit one option to a single-choice poll:
 
 ```elixir
+# Trusted local debugging only. Normal voting credentials should reach members
+# through invitation delivery, not an administrator workflow.
+voting_token = Polly.Polls.AccessGrant.derive_token_for_delivery(access_grant)
+
 {:ok, ballot} =
   Polly.Polls.Ballots.submit(
     poll.id,
-    access_grant.token,
+    voting_token,
     [first_option.id]
   )
 ```
@@ -629,10 +636,13 @@ Submit one option to a single-choice poll:
 For a multiple-choice poll, pass every selected option ID in one list:
 
 ```elixir
+multiple_choice_voting_token =
+  Polly.Polls.AccessGrant.derive_token_for_delivery(multiple_choice_access_grant)
+
 {:ok, ballot} =
   Polly.Polls.Ballots.submit(
     multiple_choice_poll.id,
-    multiple_choice_access_grant.token,
+    multiple_choice_voting_token,
     [first_choice.id, second_choice.id]
   )
 ```
@@ -642,10 +652,13 @@ Each ballot is final. Submitting too few or too many choices, repeating an optio
 The scalar form remains temporarily supported for single-choice compatibility:
 
 ```elixir
-Polly.Polls.Ballots.submit(poll.id, access_grant.token, first_option.id)
+Polly.Polls.Ballots.submit(poll.id, voting_token, first_option.id)
 ```
 
-New code should prefer the list form because it works for both selection modes. Treat `access_grant.token` as a password: do not print it or retain it in shell history unnecessarily.
+New code should prefer the list form because it works for both selection modes.
+`derive_token_for_delivery/1` is an infrastructure-level helper used by the
+invitation worker; use it in IEx only for controlled local debugging. Treat its
+result as a password and do not print it or retain it in shell history.
 
 Load the selections created for a submitted ballot:
 

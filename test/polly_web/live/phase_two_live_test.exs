@@ -60,7 +60,7 @@ defmodule PollyWeb.PhaseTwoLiveTest do
 
     grant = Ash.read_one!(AccessGrant, actor: actor)
     html = render(access)
-    refute html =~ grant.token
+    refute html =~ voting_token(grant)
     refute html =~ "/polls/#{poll.id}/vote/"
     refute html =~ "data-copy-value"
 
@@ -69,7 +69,10 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     updated_grants = Ash.read!(AccessGrant, actor: actor)
     assert length(updated_grants) == 2
     assert Enum.any?(updated_grants, & &1.revoked_at)
-    refute Enum.find(updated_grants, &is_nil(&1.revoked_at)).token == grant.token
+
+    assert updated_grants
+           |> Enum.find(&is_nil(&1.revoked_at))
+           |> voting_token() != voting_token(grant)
   end
 
   test "selects and unselects all active electorate members", %{conn: conn} do

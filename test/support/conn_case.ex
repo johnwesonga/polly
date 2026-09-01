@@ -61,4 +61,6 @@ defmodule PollyWeb.ConnCase do
 
     {conn, administrator}
   end
+
+  def voting_token(grant), do: Polly.Polls.AccessGrant.derive_token_for_delivery(grant)
 end

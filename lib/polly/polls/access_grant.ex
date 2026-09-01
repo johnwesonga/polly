@@ -2,7 +2,9 @@ defmodule Polly.Polls.AccessGrant do
   @moduledoc """
   Stores a revocable credential granting one eligible member access to one poll.
 
-  Tokens are poll-scoped and may be revoked, reissued, or optionally expired.
+  New grants persist only a derived-token digest and derivation inputs. The
+  nullable plaintext token remains temporarily for legacy grants created before
+  credential protection was introduced.
   """
 
   use Ash.Resource,
@@ -16,10 +18,6 @@ defmodule Polly.Polls.AccessGrant do
     repo Polly.Repo
   end
 
-  code_interface do
-    define :resolve, action: :resolve, args: [:poll_id, :token]
-  end
-
   actions do
     defaults [:read]
 
@@ -27,9 +25,12 @@ defmodule Polly.Polls.AccessGrant do
       get? true
       argument :poll_id, :uuid, allow_nil?: false
       argument :token, :string, allow_nil?: false
+      argument :token_digest, :string, allow_nil?: false
 
       filter expr(
-               poll_id == ^arg(:poll_id) and token == ^arg(:token) and is_nil(revoked_at) and
+               poll_id == ^arg(:poll_id) and
+                 (token_digest == ^arg(:token_digest) or
+                    (is_nil(token_digest) and token == ^arg(:token))) and is_nil(revoked_at) and
                  (is_nil(expires_at) or expires_at > now())
              )
     end
@@ -37,7 +38,7 @@ defmodule Polly.Polls.AccessGrant do
     create :issue do
       primary? true
       accept [:poll_id, :member_id, :expires_at]
-      change set_attribute(:token, &__MODULE__.generate_token/0)
+      change Polly.Polls.Changes.SetDerivedVoterCredential
       validate Polly.Polls.Validations.MemberIsEligible
     end
 
@@ -61,10 +62,20 @@ defmodule Polly.Polls.AccessGrant do
     uuid_primary_key :id
 
     attribute :token, :string do
-      allow_nil? false
-      public? true
+      allow_nil? true
       sensitive? true
     end
+
+    attribute :token_digest, :string, sensitive?: true
+    attribute :credential_nonce, :string, sensitive?: true
+
+    attribute :credential_version, :integer do
+      allow_nil? false
+      default 0
+      constraints min: 0
+    end
+
+    attribute :credential_issued_at, :utc_datetime_usec
 
     attribute :revoked_at, :utc_datetime_usec, public?: true
     attribute :expires_at, :utc_datetime_usec, public?: true
@@ -90,11 +101,34 @@ defmodule Polly.Polls.AccessGrant do
 
   identities do
     identity :unique_token, [:token]
+    identity :unique_token_digest, [:token_digest]
   end
 
-  def generate_token do
-    32
-    |> :crypto.strong_rand_bytes()
-    |> Base.url_encode64(padding: false)
+  @doc "Resolves an active poll-scoped grant from a supplied voting credential."
+  def resolve(poll_id, token) when is_binary(token) do
+    result =
+      __MODULE__
+      |> Ash.Query.for_read(:resolve, %{
+        poll_id: poll_id,
+        token: token,
+        token_digest: Polly.Polls.VoterCredential.digest(token)
+      })
+      |> Ash.read_one(authorize?: false)
+
+    case result do
+      {:ok, nil} -> {:error, %Ash.Error.Invalid{}}
+      other -> other
+    end
+  end
+
+  @doc false
+  def derive_token_for_delivery(%{token: token}) when is_binary(token), do: token
+
+  def derive_token_for_delivery(grant) do
+    Polly.Polls.VoterCredential.derive(
+      grant.id,
+      grant.credential_nonce,
+      grant.credential_version
+    )
   end
 end

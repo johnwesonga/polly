@@ -40,6 +40,8 @@ defmodule Polly.DataCase do
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
   end
 
+  def voting_token(grant), do: Polly.Polls.AccessGrant.derive_token_for_delivery(grant)
+
   @doc """
   A helper that transforms changeset errors into a map of messages.
 

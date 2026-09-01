@@ -23,7 +23,7 @@ defmodule PollyWeb.PublicPollResultsLiveTest do
     assert has_element?(view, "#public-result-#{fixture.first.id}", "selected by 100.0%")
     assert has_element?(view, "#public-result-#{fixture.second.id}", "selected by 100.0%")
     refute has_element?(view, "#ballot-form")
-    refute render(view) =~ fixture.grant.token
+    refute render(view) =~ voting_token(fixture.grant)
     refute render(view) =~ fixture.member.name
   end
 
@@ -48,7 +48,10 @@ defmodule PollyWeb.PublicPollResultsLiveTest do
     poll = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
 
     assert {:ok, _ballot} =
-             Ballots.submit(poll.id, fixture.grant.token, [fixture.first.id, fixture.second.id])
+             Ballots.submit(poll.id, voting_token(fixture.grant), [
+               fixture.first.id,
+               fixture.second.id
+             ])
 
     poll = Ash.update!(poll, %{}, action: :close, actor: actor)
     poll = Ash.update!(poll, %{}, action: :publish_results, actor: actor)

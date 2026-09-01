@@ -106,6 +106,11 @@ if config_env() == :prod do
       System.get_env("TOKEN_SIGNING_SECRET") ||
         raise("Missing environment variable `TOKEN_SIGNING_SECRET`!")
 
+  config :polly,
+    voter_token_secret:
+      System.get_env("POLLY_VOTER_TOKEN_SECRET") ||
+        raise("Missing environment variable `POLLY_VOTER_TOKEN_SECRET`!")
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key

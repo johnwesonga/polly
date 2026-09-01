@@ -210,6 +210,10 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         count: 5,
         reason: "public voting flow after access-grant validation"
       },
+      "lib/polly/polls/access_grant.ex" => %{
+        count: 1,
+        reason: "public credential resolution constrained by digest and grant lifecycle filters"
+      },
       "lib/polly/polls/invitation_worker.ex" => %{
         count: 10,
         reason: "trusted Oban worker processing an authorized durable command"

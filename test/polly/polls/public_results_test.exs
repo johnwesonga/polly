@@ -72,7 +72,7 @@ defmodule Polly.Polls.PublicResultsTest do
     opened = Ash.update!(fixture.poll, %{}, action: :open, actor: actor)
 
     assert {:ok, _ballot} =
-             Ballots.submit(opened.id, fixture.grant.token, [fixture.option.id])
+             Ballots.submit(opened.id, voting_token(fixture.grant), [fixture.option.id])
 
     published =
       opened

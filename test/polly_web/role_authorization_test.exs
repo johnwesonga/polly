@@ -69,7 +69,7 @@ defmodule PollyWeb.RoleAuthorizationTest do
 
       assert has_element?(view, "#protected-access-#{member.id}")
       refute has_element?(view, "#copy-access-link-#{member.id}")
-      refute render(view) =~ grant.token
+      refute render(view) =~ voting_token(grant)
     end
 
     assert {:error, {:redirect, %{to: "/admin"}}} =

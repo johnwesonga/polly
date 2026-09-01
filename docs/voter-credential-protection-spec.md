@@ -2,12 +2,12 @@
 
 ## Status
 
-In progress. Phase 1 administrator UI containment is implemented: working
-voting URLs and Copy controls are no longer rendered, administrator-facing
-queries avoid selecting the token, lifecycle and email-delivery controls remain
-available, and regression tests assert that credentials do not appear in the
-administrator HTML. Plaintext database storage and worker-time token access
-remain until the derived-credential phases are implemented.
+In progress. Phase 1 is complete. Newly issued grants now use versioned,
+HMAC-derived credentials and persist only the digest, nonce, version, and issue
+time. Invitation workers derive the credential in memory from an ID-only
+delivery job, and resolution supports both new digests and legacy plaintext
+rows during migration. Retiring legacy rows, stale-job version checks, explicit
+resend rotation, detection, and member notification remain pending.
 
 ## Summary
 
@@ -354,6 +354,9 @@ This phase reduces routine exposure but does not yet protect tokens stored in th
 
 ### Phase 2 — Derived credentials and hashed resolution
 
+Implemented for newly issued grants, with temporary dual resolution for legacy
+plaintext rows.
+
 - Add the dedicated runtime secret configuration.
 - Add nonce, version, digest, and issuance fields.
 - Implement deterministic HMAC derivation and constant-time verification.
@@ -362,6 +365,10 @@ This phase reduces routine exposure but does not yet protect tokens stored in th
 - Add cryptographic test vectors and invalid-token tests.
 
 ### Phase 3 — Durable delivery and rotation
+
+Partially implemented. Oban jobs contain only the delivery ID, and the worker
+derives a stable credential in memory for the grant's current version. Explicit
+resend rotation and stale-job version rejection remain pending.
 
 - Change Oban jobs to carry grant ID and credential version only.
 - Derive URLs only inside the worker process.
