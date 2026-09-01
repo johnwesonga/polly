@@ -649,13 +649,7 @@ multiple_choice_voting_token =
 
 Each ballot is final. Submitting too few or too many choices, repeating an option ID, selecting an option from another poll, or submitting a second ballot returns an error and rolls back the transaction.
 
-The scalar form remains temporarily supported for single-choice compatibility:
-
-```elixir
-Polly.Polls.Ballots.submit(poll.id, voting_token, first_option.id)
-```
-
-New code should prefer the list form because it works for both selection modes.
+Use the list form for both selection modes.
 `derive_token_for_delivery/1` is an infrastructure-level helper used by the
 invitation worker; use it in IEx only for controlled local debugging. Treat its
 result as a password and do not print it or retain it in shell history.

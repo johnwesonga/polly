@@ -4,7 +4,7 @@ defmodule Polly.Polls.InvitationEmail do
   import Swoosh.Email
 
   alias Polly.Members.Member
-  alias Polly.Polls.Poll
+  alias Polly.Polls.{Poll, SelectionRules}
 
   def build(%Poll{} = poll, %Member{} = member, token, recipient_email)
       when is_binary(token) do
@@ -20,10 +20,13 @@ defmodule Polly.Polls.InvitationEmail do
   end
 
   defp text_body(poll, member, url) do
+    selection_rule = SelectionRules.summary(poll)
+
     """
     Hello #{member.name},
 
     You are invited to vote in “#{poll.title}”.
+    Selection rule: #{selection_rule}.
 
     Cast your vote: #{url}
 
@@ -35,6 +38,7 @@ defmodule Polly.Polls.InvitationEmail do
   defp html_body(poll, member, url) do
     name = escape(member.name)
     title = escape(poll.title)
+    selection_rule = poll |> SelectionRules.summary() |> escape()
     safe_url = escape(url)
 
     """
@@ -74,7 +78,8 @@ defmodule Polly.Polls.InvitationEmail do
                           <p style="margin:0 0 14px; color:#5C7080; font-size:11px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase;">Private poll invitation</p>
                           <h1 style="margin:0 0 20px; color:#0B1F33; font-size:30px; line-height:1.15; letter-spacing:-0.4px;">Voting is open</h1>
                           <p style="margin:0 0 12px; color:#0B1F33; font-size:16px; line-height:1.65;">Hello #{name},</p>
-                          <p style="margin:0 0 26px; color:#1B3A55; font-size:16px; line-height:1.65;">You are invited to vote in <strong style="color:#0B1F33;">#{title}</strong>.</p>
+                          <p style="margin:0 0 12px; color:#1B3A55; font-size:16px; line-height:1.65;">You are invited to vote in <strong style="color:#0B1F33;">#{title}</strong>.</p>
+                          <p style="margin:0 0 26px; color:#1B3A55; font-size:14px; line-height:1.55;"><strong style="color:#0B1F33;">Selection rule:</strong> #{selection_rule}.</p>
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;">
                             <tr>
                               <td bgcolor="#E8491D" style="background-color:#E8491D; border-radius:10px;">

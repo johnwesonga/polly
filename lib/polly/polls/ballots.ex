@@ -21,8 +21,8 @@ defmodule Polly.Polls.Ballots do
   The member is always derived from the grant. All checks and inserts run in
   one transaction; the ballot identity also protects against racing calls.
 
-  A scalar option ID remains temporarily supported for compatibility and is
-  normalized to a one-element list.
+  Callers use the same option-ID list shape for single- and multiple-choice
+  polls.
   """
   @spec submit(Ecto.UUID.t(), String.t(), [Ecto.UUID.t()]) ::
           {:ok, Ballot.t()} | {:error, submission_error() | term()}
@@ -36,9 +36,6 @@ defmodule Polly.Polls.Ballots do
         {:error, normalize_error(reason)}
     end
   end
-
-  def submit(poll_id, token, option_id) when is_binary(option_id),
-    do: submit(poll_id, token, [option_id])
 
   defp submit_in_transaction(poll_id, token, option_ids) do
     grant = fetch_grant!(poll_id, token)

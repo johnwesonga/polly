@@ -2,13 +2,13 @@
 
 Polly is a Phoenix and Ash application for running private, configurable polls. Its Touchpad interface gives administrators a complete workflow for managing members, configuring polls, distributing private voting links, monitoring participation, and publishing results.
 
-Polly is the successor to Nominator, a swimmer-award proof of concept. The current application generalizes that model around reusable members, poll-scoped eligibility, independently managed poll lifecycles, and one final single-choice ballot per voter.
+Polly is the successor to Nominator, a swimmer-award proof of concept. The current application generalizes that model around reusable members, poll-scoped eligibility, independently managed poll lifecycles, and one final configurable ballot per voter.
 
 ## Current capabilities
 
 - Administrator authentication with confirmation and password reset.
 - Member management and CSV member import with validation and preview.
-- Draft poll configuration with title-derived slugs and text options.
+- Draft poll configuration with title-derived slugs, text options, and configurable single- or multiple-choice selection limits.
 - Poll duplication, optionally including options and the electorate.
 - Electorate snapshots with unique, revocable, and reissuable access grants.
 - Draft, open, and closed poll lifecycle controls.
@@ -27,7 +27,7 @@ Polly is the successor to Nominator, a swimmer-award proof of concept. The curre
 - A poll starts as a draft and requires at least two options before opening.
 - The administrator explicitly selects eligible members for each poll.
 - Each eligible member receives a private credential scoped to that member and poll.
-- A member may submit one single-choice ballot per poll.
+- A member may submit one final ballot per poll within its configured selection limits.
 - Submitted ballots are final and cannot be edited or resubmitted.
 - Options and eligibility are frozen when voting opens.
 - Polls are opened and closed manually; lifecycle changes move forward only.

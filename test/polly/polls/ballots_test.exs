@@ -120,12 +120,6 @@ defmodule Polly.Polls.BallotsTest do
     assert 0 == Selection |> Ash.count!(authorize?: false)
   end
 
-  test "temporarily accepts a scalar option ID for compatibility", %{actor: actor} do
-    %{poll: poll, grant: grant, option: option} = open_poll!(actor)
-    assert {:ok, ballot} = Ballots.submit(poll.id, voting_token(grant), option.id)
-    assert ballot.poll_id == poll.id
-  end
-
   test "rejects invalid, cross-poll, and revoked grants", %{actor: actor} do
     first = open_poll!(actor, "First ballot")
     second = open_poll!(actor, "Second ballot")
@@ -205,6 +199,29 @@ defmodule Polly.Polls.BallotsTest do
 
     assert 1 == Enum.count(results, &match?({:ok, _ballot}, &1))
     assert 1 == Enum.count(results, &match?({:error, :already_submitted}, &1))
+  end
+
+  test "a failed selection insert rolls back the ballot and earlier selections", %{actor: actor} do
+    %{poll: poll, grant: grant, option: option, other_option: other_option} = open_poll!(actor)
+    set_selection_range!(poll, 2, 2)
+    trigger = "force_selection_failure_#{System.unique_integer([:positive])}"
+
+    Polly.Repo.query!("""
+    CREATE TRIGGER #{trigger}
+    BEFORE INSERT ON poll_selections
+    WHEN NEW.option_id = '#{other_option.id}'
+    BEGIN
+      SELECT RAISE(ABORT, 'forced_selection_failure');
+    END
+    """)
+
+    on_exit(fn -> Polly.Repo.query!("DROP TRIGGER IF EXISTS #{trigger}") end)
+
+    assert {:error, _reason} =
+             Ballots.submit(poll.id, voting_token(grant), [option.id, other_option.id])
+
+    assert 0 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
+    assert 0 == Selection |> Ash.count!(authorize?: false)
   end
 
   defp open_poll!(actor, title \\ "Final ballot") do

@@ -2,18 +2,10 @@
 
 ## Status
 
-In progress. The data-model foundation now includes poll selection-limit
-columns with `1..1` defaults, a ballot-and-option selection identity, and the
-`:multiple` selection mode. The ballot service now accepts an option-ID list
-and enforces the stored range atomically. Draft actions now validate and persist
-selection ranges, opening verifies those limits against active options, and
-duplication preserves the configuration. The administrator and voting UIs
-remain separate delivery slices; the draft form now exposes mode and range
-configuration, and poll listings use shared plain-language rule summaries. The
-member voting UI now supports mode-aware controls, live counts, review, and
-atomic multiple-selection submission. Results presentation remains a later
-slice; the result projection now exposes selection mode and total selections
-with ballot-based support rates.
+Implemented. Polly supports configurable selection ranges throughout poll
+creation, validation, duplication, voting, review, atomic submission, receipts,
+administrator and public results, CSV exports, and invitation messaging.
+Existing polls retain single-choice `1..1` behavior.
 
 ## Summary
 
@@ -198,7 +190,7 @@ Ballots.submit(poll_id, token, option_ids)
 
 `option_ids` is a list of option UUIDs for both modes. A single-choice submission therefore uses a one-element list. Keeping one input shape avoids branching at the caller boundary and makes the service validate the poll's stored configuration.
 
-If a compatibility wrapper is useful during migration, `submit/3` may temporarily wrap a binary option ID in a list, but new callers and tests must use lists. The wrapper should be deprecated and removed once all internal callers are migrated.
+All callers use the list-shaped API, including single-choice polls. The temporary scalar compatibility wrapper has been removed.
 
 ### Transaction sequence
 
@@ -361,7 +353,7 @@ The result projection should expose enough context for rendering:
 
 Eligibility, access-grant issuance, revocation, expiration, invitation deduplication, and participation tracking are unchanged.
 
-The invitation email may state the selection rule, but it must not include option labels by default. For example: “You may select up to three options.” The private URL and token handling requirements remain unchanged.
+The invitation email states the selection rule without including option labels. The private URL and token handling requirements remain unchanged.
 
 Invitation readiness continues to treat any submitted ballot as `already_voted`, regardless of how many selections it contains.
 
@@ -429,20 +421,13 @@ Invitation readiness continues to treat any submitted ballot as `already_voted`,
 - Multiple different options can be stored for a new ballot.
 - The same option cannot be stored twice for one ballot.
 
-## Rollout plan
+## Rollout status
 
-1. Add the poll limit attributes and migrate existing rows to `1..1`.
-2. Replace the selection identity with the ballot-and-option identity.
-3. Extend the enum and add poll configuration validations.
-4. Change the submission service to accept and validate option ID lists.
-5. Migrate all single-choice callers and tests to the list-shaped API.
-6. Update poll creation, editing, summaries, duplication, and audit metadata.
-7. Add the multiple-choice voting, review, receipt, and existing-ballot UI.
-8. Update result projections and mode-specific result language.
-9. Update invitation copy where appropriate.
-10. Run the complete single-choice regression suite before enabling multiple choice.
-
-A feature flag is optional because migrated polls preserve their current behavior. If the administrator UI and public voting UI cannot be deployed atomically, hide creation of `:multiple` polls until every read and submission path supports them.
+All planned rollout steps are complete: schema and identity migrations, domain
+validation, list-shaped submission, administrator configuration, voter review
+and receipts, results and exports, invitation copy, and single-choice regression
+coverage. No feature flag is required because migrated polls preserve their
+existing `1..1` behavior.
 
 ## Acceptance criteria
 
@@ -458,13 +443,13 @@ A feature flag is optional because migrated polls preserve their current behavio
 - Published results, receipts, and existing-ballot states display all selections.
 - Authorization, audit, invitation, and private-link protections remain intact.
 
-## Open decisions
+## Decisions
 
-1. Should the first UI expose arbitrary minimum/maximum ranges, or begin with only “up to N” and “exactly N” presets?
-2. Should selecting the maximum disable remaining options or allow another click to replace a selection?
-3. Should invitation emails include the selection rule?
-4. Should administrator result exports include one row per ballot, one row per selection, or both formats?
-5. Should “Most selected” highlighting be enabled by default for multiple-choice polls or require an explicit outcome setting?
+1. The administrator UI exposes explicit minimum and maximum fields. Presets remain optional future polish.
+2. Reaching the maximum disables unselected options while preserving deselection.
+3. Invitation emails include the selection rule but not option labels.
+4. Result exports remain aggregate, with one row per option and ballot-based support rates.
+5. Multiple-choice results highlight the highest support using “Most selected” language without implying a legally authoritative winner.
 
 ## Related documentation
 
