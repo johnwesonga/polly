@@ -34,6 +34,47 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     refute updated.active
   end
 
+  test "paginates the member roster with stable next and previous navigation", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    members =
+      Enum.map(1..26, fn number ->
+        Ash.create!(
+          Member,
+          %{name: "Paged Member #{number |> Integer.to_string() |> String.pad_leading(2, "0")}"},
+          actor: actor
+        )
+      end)
+
+    first = List.first(members)
+    fifteenth = Enum.at(members, 14)
+    sixteenth = Enum.at(members, 15)
+    last = List.last(members)
+    {:ok, view, _html} = live(conn, ~p"/admin/members")
+
+    assert has_element?(view, "#member-count", "26 members")
+
+    assert has_element?(view, "#members-#{first.id}")
+    assert has_element?(view, "#members-#{fifteenth.id}")
+    refute has_element?(view, "#members-#{sixteenth.id}")
+    refute has_element?(view, "#members-#{last.id}")
+    assert has_element?(view, "#next-members-page")
+    refute has_element?(view, "#previous-members-page")
+
+    view |> element("#next-members-page") |> render_click()
+
+    refute has_element?(view, "#members-#{first.id}")
+    assert has_element?(view, "#members-#{sixteenth.id}")
+    assert has_element?(view, "#members-#{last.id}")
+    assert has_element?(view, "#previous-members-page")
+    refute has_element?(view, "#next-members-page")
+
+    view |> element("#previous-members-page") |> render_click()
+
+    assert has_element?(view, "#members-#{first.id}")
+    refute has_element?(view, "#members-#{last.id}")
+  end
+
   test "selects an electorate and manages access without exposing its credential", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)

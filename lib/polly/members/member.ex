@@ -18,7 +18,15 @@ defmodule Polly.Members.Member do
   end
 
   actions do
-    defaults [:read]
+    read :read do
+      primary? true
+
+      pagination do
+        keyset? true
+        required? false
+        default_limit 15
+      end
+    end
 
     create :create do
       primary? true
