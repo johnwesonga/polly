@@ -1,4 +1,11 @@
 defmodule PollyWeb.PollLive.Index do
+  @moduledoc """
+  Lists polls for administrators with filtering and keyset pagination.
+
+  Available actions are adapted to the current administrator's permissions,
+  allowing the same entry point to support poll managers and results viewers.
+  """
+
   use PollyWeb, :live_view
 
   require Ash.Query

@@ -1,4 +1,12 @@
 defmodule PollyWeb.PollLive.Access do
+  @moduledoc """
+  Manages voter access and invitation delivery for a poll.
+
+  The LiveView exposes grant lifecycle and delivery status without rendering
+  working voter credentials. Access requires the `:manage_access_grants`
+  permission, while invitation events apply their additional authorization.
+  """
+
   use PollyWeb, :live_view
 
   require Ash.Query

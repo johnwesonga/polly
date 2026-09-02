@@ -1,4 +1,11 @@
 defmodule PollyWeb.PollLive.Options do
+  @moduledoc """
+  Manages the ordered choices belonging to a draft poll.
+
+  Administrators can create, edit, remove, and reorder options until the poll
+  opens, after which option configuration is frozen.
+  """
+
   use PollyWeb, :live_view
 
   require Ash.Query

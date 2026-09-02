@@ -1,4 +1,12 @@
 defmodule PollyWeb.PollLive.Results do
+  @moduledoc """
+  Presents live administrator results and poll lifecycle controls.
+
+  The LiveView subscribes to poll events, renders mode-aware aggregate results,
+  and exposes authorized actions for opening, closing, publishing, sharing, and
+  exporting results.
+  """
+
   use PollyWeb, :live_view
 
   alias Polly.Polls.{Events, Poll}

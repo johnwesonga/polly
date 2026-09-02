@@ -1,4 +1,12 @@
 defmodule PollyWeb.PollLive.Electorate do
+  @moduledoc """
+  Configures the eligible-member snapshot for a draft poll.
+
+  The LiveView lists members, adds or removes eligibility, and coordinates the
+  access grants associated with those changes. Electorate membership is frozen
+  after the poll opens.
+  """
+
   use PollyWeb, :live_view
 
   require Ash.Query

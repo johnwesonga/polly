@@ -1,4 +1,12 @@
 defmodule PollyWeb.PollLive.Vote do
+  @moduledoc """
+  Implements the credential-authenticated public voting experience.
+
+  It resolves the poll-scoped access credential, presents mode-aware selection
+  and review states, submits one final ballot atomically, and displays published
+  results when the poll permits it.
+  """
+
   use PollyWeb, :live_view
 
   require Ash.Query

@@ -1,4 +1,11 @@
 defmodule PollyWeb.PollLive.Duplicate do
+  @moduledoc """
+  Presents and executes the administrator workflow for duplicating a poll.
+
+  Administrators may copy the source poll's configuration, active options, and
+  eligible members into a new independent draft.
+  """
+
   use PollyWeb, :live_view
 
   alias Polly.Polls.Duplicator

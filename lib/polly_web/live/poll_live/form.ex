@@ -1,4 +1,12 @@
 defmodule PollyWeb.PollLive.Form do
+  @moduledoc """
+  Creates and edits draft poll configuration.
+
+  The form captures poll details and single- or multiple-choice selection
+  rules. The underlying Ash actions enforce that configuration changes remain
+  limited to draft polls.
+  """
+
   use PollyWeb, :live_view
 
   alias Polly.Polls.{Poll}
