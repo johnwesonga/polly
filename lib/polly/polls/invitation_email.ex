@@ -8,18 +8,30 @@ defmodule Polly.Polls.InvitationEmail do
 
   def build(%Poll{} = poll, %Member{} = member, token, recipient_email)
       when is_binary(token) do
+    build_email(poll, member, token, recipient_email, :invitation)
+  end
+
+  def build_reminder(%Poll{} = poll, %Member{} = member, token, recipient_email)
+      when is_binary(token) do
+    build_email(poll, member, token, recipient_email, :reminder)
+  end
+
+  defp build_email(poll, member, token, recipient_email, kind) do
     url = PollyWeb.Endpoint.url() <> "/polls/#{poll.id}/vote/#{token}"
     from = Application.fetch_env!(:polly, :invitation_from)
 
     new()
     |> to({member.name, recipient_email})
     |> from(from)
-    |> subject("Voting is open: #{poll.title}")
-    |> text_body(text_body(poll, member, url))
-    |> html_body(html_body(poll, member, url))
+    |> subject(email_subject(kind, poll))
+    |> text_body(text_body(kind, poll, member, url))
+    |> html_body(html_body(kind, poll, member, url))
   end
 
-  defp text_body(poll, member, url) do
+  defp email_subject(:invitation, poll), do: "Voting is open: #{poll.title}"
+  defp email_subject(:reminder, poll), do: "Reminder: voting is open for #{poll.title}"
+
+  defp text_body(:invitation, poll, member, url) do
     selection_rule = SelectionRules.summary(poll)
 
     """
@@ -35,11 +47,31 @@ defmodule Polly.Polls.InvitationEmail do
     """
   end
 
-  defp html_body(poll, member, url) do
+  defp text_body(:reminder, poll, member, url) do
+    selection_rule = SelectionRules.summary(poll)
+
+    """
+    Hello #{member.name},
+
+    Voting is still open for “#{poll.title}”. Our records show that you have not yet submitted a ballot.
+    Selection rule: #{selection_rule}.
+
+    Cast your vote: #{url}
+
+    This private link is personal to you. Do not forward or share it.
+    If you have already voted very recently, no action is required.
+    """
+  end
+
+  defp html_body(kind, poll, member, url) do
     name = escape(member.name)
     title = escape(poll.title)
     selection_rule = poll |> SelectionRules.summary() |> escape()
     safe_url = escape(url)
+    heading = if kind == :reminder, do: "Voting is still open", else: "Voting is open"
+    eyebrow = if kind == :reminder, do: "Voting reminder", else: "Private poll invitation"
+    intro = intro(kind, title)
+    private_link_warning = private_link_warning(kind)
 
     """
     <!doctype html>
@@ -49,7 +81,7 @@ defmodule Polly.Polls.InvitationEmail do
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="color-scheme" content="light">
         <meta name="supported-color-schemes" content="light">
-        <title>Voting is open: #{title}</title>
+        <title>#{escape(email_subject(kind, poll))}</title>
       </head>
       <body style="margin:0; padding:0; background-color:#ECF1EF; color:#0B1F33; font-family:Inter, Arial, sans-serif; -webkit-text-size-adjust:100%;">
         <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
@@ -75,10 +107,10 @@ defmodule Polly.Polls.InvitationEmail do
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td style="padding:38px 38px 34px;">
-                          <p style="margin:0 0 14px; color:#5C7080; font-size:11px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase;">Private poll invitation</p>
-                          <h1 style="margin:0 0 20px; color:#0B1F33; font-size:30px; line-height:1.15; letter-spacing:-0.4px;">Voting is open</h1>
+                          <p style="margin:0 0 14px; color:#5C7080; font-size:11px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase;">#{eyebrow}</p>
+                          <h1 style="margin:0 0 20px; color:#0B1F33; font-size:30px; line-height:1.15; letter-spacing:-0.4px;">#{heading}</h1>
                           <p style="margin:0 0 12px; color:#0B1F33; font-size:16px; line-height:1.65;">Hello #{name},</p>
-                          <p style="margin:0 0 12px; color:#1B3A55; font-size:16px; line-height:1.65;">You are invited to vote in <strong style="color:#0B1F33;">#{title}</strong>.</p>
+                          <p style="margin:0 0 12px; color:#1B3A55; font-size:16px; line-height:1.65;">#{intro}</p>
                           <p style="margin:0 0 26px; color:#1B3A55; font-size:14px; line-height:1.55;"><strong style="color:#0B1F33;">Selection rule:</strong> #{selection_rule}.</p>
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;">
                             <tr>
@@ -91,7 +123,7 @@ defmodule Polly.Polls.InvitationEmail do
                             <tr>
                               <td style="padding:16px 18px; color:#8F3218; font-size:13px; line-height:1.55;">
                                 <strong style="color:#6F2713;">Keep this link private.</strong><br>
-                                It is personal to you and must not be forwarded or shared. Once submitted, your vote is final.
+                                #{private_link_warning}
                               </td>
                             </tr>
                           </table>
@@ -114,6 +146,21 @@ defmodule Polly.Polls.InvitationEmail do
     </html>
     """
   end
+
+  defp intro(:invitation, title),
+    do: "You are invited to vote in <strong style=\"color:#0B1F33;\">#{title}</strong>."
+
+  defp intro(:reminder, title),
+    do:
+      "Voting is still open for <strong style=\"color:#0B1F33;\">#{title}</strong>. Our records show that you have not yet submitted a ballot."
+
+  defp private_link_warning(:invitation),
+    do:
+      "It is personal to you and must not be forwarded or shared. Once submitted, your vote is final."
+
+  defp private_link_warning(:reminder),
+    do:
+      "It is personal to you and must not be forwarded or shared. If you voted very recently, no action is required."
 
   defp escape(value), do: value |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 end

@@ -201,6 +201,173 @@ defmodule Polly.Polls.InvitationsTest do
     assert_email_sent(fn email -> assert email.text_body =~ legacy_token end)
   end
 
+  test "reminder preview requires an accepted invitation and excludes voters", %{actor: actor} do
+    {poll, member, _grant} = open_poll_with_member!(actor)
+
+    assert {:ok, %{ready_count: 0, counts: %{initial_invitation_required: 1}}} =
+             Invitations.preview_reminders(poll, actor)
+
+    accept_initial_invitation!(poll, actor)
+
+    assert {:ok, %{ready_count: 1, counts: %{ready_for_reminder: 1}}} =
+             Invitations.preview_reminders(poll, actor)
+
+    Ash.create!(
+      Ballot,
+      %{poll_id: poll.id, member_id: member.id},
+      action: :submit,
+      authorize?: false
+    )
+
+    assert {:ok, %{ready_count: 0, counts: %{already_voted: 1}}} =
+             Invitations.preview_reminders(poll, actor)
+  end
+
+  test "queues ID-only reminder jobs and an aggregate audit event", %{actor: actor} do
+    {poll, _member, grant} = open_poll_with_member!(actor)
+    accept_initial_invitation!(poll, actor)
+
+    assert {:ok, %{deliveries: [delivery], queued_count: 1, skipped_count: 0}} =
+             Invitations.enqueue_reminders(poll, actor)
+
+    assert delivery.kind == :reminder
+    assert delivery.credential_version == grant.credential_version
+
+    assert Enum.any?(all_enqueued(), fn job ->
+             job.args == %{"delivery_id" => delivery.id}
+           end)
+
+    assert {:ok, %{ready_count: 0, counts: %{reminder_in_flight: 1}}} =
+             Invitations.preview_reminders(poll, actor)
+
+    [event] =
+      Polly.Audit.Event
+      |> Ash.Query.filter(action == "poll.reminders_enqueued")
+      |> Ash.read!(authorize?: false)
+
+    assert event.metadata["queued_count"] == 1
+    assert event.metadata["skipped_count"] == 0
+    assert event.metadata["request_kind"] == "reminder"
+    refute Map.has_key?(event.metadata, "member_ids")
+  end
+
+  test "worker sends multipart reminder copy using the pinned credential", %{actor: actor} do
+    {poll, member, grant} = open_poll_with_member!(actor)
+    accept_initial_invitation!(poll, actor)
+
+    assert {:ok, %{deliveries: [delivery]}} = Invitations.enqueue_reminders(poll, actor)
+
+    assert :ok =
+             InvitationWorker.perform(%Oban.Job{
+               args: %{"delivery_id" => delivery.id},
+               attempt: 1,
+               max_attempts: 5
+             })
+
+    assert_email_sent(fn email ->
+      assert email.to == [{member.name, member.email}]
+      assert email.subject == "Reminder: voting is open for #{poll.title}"
+      assert email.text_body =~ "you have not yet submitted a ballot"
+      assert email.text_body =~ "Selection rule: Choose one."
+      assert email.text_body =~ voting_token(grant)
+      assert email.html_body =~ "Voting reminder"
+      assert email.html_body =~ "Voting is still open"
+      refute email.text_body =~ "Cedar proposal"
+      refute email.text_body =~ "Quartz proposal"
+      assert email.html_body =~ voting_token(grant)
+    end)
+  end
+
+  test "an accepted reminder applies the cooldown", %{actor: actor} do
+    {poll, _member, _grant} = open_poll_with_member!(actor)
+    accept_initial_invitation!(poll, actor)
+
+    assert {:ok, %{deliveries: [delivery]}} = Invitations.enqueue_reminders(poll, actor)
+    Ash.update!(delivery, %{attempt_count: 1}, action: :accept, authorize?: false)
+
+    assert {:ok, %{ready_count: 0, counts: %{reminder_cooldown: 1}}} =
+             Invitations.preview_reminders(poll, actor)
+  end
+
+  test "reminder operations enforce authorization and the configured size limit", %{actor: actor} do
+    {poll, _member, _grant} = open_poll_with_member!(actor)
+    accept_initial_invitation!(poll, actor)
+
+    auditor = %{actor | role: :auditor}
+    assert {:error, :forbidden} = Invitations.preview_reminders(poll, auditor)
+    assert {:error, :forbidden} = Invitations.enqueue_reminders(poll, auditor)
+
+    previous_limit = Application.fetch_env!(:polly, :reminder_operation_limit)
+    Application.put_env(:polly, :reminder_operation_limit, 0)
+    on_exit(fn -> Application.put_env(:polly, :reminder_operation_limit, previous_limit) end)
+
+    assert {:error, {:operation_limit_exceeded, 0}} =
+             Invitations.enqueue_reminders(poll, actor)
+  end
+
+  test "reminder worker cancels when the member votes after queueing", %{actor: actor} do
+    {poll, member, _grant} = open_poll_with_member!(actor)
+    accept_initial_invitation!(poll, actor)
+    assert {:ok, %{deliveries: [delivery]}} = Invitations.enqueue_reminders(poll, actor)
+
+    Ash.create!(
+      Ballot,
+      %{poll_id: poll.id, member_id: member.id},
+      action: :submit,
+      authorize?: false
+    )
+
+    assert :ok =
+             InvitationWorker.perform(%Oban.Job{
+               args: %{"delivery_id" => delivery.id},
+               attempt: 1,
+               max_attempts: 5
+             })
+
+    delivery = Ash.get!(InvitationDelivery, delivery.id, actor: actor)
+    assert delivery.status == :cancelled
+    assert delivery.last_error_code == "already_voted"
+    refute_email_sent()
+  end
+
+  test "reminder worker revalidates cooldown before delivery", %{actor: actor} do
+    {poll, _member, _grant} = open_poll_with_member!(actor)
+    accept_initial_invitation!(poll, actor)
+    assert {:ok, %{deliveries: [queued]}} = Invitations.enqueue_reminders(poll, actor)
+
+    accepted =
+      Ash.create!(
+        InvitationDelivery,
+        %{
+          poll_id: queued.poll_id,
+          member_id: queued.member_id,
+          access_grant_id: queued.access_grant_id,
+          requested_by_id: actor.id,
+          operation_id: Ash.UUID.generate(),
+          kind: :reminder,
+          dedupe_key: "reminder-race:#{Ash.UUID.generate()}",
+          recipient_email: queued.recipient_email,
+          credential_version: queued.credential_version
+        },
+        action: :queue,
+        actor: actor
+      )
+
+    Ash.update!(accepted, %{attempt_count: 1}, action: :accept, authorize?: false)
+
+    assert :ok =
+             InvitationWorker.perform(%Oban.Job{
+               args: %{"delivery_id" => queued.id},
+               attempt: 1,
+               max_attempts: 5
+             })
+
+    queued = Ash.get!(InvitationDelivery, queued.id, actor: actor)
+    assert queued.status == :cancelled
+    assert queued.last_error_code == "reminder_cooldown"
+    refute_email_sent()
+  end
+
   defp open_poll_with_member!(actor) do
     poll = draft_poll!(actor)
 
@@ -213,9 +380,14 @@ defmodule Polly.Polls.InvitationsTest do
 
   defp draft_poll!(actor) do
     poll = Ash.create!(Poll, %{title: "Board Election"}, actor: actor)
-    Ash.create!(Option, %{poll_id: poll.id, label: "One", position: 1}, actor: actor)
-    Ash.create!(Option, %{poll_id: poll.id, label: "Two", position: 2}, actor: actor)
+    Ash.create!(Option, %{poll_id: poll.id, label: "Cedar proposal", position: 1}, actor: actor)
+    Ash.create!(Option, %{poll_id: poll.id, label: "Quartz proposal", position: 2}, actor: actor)
     poll
+  end
+
+  defp accept_initial_invitation!(poll, actor) do
+    assert {:ok, [delivery]} = Invitations.enqueue_bulk(poll, actor)
+    Ash.update!(delivery, %{attempt_count: 1}, action: :accept, authorize?: false)
   end
 
   defp open!(poll, actor), do: Ash.update!(poll, %{}, action: :open, actor: actor)

@@ -163,6 +163,8 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Polls.Invitations, :preview} => {:permission, :send_invitations},
       {Polly.Polls.Invitations, :enqueue_bulk} => {:permission, :send_invitations},
       {Polly.Polls.Invitations, :enqueue_one} => {:permission, :send_invitations},
+      {Polly.Polls.Invitations, :preview_reminders} => {:permission, :send_invitations},
+      {Polly.Polls.Invitations, :enqueue_reminders} => {:permission, :send_invitations},
       {Polly.Polls.Duplicator, :duplicate} => {:permission, :manage_polls},
       {Polly.Polls.Duplicator, :preview} => {:permission, :manage_polls},
       {Polly.Polls.Electorate, :include_member} => {:permission, :manage_electorates},
@@ -218,7 +220,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         reason: "public credential resolution constrained by digest and grant lifecycle filters"
       },
       "lib/polly/polls/invitation_worker.ex" => %{
-        count: 9,
+        count: 11,
         reason: "trusted Oban worker processing an authorized durable command"
       },
       "lib/polly/polls/participation.ex" => %{

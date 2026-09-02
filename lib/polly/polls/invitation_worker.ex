@@ -5,7 +5,14 @@ defmodule Polly.Polls.InvitationWorker do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, InvitationDelivery, InvitationEmail, Participation, Poll}
+  alias Polly.Polls.{
+    AccessGrant,
+    Eligibility,
+    InvitationDelivery,
+    InvitationEmail,
+    Participation,
+    Poll
+  }
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"delivery_id" => delivery_id}} = job) do
@@ -48,8 +55,14 @@ defmodule Polly.Polls.InvitationWorker do
       expired?(delivery.access_grant.expires_at) ->
         "grant_expired"
 
+      not eligible?(delivery.poll_id, delivery.member_id) ->
+        "not_eligible"
+
       Participation.submitted?(delivery.poll_id, delivery.member_id) ->
         "already_voted"
+
+      reminder_inside_cooldown?(delivery) ->
+        "reminder_cooldown"
 
       true ->
         nil
@@ -70,13 +83,7 @@ defmodule Polly.Polls.InvitationWorker do
     poll = Ash.get!(Poll, delivery.poll_id, authorize?: false)
     token = AccessGrant.derive_token_for_delivery(delivery.access_grant)
 
-    email =
-      InvitationEmail.build(
-        poll,
-        delivery.member,
-        token,
-        delivery.recipient_email
-      )
+    email = build_email(delivery, poll, token)
 
     email = Swoosh.Email.put_provider_option(email, :idempotency_key, delivery.dedupe_key)
 
@@ -120,6 +127,40 @@ defmodule Polly.Polls.InvitationWorker do
 
   defp expired?(nil), do: false
   defp expired?(expires_at), do: DateTime.compare(expires_at, DateTime.utc_now()) != :gt
+
+  defp eligible?(poll_id, member_id) do
+    Eligibility
+    |> Ash.Query.filter(poll_id == ^poll_id and member_id == ^member_id)
+    |> Ash.exists?(authorize?: false)
+  end
+
+  defp reminder_inside_cooldown?(%InvitationDelivery{kind: kind}) when kind != :reminder,
+    do: false
+
+  defp reminder_inside_cooldown?(delivery) do
+    cutoff =
+      DateTime.add(DateTime.utc_now(), -reminder_cooldown_hours() * 60 * 60, :second)
+
+    InvitationDelivery
+    |> Ash.Query.filter(
+      id != ^delivery.id and poll_id == ^delivery.poll_id and member_id == ^delivery.member_id and
+        access_grant_id == ^delivery.access_grant_id and kind == :reminder and status == :accepted and
+        accepted_at > ^cutoff
+    )
+    |> Ash.exists?(authorize?: false)
+  end
+
+  defp reminder_cooldown_hours do
+    :polly |> Application.fetch_env!(:reminder_cooldown) |> Keyword.fetch!(:hours)
+  end
+
+  defp build_email(%InvitationDelivery{kind: :reminder} = delivery, poll, token) do
+    InvitationEmail.build_reminder(poll, delivery.member, token, delivery.recipient_email)
+  end
+
+  defp build_email(delivery, poll, token) do
+    InvitationEmail.build(poll, delivery.member, token, delivery.recipient_email)
+  end
 
   defp provider_message_id(%{id: id}) when is_binary(id), do: id
   defp provider_message_id(%{"id" => id}) when is_binary(id), do: id

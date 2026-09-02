@@ -10,6 +10,11 @@ defmodule Polly.Polls.InvitationDelivery do
   sqlite do
     table "poll_invitation_deliveries"
     repo Polly.Repo
+
+    custom_indexes do
+      index [:poll_id, :member_id, :kind, :status, :accepted_at],
+        name: "poll_invitation_deliveries_reminder_history_index"
+    end
   end
 
   field_policies do
@@ -88,7 +93,7 @@ defmodule Polly.Polls.InvitationDelivery do
     attribute :kind, :atom do
       allow_nil? false
       public? true
-      constraints one_of: [:initial, :resend]
+      constraints one_of: [:initial, :resend, :reminder]
     end
 
     attribute :dedupe_key, :string, allow_nil?: false, public?: true

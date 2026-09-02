@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress. Phase 0 is implemented: invitation readiness and worker
-revalidation use a shared, choice-free participation boundary that can later
-switch from identified ballots to anonymous participation records. Dedicated
-reminder delivery and administrator presentation remain pending.
+In progress. Phases 0 and 1 are implemented: participation checks use a shared,
+choice-free boundary, and the domain can preview, queue, revalidate, and
+deliver reminder emails through Oban. Administrator presentation remains
+pending.
 
 ## Summary
 
@@ -513,6 +513,8 @@ Implemented.
 No reminder email is sent in this phase.
 
 ### Phase 1 — Manual reminder delivery
+
+Implemented.
 
 - Add the `:reminder` delivery kind and migration.
 - Add reminder preview and queue service functions.

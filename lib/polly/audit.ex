@@ -54,7 +54,14 @@ defmodule Polly.Audit do
     "poll_access_grant.issued" => [:member_id, :grant_id],
     "poll_access_grant.revoked" => [:member_id, :grant_id],
     "poll_access_grant.reissued" => [:member_id, :old_grant_id, :new_grant_id],
-    "poll.invitations_enqueued" => [:queued_count, :skipped_count, :request_kind]
+    "poll.invitations_enqueued" => [:queued_count, :skipped_count, :request_kind],
+    "poll.reminders_enqueued" => [
+      :queued_count,
+      :skipped_count,
+      :skip_reason_counts,
+      :cooldown_hours,
+      :request_kind
+    ]
   }
 
   @forbidden_fragments ~w(token password secret url csv ballot selection email)
@@ -161,6 +168,9 @@ defmodule Polly.Audit do
 
       "poll.results_exported" ->
         "exported results for “#{event.target_label}”"
+
+      "poll.reminders_enqueued" ->
+        "queued voting reminders for “#{event.target_label}”"
 
       "member.created" ->
         "created member “#{event.target_label}”"

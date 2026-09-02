@@ -12,6 +12,8 @@ defmodule Polly.Polls.Invitations do
     Poll
   }
 
+  alias Polly.Accounts.Authorization
+
   def preview(%Poll{} = poll, actor) do
     recipients = recipients(poll, actor)
 
@@ -54,6 +56,69 @@ defmodule Polly.Polls.Invitations do
   end
 
   def enqueue_bulk(%Poll{}, _actor), do: {:error, :poll_not_open}
+
+  @doc "Reports which eligible members may receive a voting reminder."
+  def preview_reminders(%Poll{} = poll, actor) do
+    with :ok <- Authorization.authorize(actor, :send_invitations) do
+      recipients = reminder_recipients(poll, actor)
+
+      {:ok,
+       %{
+         recipients: recipients,
+         ready_count: Enum.count(recipients, &(&1.state == :ready_for_reminder)),
+         skipped_count: Enum.count(recipients, &(&1.state != :ready_for_reminder)),
+         counts: Enum.frequencies_by(recipients, & &1.state)
+       }}
+    end
+  end
+
+  def preview_reminders(_poll, _actor), do: {:error, :forbidden}
+
+  @doc "Queues reminders for every currently ready member of an open poll."
+  def enqueue_reminders(poll, actor, options \\ [])
+
+  def enqueue_reminders(%Poll{status: :open} = poll, actor, _options) do
+    with :ok <- Authorization.authorize(actor, :send_invitations),
+         {:ok, preview} <- preview_reminders(poll, actor),
+         ready = Enum.filter(preview.recipients, &(&1.state == :ready_for_reminder)),
+         :ok <- enforce_reminder_limit(length(ready)) do
+      operation_id = Ash.UUID.generate()
+
+      {:ok, deliveries} =
+        Polly.Repo.transaction(fn ->
+          deliveries = Enum.map(ready, &queue(&1, actor, operation_id, :reminder))
+
+          Polly.Audit.append!(%{
+            action: "poll.reminders_enqueued",
+            actor: actor,
+            operation_id: operation_id,
+            target: %{type: "poll", id: poll.id, label: poll.title},
+            poll_id: poll.id,
+            metadata: %{
+              queued_count: length(deliveries),
+              skipped_count: preview.skipped_count,
+              skip_reason_counts: Map.delete(preview.counts, :ready_for_reminder),
+              cooldown_hours: reminder_cooldown_hours(),
+              request_kind: "reminder"
+            }
+          })
+
+          deliveries
+        end)
+
+      {:ok,
+       %{
+         deliveries: deliveries,
+         queued_count: length(deliveries),
+         skipped_count: preview.skipped_count
+       }}
+    end
+  rescue
+    error -> {:error, error}
+  end
+
+  def enqueue_reminders(%Poll{}, _actor, _options), do: {:error, :poll_not_open}
+  def enqueue_reminders(_poll, _actor, _options), do: {:error, :forbidden}
 
   def enqueue_one(%AccessGrant{} = grant, actor, kind \\ :initial)
       when kind in [:initial, :resend] do
@@ -99,7 +164,8 @@ defmodule Polly.Polls.Invitations do
   end
 
   defp queue(recipient, actor, operation_id, kind) do
-    dedupe_key = dedupe_key(recipient.grant.id, operation_id, kind)
+    dedupe_key =
+      dedupe_key(recipient.grant.id, recipient.grant.credential_version, operation_id, kind)
 
     delivery =
       Ash.create!(
@@ -132,7 +198,7 @@ defmodule Polly.Polls.Invitations do
 
     grants_by_member =
       AccessGrant
-      |> Ash.Query.filter(poll_id == ^poll.id and is_nil(revoked_at))
+      |> Ash.Query.filter(poll_id == ^poll.id)
       |> Ash.Query.select([
         :id,
         :poll_id,
@@ -166,6 +232,84 @@ defmodule Polly.Polls.Invitations do
         state: state(poll, member, grant, delivery, submitted_member_ids)
       }
     end)
+  end
+
+  defp reminder_recipients(poll, actor) do
+    deliveries_by_grant = reminder_deliveries_by_grant(poll.id, actor)
+    submitted_member_ids = Participation.submitted_member_ids(poll.id, actor)
+
+    grants_by_member =
+      AccessGrant
+      |> Ash.Query.filter(poll_id == ^poll.id)
+      |> Ash.Query.select([
+        :id,
+        :poll_id,
+        :member_id,
+        :credential_version,
+        :revoked_at,
+        :expires_at,
+        :inserted_at
+      ])
+      |> Ash.Query.sort(inserted_at: :desc)
+      |> Ash.read!(actor: actor)
+      |> Enum.reduce(%{}, &Map.put_new(&2, &1.member_id, &1))
+
+    Eligibility
+    |> Ash.Query.filter(poll_id == ^poll.id)
+    |> Ash.Query.load(:member)
+    |> Ash.read!(actor: actor)
+    |> Enum.sort_by(&String.downcase(&1.member.name))
+    |> Enum.map(fn eligibility ->
+      member = eligibility.member
+      grant = Map.get(grants_by_member, member.id)
+      deliveries = if grant, do: Map.get(deliveries_by_grant, grant.id, []), else: []
+
+      %{
+        eligibility: eligibility,
+        member: member,
+        grant: grant,
+        state: reminder_state(poll, member, grant, deliveries, submitted_member_ids)
+      }
+    end)
+  end
+
+  defp reminder_state(%Poll{status: status}, _member, _grant, _deliveries, _submitted)
+       when status != :open,
+       do: :poll_not_open
+
+  defp reminder_state(_poll, %{active: false}, _grant, _deliveries, _submitted),
+    do: :inactive_member
+
+  defp reminder_state(_poll, %{email: email}, _grant, _deliveries, _submitted)
+       when email in [nil, ""],
+       do: :missing_email
+
+  defp reminder_state(_poll, member, grant, deliveries, submitted_member_ids) do
+    cond do
+      MapSet.member?(submitted_member_ids, member.id) ->
+        :already_voted
+
+      is_nil(grant) ->
+        :missing_grant
+
+      grant.revoked_at ->
+        :revoked_grant
+
+      grant.expires_at && DateTime.compare(grant.expires_at, DateTime.utc_now()) != :gt ->
+        :expired_grant
+
+      Enum.any?(deliveries, &reminder_in_flight?/1) ->
+        :reminder_in_flight
+
+      Enum.any?(deliveries, &reminder_inside_cooldown?/1) ->
+        :reminder_cooldown
+
+      not Enum.any?(deliveries, &accepted_invitation?/1) ->
+        :initial_invitation_required
+
+      true ->
+        :ready_for_reminder
+    end
   end
 
   defp state(%Poll{status: status}, _member, _grant, _delivery, _ballots) when status != :open,
@@ -215,6 +359,44 @@ defmodule Polly.Polls.Invitations do
     end)
   end
 
-  defp dedupe_key(grant_id, _operation_id, :initial), do: "initial:#{grant_id}"
-  defp dedupe_key(grant_id, operation_id, :resend), do: "resend:#{operation_id}:#{grant_id}"
+  defp reminder_deliveries_by_grant(poll_id, actor) do
+    InvitationDelivery
+    |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.read!(actor: actor)
+    |> Enum.group_by(& &1.access_grant_id)
+  end
+
+  defp accepted_invitation?(delivery),
+    do: delivery.kind in [:initial, :resend] and delivery.status == :accepted
+
+  defp reminder_in_flight?(delivery),
+    do: delivery.kind == :reminder and delivery.status in [:queued, :sending]
+
+  defp reminder_inside_cooldown?(delivery) do
+    delivery.kind == :reminder and delivery.status == :accepted and
+      DateTime.compare(delivery.accepted_at, reminder_cutoff()) == :gt
+  end
+
+  defp enforce_reminder_limit(count) do
+    limit = Application.fetch_env!(:polly, :reminder_operation_limit)
+    if count <= limit, do: :ok, else: {:error, {:operation_limit_exceeded, limit}}
+  end
+
+  defp reminder_cutoff do
+    DateTime.add(DateTime.utc_now(), -reminder_cooldown_hours() * 60 * 60, :second)
+  end
+
+  defp reminder_cooldown_hours do
+    :polly |> Application.fetch_env!(:reminder_cooldown) |> Keyword.fetch!(:hours)
+  end
+
+  defp dedupe_key(grant_id, _credential_version, _operation_id, :initial),
+    do: "initial:#{grant_id}"
+
+  defp dedupe_key(grant_id, _credential_version, operation_id, :resend),
+    do: "resend:#{operation_id}:#{grant_id}"
+
+  defp dedupe_key(grant_id, credential_version, operation_id, :reminder),
+    do: "reminder:#{operation_id}:#{grant_id}:#{credential_version}"
 end
