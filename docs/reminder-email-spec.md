@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress. Phases 0 and 1 are implemented: participation checks use a shared,
-choice-free boundary, and the domain can preview, queue, revalidate, and
-deliver reminder emails through Oban. Administrator presentation remains
-pending.
+In progress. Phases 0 through 2 are implemented: participation checks use a
+shared, choice-free boundary; the domain can preview, queue, revalidate, and
+deliver reminders through Oban; and the Voter Access page presents reminder
+readiness, confirmation, skip reasons, and delivery status.
 
 ## Summary
 
@@ -523,6 +523,8 @@ Implemented.
 - Add domain, worker, email, authorization, and audit coverage.
 
 ### Phase 2 — Administrator presentation
+
+Implemented.
 
 - Add electorate-wide reminder readiness to the Voter Access page.
 - Add confirmation and safe skip-reason breakdowns.

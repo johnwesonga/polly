@@ -263,11 +263,13 @@ defmodule Polly.Polls.Invitations do
       member = eligibility.member
       grant = Map.get(grants_by_member, member.id)
       deliveries = if grant, do: Map.get(deliveries_by_grant, grant.id, []), else: []
+      reminder_delivery = Enum.find(deliveries, &(&1.kind == :reminder))
 
       %{
         eligibility: eligibility,
         member: member,
         grant: grant,
+        delivery: reminder_delivery,
         state: reminder_state(poll, member, grant, deliveries, submitted_member_ids)
       }
     end)
@@ -344,7 +346,7 @@ defmodule Polly.Polls.Invitations do
 
   defp deliveries_by_grant(poll_id, actor) do
     InvitationDelivery
-    |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.Query.filter(poll_id == ^poll_id and kind in [:initial, :resend])
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.read!(actor: actor)
     |> Enum.reduce(%{}, fn delivery, deliveries ->

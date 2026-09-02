@@ -27,6 +27,7 @@ defmodule PollyWeb.PollLive.Access do
      |> assign(:page_title, "#{poll.title} voter access")
      |> assign(:poll, poll)
      |> assign(:confirming_bulk?, false)
+     |> assign(:confirming_reminders?, false)
      |> assign(:status_refresh_scheduled?, false)
      |> assign(:page_number, 1)
      |> assign(:previous_page, nil)
@@ -123,6 +124,44 @@ defmodule PollyWeb.PollLive.Access do
           </div>
         </div>
 
+        <div id="reminder-emails" class="card card-pad" style="margin-bottom:16px;">
+          <div class="detail-header">
+            <div>
+              <div class="admin-h3">Reminder emails</div>
+              <p class="admin-sub" style="margin:4px 0 0;">
+                Remind invited members who have not submitted a ballot.
+              </p>
+            </div>
+            <button
+              id="prepare-reminder-emails"
+              type="button"
+              phx-click="prepare-reminders"
+              disabled={@poll.status != :open || @reminder_preview.ready_count == 0}
+              class="btn btn-coral btn-sm"
+            >
+              Remind non-voters
+            </button>
+          </div>
+          <div id="reminder-readiness" class="poll-meta" aria-live="polite">
+            {@reminder_preview.ready_count} ready for reminder · {@reminder_preview.skipped_count} skipped
+            <%= if @poll.status != :open do %>
+              · Open the poll before sending reminders
+            <% end %>
+          </div>
+          <div
+            :if={@reminder_skip_reason_counts != []}
+            id="reminder-skip-breakdown"
+            class="invitation-skip-breakdown"
+          >
+            <span
+              :for={{state, count} <- @reminder_skip_reason_counts}
+              class="invitation-skip-reason"
+            >
+              <strong>{count}</strong> {state_label(state)}
+            </span>
+          </div>
+        </div>
+
         <div
           :if={@confirming_bulk?}
           id="invitation-confirmation-overlay"
@@ -182,6 +221,70 @@ defmodule PollyWeb.PollLive.Access do
           </section>
         </div>
 
+        <div
+          :if={@confirming_reminders?}
+          id="reminder-confirmation-overlay"
+          class="invitation-confirmation-overlay"
+          phx-window-keydown="cancel-reminders"
+          phx-key="escape"
+        >
+          <section
+            id="reminder-confirmation"
+            class="card card-pad invitation-confirmation"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reminder-confirmation-title"
+          >
+            <div class="m-eyebrow">Voting reminders</div>
+            <h2 id="reminder-confirmation-title" class="admin-h2">Confirm reminder send</h2>
+            <p class="admin-sub">
+              Queue reminders for members of <strong>{@poll.title}</strong> who have not submitted.
+            </p>
+            <dl class="invitation-confirmation-counts">
+              <div>
+                <dt>Will be queued</dt>
+                <dd>{@reminder_preview.ready_count}</dd>
+              </div>
+              <div>
+                <dt>Will be skipped</dt>
+                <dd>{@reminder_preview.skipped_count}</dd>
+              </div>
+            </dl>
+            <div
+              :if={@reminder_skip_reason_counts != []}
+              class="invitation-confirmation-reasons"
+            >
+              <div :for={{state, count} <- @reminder_skip_reason_counts}>
+                <span>{state_label(state)}</span><strong>{count}</strong>
+              </div>
+            </div>
+            <div class="callout amber invitation-private-warning">
+              <.icon name="hero-bell-alert" class="size-5" />
+              <span>
+                Participation is checked again before delivery. Sent reminders have a {@reminder_cooldown_hours}-hour cooldown.
+              </span>
+            </div>
+            <div class="invitation-confirmation-actions">
+              <button
+                id="cancel-reminder-emails"
+                type="button"
+                phx-click="cancel-reminders"
+                class="btn btn-outline"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-reminder-emails"
+                type="button"
+                phx-click="send-reminders"
+                class="btn btn-coral"
+              >
+                Queue {@reminder_preview.ready_count} reminder(s)
+              </button>
+            </div>
+          </section>
+        </div>
+
         <div class="card card-pad">
           <div id="access-members" phx-update="stream">
             <div id="access-members-empty" class="empty-state hidden only:block">
@@ -228,6 +331,22 @@ defmodule PollyWeb.PollLive.Access do
                 </span>
               </div>
               <% recipient = Map.fetch!(@invitation_recipients, eligibility.member_id) %>
+              <% reminder_recipient = Map.fetch!(@reminder_recipients, eligibility.member_id) %>
+              <div
+                :if={reminder_recipient.delivery}
+                id={"reminder-status-#{eligibility.member_id}"}
+                class="invitation-status-detail reminder-status-detail"
+              >
+                <span class={[
+                  "pill",
+                  reminder_status_class(reminder_recipient.delivery.status)
+                ]}>
+                  {reminder_status_label(reminder_recipient.delivery.status)}
+                </span>
+                <span :if={reminder_status_detail(reminder_recipient.delivery)}>
+                  {reminder_status_detail(reminder_recipient.delivery)}
+                </span>
+              </div>
               <div
                 :if={invitation_status_detail(recipient)}
                 id={"invitation-detail-#{eligibility.member_id}"}
@@ -388,6 +507,39 @@ defmodule PollyWeb.PollLive.Access do
     {:noreply, assign(socket, :confirming_bulk?, false)}
   end
 
+  def handle_event("prepare-reminders", _params, socket) do
+    if socket.assigns.poll.status == :open && socket.assigns.reminder_preview.ready_count > 0 do
+      {:noreply, assign(socket, :confirming_reminders?, true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("cancel-reminders", _params, socket) do
+    {:noreply, assign(socket, :confirming_reminders?, false)}
+  end
+
+  def handle_event("send-reminders", _params, socket) do
+    case Invitations.enqueue_reminders(socket.assigns.poll, socket.assigns.current_user) do
+      {:ok, %{queued_count: queued_count}} ->
+        {:noreply,
+         socket
+         |> assign(:confirming_reminders?, false)
+         |> put_flash(:info, "Queued #{queued_count} reminder email(s)")
+         |> load_access()}
+
+      {:error, :poll_not_open} ->
+        {:noreply, put_flash(socket, :error, "Open the poll before sending reminders")}
+
+      {:error, {:operation_limit_exceeded, limit}} ->
+        {:noreply,
+         put_flash(socket, :error, "A reminder operation is limited to #{limit} recipients")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Reminder emails could not be queued")}
+    end
+  end
+
   def handle_event("send-invitation", %{"id" => id}, socket) do
     enqueue_one(socket, id, :initial)
   end
@@ -414,9 +566,13 @@ defmodule PollyWeb.PollLive.Access do
 
     grants_by_member = Map.new(grants, &{&1.member_id, &1})
     invitation_preview = Invitations.preview(poll, actor)
+    {:ok, reminder_preview} = Invitations.preview_reminders(poll, actor)
 
     invitation_recipients =
       Map.new(invitation_preview.recipients, &{&1.member.id, &1})
+
+    reminder_recipients =
+      Map.new(reminder_preview.recipients, &{&1.member.id, &1})
 
     eligibilities = Enum.map(invitation_preview.recipients, & &1.eligibility)
     eligible_count = length(eligibilities)
@@ -436,9 +592,19 @@ defmodule PollyWeb.PollLive.Access do
       |> assign(:invitation_preview, invitation_preview)
       |> assign(:skip_reason_counts, skip_reason_counts(invitation_preview.counts))
       |> assign(:invitation_recipients, invitation_recipients)
+      |> assign(:reminder_preview, reminder_preview)
+      |> assign(:reminder_recipients, reminder_recipients)
+      |> assign(
+        :reminder_skip_reason_counts,
+        reminder_skip_reason_counts(reminder_preview.counts)
+      )
+      |> assign(:reminder_cooldown_hours, reminder_cooldown_hours())
       |> stream(:eligibilities, page_eligibilities, reset: true)
 
-    maybe_schedule_status_refresh(socket, invitation_preview.recipients)
+    maybe_schedule_status_refresh(
+      socket,
+      invitation_preview.recipients ++ reminder_preview.recipients
+    )
   end
 
   defp enqueue_one(socket, grant_id, kind) do
@@ -517,6 +683,8 @@ defmodule PollyWeb.PollLive.Access do
 
   defp error_label("grant_expired"), do: "Cancelled because the access link expired."
   defp error_label("already_voted"), do: "Cancelled because the member already voted."
+  defp error_label("not_eligible"), do: "Cancelled because the member is no longer eligible."
+  defp error_label("reminder_cooldown"), do: "Cancelled because a recent reminder was sent."
   defp error_label(_code), do: "Delivery could not be completed."
 
   defp state_label(:ready), do: "Ready to email"
@@ -529,6 +697,10 @@ defmodule PollyWeb.PollLive.Access do
   defp state_label(:expired_grant), do: "Expired grant"
   defp state_label(:already_invited), do: "Already invited"
   defp state_label(:not_eligible), do: "Not eligible"
+  defp state_label(:ready_for_reminder), do: "Ready for reminder"
+  defp state_label(:initial_invitation_required), do: "Initial invitation required"
+  defp state_label(:reminder_in_flight), do: "Reminder in progress"
+  defp state_label(:reminder_cooldown), do: "Recently reminded"
 
   defp skip_reason_counts(counts) do
     [
@@ -547,6 +719,51 @@ defmodule PollyWeb.PollLive.Access do
         count -> [{state, count}]
       end
     end)
+  end
+
+  defp reminder_skip_reason_counts(counts) do
+    [
+      :already_voted,
+      :reminder_cooldown,
+      :reminder_in_flight,
+      :initial_invitation_required,
+      :missing_email,
+      :inactive_member,
+      :missing_grant,
+      :revoked_grant,
+      :expired_grant,
+      :poll_not_open
+    ]
+    |> Enum.flat_map(fn state ->
+      case Map.get(counts, state, 0) do
+        0 -> []
+        count -> [{state, count}]
+      end
+    end)
+  end
+
+  defp reminder_status_label(:queued), do: "Reminder queued"
+  defp reminder_status_label(:sending), do: "Reminder sending"
+  defp reminder_status_label(:accepted), do: "Reminder sent"
+  defp reminder_status_label(:failed), do: "Reminder failed"
+  defp reminder_status_label(:cancelled), do: "Reminder cancelled"
+
+  defp reminder_status_class(:accepted), do: "open"
+  defp reminder_status_class(status) when status in [:failed, :cancelled], do: "closed"
+  defp reminder_status_class(_status), do: nil
+
+  defp reminder_status_detail(%{status: :accepted, accepted_at: accepted_at})
+       when not is_nil(accepted_at),
+       do: "Provider accepted #{format_datetime(accepted_at)} · Inbox delivery is not confirmed."
+
+  defp reminder_status_detail(%{status: status, last_error_code: code})
+       when status in [:failed, :cancelled] and not is_nil(code),
+       do: error_label(code)
+
+  defp reminder_status_detail(_delivery), do: nil
+
+  defp reminder_cooldown_hours do
+    :polly |> Application.fetch_env!(:reminder_cooldown) |> Keyword.fetch!(:hours)
   end
 
   defp format_datetime(datetime) do
