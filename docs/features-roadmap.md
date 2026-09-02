@@ -20,7 +20,7 @@ Status labels:
 - **Proposed — Delivery-status CSV export:** export member, eligibility, and invitation status without working voting credentials.
 - **Specified — [Poll archiving](poll-archiving-spec.md):** hide completed polls from normal administration while retaining their history.
 - **Proposed — Scheduled opening and closing:** configure lifecycle timestamps instead of requiring manual actions.
-- **Proposed — Reminder emails:** notify eligible members who have not voted without revealing their selections.
+- **Specified — [Reminder emails](reminder-email-spec.md):** notify eligible members who have not voted without revealing their selections.
 
 ## Poll configuration
 
@@ -36,7 +36,7 @@ Status labels:
 ## Electorate management
 
 - **Proposed — Member groups, teams, or segments.**
-- **Proposed — Bulk electorate selection.**
+- **Specified — [Bulk electorate selection](bulk-electorate-selection-spec.md):** preview and transactionally add or remove explicit or filtered member selections across paginated roster pages.
 - **Proposed — Saved electorate presets.**
 - **Proposed — Member tags and filtering.**
 - **Proposed — Electorate preview with active/inactive warnings.**
