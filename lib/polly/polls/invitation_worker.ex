@@ -5,7 +5,7 @@ defmodule Polly.Polls.InvitationWorker do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Ballot, InvitationDelivery, InvitationEmail, Poll}
+  alias Polly.Polls.{AccessGrant, InvitationDelivery, InvitationEmail, Participation, Poll}
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"delivery_id" => delivery_id}} = job) do
@@ -48,7 +48,7 @@ defmodule Polly.Polls.InvitationWorker do
       expired?(delivery.access_grant.expires_at) ->
         "grant_expired"
 
-      ballot_exists?(delivery.poll_id, delivery.member_id) ->
+      Participation.submitted?(delivery.poll_id, delivery.member_id) ->
         "already_voted"
 
       true ->
@@ -116,12 +116,6 @@ defmodule Polly.Polls.InvitationWorker do
   defp cancel(delivery, reason) do
     Ash.update!(delivery, %{last_error_code: reason}, action: :cancel, authorize?: false)
     :ok
-  end
-
-  defp ballot_exists?(poll_id, member_id) do
-    Ballot
-    |> Ash.Query.filter(poll_id == ^poll_id and member_id == ^member_id)
-    |> Ash.exists?(authorize?: false)
   end
 
   defp expired?(nil), do: false

@@ -7,7 +7,7 @@ defmodule Polly.Polls.InvitationsTest do
 
   alias Polly.Accounts.User
   alias Polly.Members.Member
-  alias Polly.Polls.{InvitationDelivery, InvitationWorker, Invitations, Option, Poll}
+  alias Polly.Polls.{Ballot, InvitationDelivery, InvitationWorker, Invitations, Option, Poll}
 
   setup do
     actor =
@@ -70,6 +70,19 @@ defmodule Polly.Polls.InvitationsTest do
     assert %Ash.NotLoaded{} = grant.token
   end
 
+  test "readiness skips members who have already submitted", %{actor: actor} do
+    {poll, member, _grant} = open_poll_with_member!(actor)
+
+    Ash.create!(
+      Ballot,
+      %{poll_id: poll.id, member_id: member.id},
+      action: :submit,
+      authorize?: false
+    )
+
+    assert %{ready_count: 0, counts: %{already_voted: 1}} = Invitations.preview(poll, actor)
+  end
+
   test "worker sends the individualized private link and marks the delivery accepted", %{
     actor: actor
   } do
@@ -115,6 +128,30 @@ defmodule Polly.Polls.InvitationsTest do
              })
 
     assert Ash.get!(InvitationDelivery, delivery.id, actor: actor).status == :cancelled
+    refute_email_sent()
+  end
+
+  test "worker cancels when the member submits after the invitation is queued", %{actor: actor} do
+    {poll, member, _grant} = open_poll_with_member!(actor)
+    assert {:ok, [delivery]} = Invitations.enqueue_bulk(poll, actor)
+
+    Ash.create!(
+      Ballot,
+      %{poll_id: poll.id, member_id: member.id},
+      action: :submit,
+      authorize?: false
+    )
+
+    assert :ok =
+             InvitationWorker.perform(%Oban.Job{
+               args: %{"delivery_id" => delivery.id},
+               attempt: 1,
+               max_attempts: 5
+             })
+
+    delivery = Ash.get!(InvitationDelivery, delivery.id, actor: actor)
+    assert delivery.status == :cancelled
+    assert delivery.last_error_code == "already_voted"
     refute_email_sent()
   end
 

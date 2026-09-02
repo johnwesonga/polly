@@ -2,9 +2,10 @@
 
 ## Status
 
-Specified. Polly can send initial and resend invitation emails, but it does not
-yet provide a dedicated workflow for reminding eligible members who have not
-submitted a ballot.
+In progress. Phase 0 is implemented: invitation readiness and worker
+revalidation use a shared, choice-free participation boundary that can later
+switch from identified ballots to anonymous participation records. Dedicated
+reminder delivery and administrator presentation remain pending.
 
 ## Summary
 
@@ -97,7 +98,7 @@ Conceptually:
 
 ```elixir
 Polly.Polls.Participation.submitted?(poll_id, member_id)
-Polly.Polls.Participation.submitted_member_ids(poll_id)
+Polly.Polls.Participation.submitted_member_ids(poll_id, actor)
 ```
 
 In the current identified-ballot model, these functions query `Ballot` by poll
@@ -502,6 +503,8 @@ they do not rewrite delivery history.
 ## Implementation phases
 
 ### Phase 0 — Shared participation boundary
+
+Implemented.
 
 - Introduce centralized submitted/member-ID queries.
 - Replace direct participation checks in invitation readiness and workers.

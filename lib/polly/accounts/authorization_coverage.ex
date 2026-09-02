@@ -173,6 +173,9 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Polls.PublicResults, :fetch_by_slug} =>
         {:trusted, "closed, published poll explicitly configured for public results"},
       {Polly.Polls.Readiness, :attention_counts} => {:permission, :view_results},
+      {Polly.Polls.Participation, :submitted_member_ids} => {:permission, :view_results},
+      {Polly.Polls.Participation, :submitted?} =>
+        {:trusted, "invitation worker participation revalidation"},
       {Polly.Polls.ResultExport, :generate} => {:permission, :export_results},
       {Polly.Polls.Ballots, :submit} => {:trusted, "public voting credential flow"},
       {Polly.Audit, :append} => {:trusted, "authorized domain action audit hook"}
@@ -215,8 +218,12 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         reason: "public credential resolution constrained by digest and grant lifecycle filters"
       },
       "lib/polly/polls/invitation_worker.ex" => %{
-        count: 10,
+        count: 9,
         reason: "trusted Oban worker processing an authorized durable command"
+      },
+      "lib/polly/polls/participation.ex" => %{
+        count: 1,
+        reason: "choice-free participation lookup used by the trusted invitation worker"
       },
       "lib/polly/polls/results.ex" => %{
         count: 5,

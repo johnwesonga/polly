@@ -3,7 +3,14 @@ defmodule Polly.Polls.Invitations do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, InvitationWorker, Poll}
+  alias Polly.Polls.{
+    AccessGrant,
+    Eligibility,
+    InvitationDelivery,
+    InvitationWorker,
+    Participation,
+    Poll
+  }
 
   def preview(%Poll{} = poll, actor) do
     recipients = recipients(poll, actor)
@@ -121,7 +128,7 @@ defmodule Polly.Polls.Invitations do
 
   defp recipients(poll, actor) do
     deliveries_by_grant = deliveries_by_grant(poll.id, actor)
-    ballots = ballot_member_ids(poll.id, actor)
+    submitted_member_ids = Participation.submitted_member_ids(poll.id, actor)
 
     grants_by_member =
       AccessGrant
@@ -156,7 +163,7 @@ defmodule Polly.Polls.Invitations do
         grant: grant,
         delivery: delivery,
         latest_accepted_at: delivery_info && delivery_info.latest_accepted_at,
-        state: state(poll, member, grant, delivery, ballots)
+        state: state(poll, member, grant, delivery, submitted_member_ids)
       }
     end)
   end
@@ -169,13 +176,14 @@ defmodule Polly.Polls.Invitations do
   defp state(_poll, %{email: email}, _grant, _delivery, _ballots) when email in [nil, ""],
     do: :missing_email
 
-  defp state(_poll, member, _grant, _delivery, ballots) when is_map_key(ballots, member.id),
-    do: :already_voted
-
-  defp state(_poll, _member, nil, _delivery, _ballots), do: :missing_grant
-
-  defp state(_poll, _member, grant, delivery, _ballots) do
+  defp state(_poll, member, grant, delivery, submitted_member_ids) do
     cond do
+      MapSet.member?(submitted_member_ids, member.id) ->
+        :already_voted
+
+      is_nil(grant) ->
+        :missing_grant
+
       grant.revoked_at ->
         :revoked_grant
 
@@ -205,13 +213,6 @@ defmodule Polly.Polls.Invitations do
         end
       )
     end)
-  end
-
-  defp ballot_member_ids(poll_id, actor) do
-    Ballot
-    |> Ash.Query.filter(poll_id == ^poll_id)
-    |> Ash.read!(actor: actor)
-    |> Map.new(&{&1.member_id, true})
   end
 
   defp dedupe_key(grant_id, _operation_id, :initial), do: "initial:#{grant_id}"
