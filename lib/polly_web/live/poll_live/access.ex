@@ -11,7 +11,9 @@ defmodule PollyWeb.PollLive.Access do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Eligibility, Electorate, Invitations, Poll}
+  alias Polly.Polls.{AccessGrant, Electorate, Invitations, Poll}
+
+  @page_size 15
 
   on_mount {PollyWeb.LiveUserAuth, {:require_permission, :manage_access_grants}}
 
@@ -26,7 +28,27 @@ defmodule PollyWeb.PollLive.Access do
      |> assign(:poll, poll)
      |> assign(:confirming_bulk?, false)
      |> assign(:status_refresh_scheduled?, false)
-     |> load_access()}
+     |> assign(:page_number, 1)
+     |> assign(:previous_page, nil)
+     |> assign(:next_page, nil)
+     |> stream(:eligibilities, [])}
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    case page_number(params) do
+      {:ok, page_number} ->
+        socket = socket |> assign(:page_number, page_number) |> load_access()
+
+        if page_number > max(socket.assigns.page_count, 1) do
+          {:noreply, push_patch(socket, to: access_path(socket.assigns.poll, 1))}
+        else
+          {:noreply, socket}
+        end
+
+      :error ->
+        {:noreply, push_patch(socket, to: access_path(socket.assigns.poll, 1))}
+    end
   end
 
   @impl true
@@ -286,6 +308,29 @@ defmodule PollyWeb.PollLive.Access do
               </button>
             </div>
           </div>
+          <nav
+            :if={@previous_page || @next_page}
+            id="access-member-pagination"
+            class="poll-actions"
+            aria-label="Voter access pages"
+          >
+            <.link
+              :if={@previous_page}
+              id="previous-access-members-page"
+              patch={access_path(@poll, @previous_page)}
+              class="btn btn-outline btn-sm"
+            >
+              Previous
+            </.link>
+            <.link
+              :if={@next_page}
+              id="next-access-members-page"
+              patch={access_path(@poll, @next_page)}
+              class="btn btn-outline btn-sm"
+            >
+              Next
+            </.link>
+          </nav>
         </div>
       </section>
     </Layouts.app>
@@ -360,13 +405,6 @@ defmodule PollyWeb.PollLive.Access do
     actor = socket.assigns.current_user
     poll = socket.assigns.poll
 
-    eligibilities =
-      Eligibility
-      |> Ash.Query.filter(poll_id == ^poll.id)
-      |> Ash.Query.load(:member)
-      |> Ash.read!(actor: actor)
-      |> Enum.sort_by(&String.downcase(&1.member.name))
-
     grants =
       AccessGrant
       |> Ash.Query.filter(poll_id == ^poll.id and is_nil(revoked_at))
@@ -380,15 +418,25 @@ defmodule PollyWeb.PollLive.Access do
     invitation_recipients =
       Map.new(invitation_preview.recipients, &{&1.member.id, &1})
 
+    eligibilities = Enum.map(invitation_preview.recipients, & &1.eligibility)
+    eligible_count = length(eligibilities)
+    page_count = ceil_div(eligible_count, @page_size)
+
+    page_eligibilities =
+      Enum.slice(eligibilities, (socket.assigns.page_number - 1) * @page_size, @page_size)
+
     socket =
       socket
       |> assign(:grants_by_member, grants_by_member)
       |> assign(:active_grant_count, map_size(grants_by_member))
-      |> assign(:eligible_count, length(eligibilities))
+      |> assign(:eligible_count, eligible_count)
+      |> assign(:page_count, page_count)
+      |> assign(:previous_page, previous_page(socket.assigns.page_number))
+      |> assign(:next_page, next_page(socket.assigns.page_number, page_count))
       |> assign(:invitation_preview, invitation_preview)
       |> assign(:skip_reason_counts, skip_reason_counts(invitation_preview.counts))
       |> assign(:invitation_recipients, invitation_recipients)
-      |> stream(:eligibilities, eligibilities, reset: true)
+      |> stream(:eligibilities, page_eligibilities, reset: true)
 
     maybe_schedule_status_refresh(socket, invitation_preview.recipients)
   end
@@ -504,6 +552,27 @@ defmodule PollyWeb.PollLive.Access do
   defp format_datetime(datetime) do
     Calendar.strftime(datetime, "%b %-d, %Y at %-I:%M %p UTC")
   end
+
+  defp page_number(%{"page" => page}) when is_binary(page) do
+    case Integer.parse(page) do
+      {page_number, ""} when page_number > 0 -> {:ok, page_number}
+      _invalid -> :error
+    end
+  end
+
+  defp page_number(_params), do: {:ok, 1}
+
+  defp access_path(poll, 1), do: ~p"/admin/polls/#{poll.id}/access"
+  defp access_path(poll, page), do: ~p"/admin/polls/#{poll.id}/access?page=#{page}"
+
+  defp previous_page(1), do: nil
+  defp previous_page(page), do: page - 1
+
+  defp next_page(page, page_count) when page < page_count, do: page + 1
+  defp next_page(_page, _page_count), do: nil
+
+  defp ceil_div(0, _divisor), do: 0
+  defp ceil_div(dividend, divisor), do: div(dividend + divisor - 1, divisor)
 
   defp get_safe_grant!(id, actor) do
     AccessGrant

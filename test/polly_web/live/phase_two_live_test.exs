@@ -152,6 +152,80 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     assert Enum.all?(grants, & &1.revoked_at)
   end
 
+  test "paginates electorate members while select all applies to the full roster", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    poll = create_poll!(actor)
+
+    members =
+      Enum.map(1..16, fn number ->
+        Ash.create!(
+          Member,
+          %{name: "Voter #{number |> Integer.to_string() |> String.pad_leading(2, "0")}"},
+          actor: actor
+        )
+      end)
+
+    fifteenth = Enum.at(members, 14)
+    sixteenth = Enum.at(members, 15)
+    {:ok, electorate, _html} = live(conn, ~p"/admin/polls/#{poll.id}/electorate")
+
+    assert has_element?(electorate, "#toggle-eligibility-#{fifteenth.id}")
+    refute has_element?(electorate, "#toggle-eligibility-#{sixteenth.id}")
+    assert has_element?(electorate, "#next-electorate-members-page")
+
+    electorate |> element("#select-all-members") |> render_click()
+    assert has_element?(electorate, "#eligible-count", "16 selected")
+
+    electorate |> element("#next-electorate-members-page") |> render_click()
+
+    assert has_element?(electorate, "#toggle-eligibility-#{sixteenth.id}", "Selected")
+    assert has_element?(electorate, "#previous-electorate-members-page")
+    refute has_element?(electorate, "#next-electorate-members-page")
+
+    electorate |> element("#unselect-all-members") |> render_click()
+    assert has_element?(electorate, "#eligible-count", "0 selected")
+    assert has_element?(electorate, "#toggle-eligibility-#{sixteenth.id}", "Select")
+  end
+
+  test "paginates voter access rows while retaining electorate-wide counts", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    poll = create_poll!(actor)
+
+    members =
+      Enum.map(1..16, fn number ->
+        member =
+          Ash.create!(
+            Member,
+            %{
+              name: "Access Voter #{number |> Integer.to_string() |> String.pad_leading(2, "0")}",
+              email: "access-voter-#{number}@example.com"
+            },
+            actor: actor
+          )
+
+        Polly.Polls.Electorate.include_member(poll, member, actor)
+        member
+      end)
+
+    first = List.first(members)
+    last = List.last(members)
+    {:ok, access, _html} = live(conn, ~p"/admin/polls/#{poll.id}/access")
+
+    assert has_element?(access, "#active-grant-count", "16 of 16 active")
+    assert has_element?(access, "#invitation-readiness", "0 ready · 16 skipped")
+    assert has_element?(access, "#protected-access-#{first.id}")
+    refute has_element?(access, "#protected-access-#{last.id}")
+    assert has_element?(access, "#next-access-members-page")
+    refute has_element?(access, "#previous-access-members-page")
+
+    access |> element("#next-access-members-page") |> render_click()
+
+    refute has_element?(access, "#protected-access-#{first.id}")
+    assert has_element?(access, "#protected-access-#{last.id}")
+    assert has_element?(access, "#previous-access-members-page")
+    refute has_element?(access, "#next-access-members-page")
+  end
+
   defp create_poll!(actor) do
     Ash.create!(Poll, %{title: "Team Theme"}, actor: actor)
   end

@@ -20,7 +20,6 @@ defmodule PollyWeb.PollLive.Electorate do
   def mount(%{"id" => id}, _session, socket) do
     actor = socket.assigns.current_user
     poll = Ash.get!(Poll, id, actor: actor)
-    members = list_members(actor)
     options = list_options(poll, actor)
     eligibilities = list_eligibilities(poll, actor)
 
@@ -30,8 +29,22 @@ defmodule PollyWeb.PollLive.Electorate do
      |> assign(:poll, poll)
      |> assign(:eligible_ids, MapSet.new(eligibilities, & &1.member_id))
      |> assign(:eligible_count, length(eligibilities))
-     |> stream(:members, members)
+     |> assign(:page_params, %{})
+     |> assign(:previous_cursor, nil)
+     |> assign(:next_cursor, nil)
+     |> stream(:members, [])
      |> stream(:preview_options, options)}
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    case list_members(socket.assigns.current_user, params) do
+      {:ok, page} ->
+        {:noreply, assign_member_page(socket, page, params)}
+
+      {:error, _error} ->
+        {:noreply, push_patch(socket, to: electorate_path(socket.assigns.poll))}
+    end
   end
 
   @impl true
@@ -125,6 +138,30 @@ defmodule PollyWeb.PollLive.Electorate do
                 </span>
               </div>
             </div>
+
+            <nav
+              :if={@previous_cursor || @next_cursor}
+              id="electorate-member-pagination"
+              class="poll-actions"
+              aria-label="Electorate member pages"
+            >
+              <.link
+                :if={@previous_cursor}
+                id="previous-electorate-members-page"
+                patch={pagination_path(@poll, :before, @previous_cursor)}
+                class="btn btn-outline btn-sm"
+              >
+                Previous
+              </.link>
+              <.link
+                :if={@next_cursor}
+                id="next-electorate-members-page"
+                patch={pagination_path(@poll, :after, @next_cursor)}
+                class="btn btn-outline btn-sm"
+              >
+                Next
+              </.link>
+            </nav>
           </div>
 
           <aside id="ballot-preview" class="card card-pad" style="height:fit-content;">
@@ -166,7 +203,7 @@ defmodule PollyWeb.PollLive.Electorate do
     actor = socket.assigns.current_user
 
     actor
-    |> list_members()
+    |> list_all_members()
     |> Enum.filter(&(&1.active and not MapSet.member?(socket.assigns.eligible_ids, &1.id)))
     |> Enum.each(&Electorate.include_member(socket.assigns.poll, &1, actor))
 
@@ -187,15 +224,72 @@ defmodule PollyWeb.PollLive.Electorate do
     actor = socket.assigns.current_user
     eligibilities = list_eligibilities(socket.assigns.poll, actor)
 
-    socket
-    |> assign(:eligible_ids, MapSet.new(eligibilities, & &1.member_id))
-    |> assign(:eligible_count, length(eligibilities))
-    |> stream(:members, list_members(actor), reset: true)
+    socket =
+      socket
+      |> assign(:eligible_ids, MapSet.new(eligibilities, & &1.member_id))
+      |> assign(:eligible_count, length(eligibilities))
+
+    case list_members(actor, socket.assigns.page_params) do
+      {:ok, page} -> assign_member_page(socket, page, socket.assigns.page_params)
+      {:error, _error} -> push_patch(socket, to: electorate_path(socket.assigns.poll))
+    end
   end
 
-  defp list_members(actor) do
-    Member |> Ash.Query.sort(name: :asc) |> Ash.read!(actor: actor)
+  defp assign_member_page(socket, page, params) do
+    socket
+    |> assign(:page_params, Map.take(params, ["after", "before"]))
+    |> assign(:previous_cursor, previous_cursor(page))
+    |> assign(:next_cursor, next_cursor(page))
+    |> stream(:members, page.results, reset: true)
   end
+
+  defp list_members(actor, params) do
+    Member
+    |> Ash.Query.sort(name: :asc, id: :asc)
+    |> Ash.read(actor: actor, page: page_options(params))
+  end
+
+  defp list_all_members(actor) do
+    Member |> Ash.Query.sort(name: :asc, id: :asc) |> Ash.read!(actor: actor)
+  end
+
+  defp electorate_path(poll), do: ~p"/admin/polls/#{poll.id}/electorate"
+
+  defp pagination_path(poll, direction, cursor),
+    do: ~p"/admin/polls/#{poll.id}/electorate?#{%{Atom.to_string(direction) => cursor}}"
+
+  defp page_options(%{"after" => cursor}) when is_binary(cursor) and cursor != "",
+    do: [after: cursor]
+
+  defp page_options(%{"before" => cursor}) when is_binary(cursor) and cursor != "",
+    do: [before: cursor]
+
+  defp page_options(_params), do: []
+
+  defp previous_cursor(%Ash.Page.Keyset{results: []}), do: nil
+
+  defp previous_cursor(%Ash.Page.Keyset{results: results, after: after_cursor})
+       when not is_nil(after_cursor),
+       do: keyset(List.first(results))
+
+  defp previous_cursor(%Ash.Page.Keyset{results: results, before: before_cursor, more?: true})
+       when not is_nil(before_cursor),
+       do: keyset(List.first(results))
+
+  defp previous_cursor(_page), do: nil
+
+  defp next_cursor(%Ash.Page.Keyset{results: []}), do: nil
+
+  defp next_cursor(%Ash.Page.Keyset{results: results, before: before_cursor})
+       when not is_nil(before_cursor),
+       do: keyset(List.last(results))
+
+  defp next_cursor(%Ash.Page.Keyset{results: results, more?: true}),
+    do: keyset(List.last(results))
+
+  defp next_cursor(_page), do: nil
+
+  defp keyset(record), do: record.__metadata__.keyset
 
   defp list_options(poll, actor) do
     Option
