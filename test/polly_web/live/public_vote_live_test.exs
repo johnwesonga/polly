@@ -43,6 +43,65 @@ defmodule PollyWeb.PublicVoteLiveTest do
     refute has_element?(view, "#ballot-form")
   end
 
+  test "anonymous voting discloses privacy and clears choices after submission", %{
+    conn: conn,
+    actor: actor
+  } do
+    fixture = anonymous_open_poll!(actor, "Anonymous team theme")
+
+    {:ok, view, _html} = live(conn, vote_path(fixture))
+
+    assert has_element?(view, "#anonymous-vote-disclosure", "verifies your eligibility")
+    assert has_element?(view, "#anonymous-vote-disclosure", "stored without your identity")
+    refute has_element?(view, "#identified-vote-disclosure")
+
+    view
+    |> form("#ballot-form", ballot: %{option_id: fixture.option.id})
+    |> render_submit()
+
+    assert has_element?(view, "#anonymous-review-disclosure", "Anonymous choices")
+    assert has_element?(view, "#reviewed-option-#{fixture.option.id}")
+
+    view
+    |> form("#confirm-ballot-form", ballot: %{option_id: fixture.option.id})
+    |> render_submit()
+
+    assert has_element?(view, "#ballot-submitted")
+    assert has_element?(view, "#anonymous-submission-message", "participation")
+    assert has_element?(view, "#anonymous-participated-at")
+    refute has_element?(view, "#ballot-submitted", "Voted as")
+    refute has_element?(view, "#receipt-selection-#{fixture.option.id}")
+    refute has_element?(view, "#ballot-submitted", fixture.option.label)
+    refute has_element?(view, "#ballot-submitted", fixture.member.name)
+  end
+
+  test "returning anonymous participants do not recover their ballot", %{
+    conn: conn,
+    actor: actor
+  } do
+    fixture = anonymous_open_poll!(actor, "Anonymous return")
+
+    assert {:ok, ballot} =
+             Ballots.submit(fixture.poll.id, voting_token(fixture.grant), [fixture.option.id])
+
+    assert is_nil(ballot.member_id)
+
+    {:ok, view, _html} = live(conn, vote_path(fixture))
+
+    assert has_element?(view, "#ballot-already-submitted")
+    assert has_element?(view, "#anonymous-submission-message", "cannot be retrieved or changed")
+    refute has_element?(view, "#receipt-selection-#{fixture.option.id}")
+    refute has_element?(view, "#ballot-already-submitted", fixture.option.label)
+    refute has_element?(view, "#ballot-already-submitted", fixture.member.name)
+
+    reissued_grant = Electorate.reissue(fixture.grant, actor)
+    reissued_fixture = %{fixture | grant: reissued_grant}
+    {:ok, reissued_view, _html} = live(conn, vote_path(reissued_fixture))
+
+    assert has_element?(reissued_view, "#ballot-already-submitted")
+    refute has_element?(reissued_view, "#receipt-selection-#{fixture.option.id}")
+  end
+
   test "selects, reviews, and submits an exact-count multiple-choice ballot", %{
     conn: conn,
     actor: actor
@@ -209,6 +268,17 @@ defmodule PollyWeb.PublicVoteLiveTest do
   defp open_poll!(actor, title) do
     fixture = draft_poll!(actor, title)
     %{fixture | poll: Ash.update!(fixture.poll, %{}, action: :open, actor: actor)}
+  end
+
+  defp anonymous_open_poll!(actor, title) do
+    fixture = draft_poll!(actor, title)
+
+    poll =
+      fixture.poll
+      |> Ash.update!(%{privacy_mode: :anonymous}, action: :update_draft, actor: actor)
+      |> Ash.update!(%{}, action: :open, actor: actor)
+
+    %{fixture | poll: poll}
   end
 
   defp open_multiple_poll!(actor, title) do

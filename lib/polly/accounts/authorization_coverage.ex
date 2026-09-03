@@ -256,8 +256,8 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         reason: "invariant query within an authorized poll action"
       },
       "lib/polly_web/live/poll_live/vote.ex" => %{
-        count: 3,
-        reason: "public voting UI after access-token resolution"
+        count: 4,
+        reason: "public voting and participation state after access-token resolution"
       }
     }
   end

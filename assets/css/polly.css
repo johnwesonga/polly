@@ -2018,6 +2018,31 @@
      line-height: 1.5;
  }
 
+ .anonymous-privacy-disclosure,
+ .anonymous-review-disclosure {
+     border: 1px solid var(--line-strong);
+     border-left: 4px solid var(--coral);
+     border-radius: 8px;
+     background: var(--paper-alt);
+     color: var(--ink-soft);
+     font-size: 12px;
+     line-height: 1.55;
+     padding: 10px 12px;
+ }
+
+ .anonymous-privacy-disclosure {
+     margin: 12px 0 0;
+ }
+
+ .anonymous-review-disclosure {
+     margin: 0 0 14px;
+     font-family: 'IBM Plex Mono', monospace;
+     font-size: 10px;
+     font-weight: 700;
+     letter-spacing: .04em;
+     text-transform: uppercase;
+ }
+
  .m-confirm {
      display: flex;
      flex-direction: column;

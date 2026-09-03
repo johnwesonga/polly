@@ -11,7 +11,7 @@ defmodule PollyWeb.PollLive.Vote do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Ballot, Ballots, Events, SelectionRules}
+  alias Polly.Polls.{AccessGrant, Ballot, Ballots, Events, Participation, SelectionRules}
   alias Polly.Polls.Results, as: PollResults
 
   @impl true
@@ -28,6 +28,7 @@ defmodule PollyWeb.PollLive.Vote do
      |> assign(:selected_options, [])
      |> assign(:selection_input_valid?, true)
      |> assign(:ballot, nil)
+     |> assign(:participation, nil)
      |> assign(:submission_error, nil)
      |> load_access()}
   end
@@ -120,8 +121,20 @@ defmodule PollyWeb.PollLive.Vote do
                   Review my vote
                 </button>
               </.form>
-              <p class="m-fine">
+              <p
+                :if={@poll.privacy_mode == :identified}
+                id="identified-vote-disclosure"
+                class="m-fine"
+              >
                 This private link identifies {@member.name}. One final ballot may be submitted.
+              </p>
+              <p
+                :if={@poll.privacy_mode == :anonymous}
+                id="anonymous-vote-disclosure"
+                class="anonymous-privacy-disclosure"
+              >
+                This private link verifies your eligibility. Polly records that you participated,
+                but your choices are stored without your identity.
               </p>
             </div>
 
@@ -131,6 +144,13 @@ defmodule PollyWeb.PollLive.Vote do
               <p class="m-desc">
                 Once you confirm, this ballot is final. There's no edit or resubmit.
               </p>
+              <div
+                :if={@poll.privacy_mode == :anonymous}
+                id="anonymous-review-disclosure"
+                class="anonymous-review-disclosure"
+              >
+                Anonymous choices · Participation is recorded separately
+              </div>
               <div class="review-card">
                 <div class="review-label">
                   {if(length(@selected_options) == 1, do: "Your selection", else: "Your selections")}
@@ -171,16 +191,33 @@ defmodule PollyWeb.PollLive.Vote do
             >
               <div class="stamp"><.icon name="hero-check" class="size-8" /></div>
               <h1>VOTE RECORDED</h1>
-              <p>
+              <p :if={@poll.privacy_mode == :identified}>
                 Your ballot for <b>{@poll.title}</b>
                 is final. Results will be visible here after the poll
                 closes and the administrator publishes them.
               </p>
+              <p :if={@poll.privacy_mode == :anonymous} id="anonymous-submission-message">
+                Your participation in <b>{@poll.title}</b>
+                has been recorded. Your anonymous choices cannot be retrieved or changed. Results
+                will be visible here after the poll closes and the administrator publishes them.
+              </p>
               <div class="receipt">
                 <div><span>Poll</span><span>{@poll.title}</span></div>
-                <div><span>Voted as</span><span>{@member.name}</span></div>
-                <div><span>Submitted</span><span>{format_datetime(@ballot.submitted_at)}</span></div>
-                <div :for={option <- @selected_options} id={"receipt-selection-#{option.id}"}>
+                <div :if={@poll.privacy_mode == :identified}>
+                  <span>Voted as</span><span>{@member.name}</span>
+                </div>
+                <div :if={@poll.privacy_mode == :identified}>
+                  <span>Submitted</span><span>{format_datetime(@ballot.submitted_at)}</span>
+                </div>
+                <div :if={@poll.privacy_mode == :anonymous} id="anonymous-participated-at">
+                  <span>Submitted</span><span>{format_datetime(@participation.participated_at)}</span>
+                </div>
+                <div
+                  :for={
+                    option <- if(@poll.privacy_mode == :identified, do: @selected_options, else: [])
+                  }
+                  id={"receipt-selection-#{option.id}"}
+                >
                   <span>Selection</span><span>{option.label}</span>
                 </div>
               </div>
@@ -293,10 +330,7 @@ defmodule PollyWeb.PollLive.Vote do
            socket.assigns.selected_option_ids
          ) do
       {:ok, ballot} ->
-        {:noreply,
-         socket
-         |> assign(:ballot, ballot)
-         |> assign(:state, :submitted)}
+        {:noreply, assign_submitted_state(socket, ballot)}
 
       {:error, :already_submitted} ->
         {:noreply, load_access(socket)}
@@ -315,7 +349,8 @@ defmodule PollyWeb.PollLive.Vote do
   defp load_access(socket) do
     with {:ok, grant} <- AccessGrant.resolve(socket.assigns.poll_id, socket.assigns.token) do
       grant = Ash.load!(grant, [:member, poll: [:options]], authorize?: false)
-      ballot = existing_ballot(grant.poll_id, grant.member_id)
+      participation = existing_participation(grant.poll_id, grant.member_id)
+      ballot = existing_identified_ballot(grant.poll, grant.member_id, participation)
 
       socket
       |> assign(:grant, grant)
@@ -323,13 +358,13 @@ defmodule PollyWeb.PollLive.Vote do
       |> assign(:poll, grant.poll)
       |> assign(:options, Enum.filter(grant.poll.options, & &1.active))
       |> assign(:page_title, grant.poll.title)
-      |> assign_ballot_state(ballot)
+      |> assign_ballot_state(participation, ballot)
     else
       {:error, _error} -> assign(socket, :state, :invalid)
     end
   end
 
-  defp assign_ballot_state(socket, ballot) do
+  defp assign_ballot_state(socket, participation, ballot) do
     case socket.assigns.poll.status do
       :draft ->
         assign(socket, :state, :draft)
@@ -338,9 +373,15 @@ defmodule PollyWeb.PollLive.Vote do
         assign_published_results(socket)
 
       :closed ->
-        socket |> assign(:ballot, ballot) |> assign(:state, :closed)
+        socket
+        |> assign(:participation, participation)
+        |> assign(:ballot, ballot)
+        |> assign(:state, :closed)
 
-      :open when not is_nil(ballot) ->
+      :open when socket.assigns.poll.privacy_mode == :anonymous and not is_nil(participation) ->
+        assign_existing_anonymous_participation(socket, participation)
+
+      :open when not is_nil(participation) and not is_nil(ballot) ->
         assign_existing_ballot(socket, ballot)
 
       :open ->
@@ -364,6 +405,13 @@ defmodule PollyWeb.PollLive.Vote do
     |> assign(:state, :already_submitted)
   end
 
+  defp assign_existing_anonymous_participation(socket, participation) do
+    socket
+    |> assign(:participation, participation)
+    |> clear_selections()
+    |> assign(:state, :already_submitted)
+  end
+
   defp assign_published_results(socket) do
     result = PollResults.for_poll(socket.assigns.poll)
 
@@ -374,10 +422,45 @@ defmodule PollyWeb.PollLive.Vote do
     |> stream(:published_results, result.options, reset: true)
   end
 
-  defp existing_ballot(poll_id, member_id) do
-    Ballot
+  defp existing_participation(poll_id, member_id) do
+    Participation
     |> Ash.Query.filter(poll_id == ^poll_id and member_id == ^member_id)
     |> Ash.read_one!(authorize?: false)
+  end
+
+  defp existing_identified_ballot(%{privacy_mode: :anonymous}, _member_id, _participation),
+    do: nil
+
+  defp existing_identified_ballot(_poll, _member_id, nil), do: nil
+
+  defp existing_identified_ballot(poll, member_id, _participation) do
+    Ballot
+    |> Ash.Query.filter(poll_id == ^poll.id and member_id == ^member_id)
+    |> Ash.read_one!(authorize?: false)
+  end
+
+  defp assign_submitted_state(%{assigns: %{poll: %{privacy_mode: :anonymous}}} = socket, _ballot) do
+    participation = existing_participation(socket.assigns.poll.id, socket.assigns.member.id)
+
+    socket
+    |> assign(:ballot, nil)
+    |> assign(:participation, participation)
+    |> clear_selections()
+    |> assign(:state, :submitted)
+  end
+
+  defp assign_submitted_state(socket, ballot) do
+    socket
+    |> assign(:ballot, ballot)
+    |> assign(:state, :submitted)
+  end
+
+  defp clear_selections(socket) do
+    socket
+    |> assign(:selected_option_ids, [])
+    |> assign(:selected_options, [])
+    |> assign(:selection_input_valid?, true)
+    |> assign_form()
   end
 
   defp assign_selections(socket, option_ids) do
