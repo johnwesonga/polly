@@ -69,6 +69,43 @@ defmodule PollyWeb.PollLiveTest do
     assert poll.maximum_selections == 4
   end
 
+  test "configures choice privacy on a draft and presents it in the poll list", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/new")
+
+    assert has_element?(view, "#poll-privacy-mode")
+    assert has_element?(view, "#poll_privacy_mode")
+    assert has_element?(view, "#identified-privacy-explanation")
+
+    view
+    |> form("#poll-form", poll: %{privacy_mode: "anonymous"})
+    |> render_change()
+
+    assert has_element?(view, "#anonymous-privacy-explanation", "cannot be retrieved")
+    refute has_element?(view, "#identified-privacy-explanation")
+
+    result =
+      view
+      |> form("#poll-form", poll: %{title: "Private priorities", privacy_mode: "anonymous"})
+      |> render_submit()
+
+    assert {:error, {:live_redirect, %{to: _path}}} = result
+    poll = Ash.read_one!(Poll, actor: actor)
+    assert poll.privacy_mode == :anonymous
+
+    {:ok, index, _html} = live(conn, ~p"/admin/polls")
+    assert has_element?(index, "#poll-privacy-#{poll.id}", "Anonymous choices")
+
+    {:ok, options, _html} = live(conn, ~p"/admin/polls/#{poll.id}/options")
+    assert has_element?(options, "#poll-options-privacy", "Anonymous choices")
+
+    {:ok, electorate, _html} = live(conn, ~p"/admin/polls/#{poll.id}/electorate")
+    assert has_element?(electorate, "#poll-electorate-privacy", "Anonymous choices")
+
+    {:ok, access, _html} = live(conn, ~p"/admin/polls/#{poll.id}/access")
+    assert has_element?(access, "#poll-access-privacy", "Anonymous choices")
+  end
+
   test "switching a draft back to single choice resets its limits", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
 

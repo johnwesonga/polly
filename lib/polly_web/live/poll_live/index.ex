@@ -103,10 +103,16 @@ defmodule PollyWeb.PollLive.Index do
                 {SelectionRules.summary(poll)} · {poll.slug}
               </div>
             </.link>
-            <span id={"poll-status-#{poll.id}"} class={status_class(poll)}>
-              <span :if={poll.status == :open} class="dotlive"></span>
-              {status_label(poll)}
-            </span>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <.privacy_badge
+                id={"poll-privacy-#{poll.id}"}
+                privacy_mode={poll.privacy_mode}
+              />
+              <span id={"poll-status-#{poll.id}"} class={status_class(poll)}>
+                <span :if={poll.status == :open} class="dotlive"></span>
+                {status_label(poll)}
+              </span>
+            </div>
 
             <div class="poll-actions">
               <.link

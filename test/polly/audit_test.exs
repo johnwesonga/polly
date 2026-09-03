@@ -51,6 +51,27 @@ defmodule Polly.AuditTest do
     assert length(actions()) == 8
   end
 
+  test "poll privacy changes are recorded without ballot metadata", %{actor: actor} do
+    poll = Ash.create!(Poll, %{title: "Privacy audit"}, actor: actor)
+
+    Ash.update!(
+      poll,
+      %{privacy_mode: :anonymous},
+      action: :update_draft,
+      actor: actor
+    )
+
+    event =
+      Event
+      |> Ash.Query.filter(action == "poll.updated" and target_id == ^poll.id)
+      |> Ash.read_one!(actor: actor)
+
+    assert event.metadata == %{"changed_fields" => ["privacy_mode"]}
+    refute Map.has_key?(event.metadata, "member_id")
+    refute Map.has_key?(event.metadata, "ballot_id")
+    refute Map.has_key?(event.metadata, "option_id")
+  end
+
   test "duplication creates one summary event for the new poll", %{actor: actor} do
     fixture = configured_poll!(actor)
     before_count = Ash.count!(Event, actor: actor)

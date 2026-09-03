@@ -101,6 +101,27 @@ defmodule Polly.Polls.ResultExportTest do
            end)
   end
 
+  test "anonymous poll exports remain aggregate-only", %{actor: actor} do
+    fixture = configured_poll!(actor, "Anonymous export", 1)
+
+    poll =
+      fixture.poll
+      |> Ash.update!(%{privacy_mode: :anonymous}, action: :update_draft, actor: actor)
+      |> Ash.update!(%{}, action: :open, actor: actor)
+
+    {:ok, ballot} =
+      Ballots.submit(poll.id, fixture.grants |> hd() |> voting_token(), [fixture.first.id])
+
+    assert is_nil(ballot.member_id)
+    assert {:ok, export} = ResultExport.generate(poll.id, actor: actor)
+    csv = IO.iodata_to_binary(export.iodata)
+
+    assert csv =~ "Anonymous export"
+    refute csv =~ "Voter 1"
+    refute csv =~ hd(fixture.grants).member_id
+    refute csv =~ ballot.id
+  end
+
   test "rejects anonymous requests and draft polls", %{actor: actor} do
     fixture = configured_poll!(actor, "Draft export", 1)
 

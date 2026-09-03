@@ -392,6 +392,35 @@ defmodule PollyWeb.CoreComponents do
     """
   end
 
+  @doc "Renders the immutable choice-privacy mode of a poll."
+  attr :privacy_mode, :atom, required: true, values: [:identified, :anonymous]
+  attr :id, :string, default: nil
+
+  def privacy_badge(assigns) do
+    ~H"""
+    <span
+      id={@id}
+      class={["pill", "privacy-pill", "privacy-#{@privacy_mode}"]}
+      title={privacy_badge_description(@privacy_mode)}
+    >
+      <.icon
+        name={if(@privacy_mode == :anonymous, do: "hero-eye-slash", else: "hero-identification")}
+        class="size-3.5"
+      />
+      {privacy_badge_label(@privacy_mode)}
+    </span>
+    """
+  end
+
+  defp privacy_badge_label(:identified), do: "Identified choices"
+  defp privacy_badge_label(:anonymous), do: "Anonymous choices"
+
+  defp privacy_badge_description(:identified),
+    do: "Submitted choices remain associated with the voting member."
+
+  defp privacy_badge_description(:anonymous),
+    do: "Participation is tracked, but submitted choices are stored without member identity."
+
   @doc """
   Renders a [Heroicon](https://heroicons.com).
 

@@ -60,7 +60,10 @@ defmodule PollyWeb.PollLive.Electorate do
             <div class="admin-h2">{String.upcase(@poll.title)}</div>
             <p class="admin-sub" style="margin:4px 0 0;">Choose who may vote in this poll.</p>
           </div>
-          <span class={"pill #{@poll.status}"}>{@poll.status}</span>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <.privacy_badge id="poll-electorate-privacy" privacy_mode={@poll.privacy_mode} />
+            <span class={"pill #{@poll.status}"}>{@poll.status}</span>
+          </div>
         </div>
 
         <div class="detail-tabs" aria-label="Poll configuration sections">

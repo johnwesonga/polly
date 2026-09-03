@@ -2,9 +2,9 @@ defmodule PollyWeb.PollLive.Form do
   @moduledoc """
   Creates and edits draft poll configuration.
 
-  The form captures poll details and single- or multiple-choice selection
-  rules. The underlying Ash actions enforce that configuration changes remain
-  limited to draft polls.
+  The form captures poll details, choice privacy, and single- or
+  multiple-choice selection rules. The underlying Ash actions enforce that
+  configuration changes remain limited to draft polls.
   """
 
   use PollyWeb, :live_view
@@ -57,6 +57,39 @@ defmodule PollyWeb.PollLive.Form do
             label="Description"
             placeholder="Explain what members are choosing."
           />
+          <fieldset id="poll-privacy-mode" class="poll-selection-rules">
+            <legend>Choice privacy</legend>
+            <p class="field-help">
+              Choose whether submitted choices remain associated with each member.
+            </p>
+            <.input
+              field={@form[:privacy_mode]}
+              type="select"
+              label="Privacy mode"
+              options={[
+                {"Identified choices", :identified},
+                {"Anonymous choices", :anonymous}
+              ]}
+            />
+            <div
+              :if={anonymous_privacy?(@form)}
+              id="anonymous-privacy-explanation"
+              class="callout amber"
+            >
+              <.icon name="hero-eye-slash" class="size-5" />
+              <span>
+                Polly records who participated, but stores ballots without member identity.
+                Individual choices cannot be retrieved after submission.
+              </span>
+            </div>
+            <p
+              :if={!anonymous_privacy?(@form)}
+              id="identified-privacy-explanation"
+              class="field-help"
+            >
+              Administrators with results access can associate each ballot with its member.
+            </p>
+          </fieldset>
           <fieldset id="poll-selection-rules" class="poll-selection-rules">
             <legend>Selection rules</legend>
             <p class="field-help">
@@ -163,4 +196,5 @@ defmodule PollyWeb.PollLive.Form do
   defp normalize_selection_params(params), do: params
 
   defp multiple_choice?(form), do: to_string(form[:selection_mode].value) == "multiple"
+  defp anonymous_privacy?(form), do: to_string(form[:privacy_mode].value) == "anonymous"
 end

@@ -31,6 +31,37 @@ defmodule PollyWeb.PollResultsLiveTest do
     refute has_element?(view, "#publish-results-button")
   end
 
+  test "requires explicit confirmation before opening an anonymous poll", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    fixture = draft_poll!(actor, "Anonymous lifecycle")
+
+    poll =
+      Ash.update!(
+        fixture.poll,
+        %{privacy_mode: :anonymous},
+        action: :update_draft,
+        actor: actor
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/results")
+
+    assert has_element?(view, "#poll-results-privacy", "Anonymous choices")
+    view |> element("#open-poll-button") |> render_click()
+
+    assert has_element?(view, "#anonymous-open-confirmation", "cannot be changed")
+    assert has_element?(view, "#anonymous-open-confirmation", "cannot be undone")
+    assert Ash.get!(Poll, poll.id, actor: actor).status == :draft
+
+    view |> element("#cancel-anonymous-open") |> render_click()
+    refute has_element?(view, "#anonymous-open-confirmation")
+
+    view |> element("#open-poll-button") |> render_click()
+    view |> element("#confirm-anonymous-open") |> render_click()
+
+    assert has_element?(view, "#poll-results-status", "open")
+    assert Ash.get!(Poll, poll.id, actor: actor).status == :open
+  end
+
   test "shows poll-scoped result totals and turnout", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     fixture = draft_poll!(actor, "Admin results")

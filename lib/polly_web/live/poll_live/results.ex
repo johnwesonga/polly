@@ -29,6 +29,7 @@ defmodule PollyWeb.PollLive.Results do
      |> assign(:publish_results?, Polly.Accounts.Authorization.allowed?(actor, :publish_results))
      |> assign(:export_results?, Polly.Accounts.Authorization.allowed?(actor, :export_results))
      |> assign(:poll, poll)
+     |> assign(:confirming_open?, false)
      |> assign(:confirming_export?, false)
      |> load_results()}
   end
@@ -48,7 +49,10 @@ defmodule PollyWeb.PollLive.Results do
               Monitor turnout, review poll-scoped results, and control publication.
             </p>
           </div>
-          <span id="poll-results-status" class={"pill #{@poll.status}"}>{@poll.status}</span>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <.privacy_badge id="poll-results-privacy" privacy_mode={@poll.privacy_mode} />
+            <span id="poll-results-status" class={"pill #{@poll.status}"}>{@poll.status}</span>
+          </div>
         </div>
 
         <div class="detail-tabs" aria-label="Poll configuration sections">
@@ -95,8 +99,12 @@ defmodule PollyWeb.PollLive.Results do
             :if={@manage_polls? && @poll.status == :draft}
             id="open-poll-button"
             type="button"
-            phx-click="open"
-            data-confirm="Open this poll? Options and electorate will be frozen."
+            phx-click={if(@poll.privacy_mode == :anonymous, do: "prepare-open", else: "open")}
+            data-confirm={
+              if(@poll.privacy_mode == :identified,
+                do: "Open this poll? Options and electorate will be frozen."
+              )
+            }
             class="btn btn-coral"
           >
             Open poll
@@ -146,6 +154,55 @@ defmodule PollyWeb.PollLive.Results do
           >
             Export results CSV
           </button>
+        </div>
+
+        <div
+          :if={@confirming_open?}
+          id="anonymous-open-confirmation-overlay"
+          class="invitation-confirmation-overlay"
+          phx-window-keydown="cancel-open"
+          phx-key="escape"
+        >
+          <section
+            id="anonymous-open-confirmation"
+            class="card card-pad invitation-confirmation"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="anonymous-open-confirmation-title"
+          >
+            <div class="m-eyebrow">Anonymous choices</div>
+            <h2 id="anonymous-open-confirmation-title" class="admin-h2">
+              Confirm anonymous poll opening
+            </h2>
+            <p class="admin-sub">
+              Once voting opens, the privacy mode cannot be changed. Polly will not be able to
+              associate submitted choices with members.
+            </p>
+            <div class="callout amber invitation-private-warning">
+              <.icon name="hero-lock-closed" class="size-5" />
+              <span>
+                Options and the electorate will also be frozen. This action cannot be undone.
+              </span>
+            </div>
+            <div class="invitation-confirmation-actions">
+              <button
+                id="cancel-anonymous-open"
+                type="button"
+                phx-click="cancel-open"
+                class="btn btn-outline"
+              >
+                Keep as draft
+              </button>
+              <button
+                id="confirm-anonymous-open"
+                type="button"
+                phx-click="confirm-open"
+                class="btn btn-coral"
+              >
+                Open anonymous poll
+              </button>
+            </div>
+          </section>
         </div>
 
         <div :if={@poll.status == :closed} id="result-visibility" class="card card-pad lifecycle-card">
@@ -341,6 +398,25 @@ defmodule PollyWeb.PollLive.Results do
 
   @impl true
   def handle_event("open", _params, socket), do: transition(socket, :open, "Poll opened")
+
+  def handle_event("prepare-open", _params, socket) do
+    if socket.assigns.poll.status == :draft and socket.assigns.poll.privacy_mode == :anonymous do
+      {:noreply, assign(socket, :confirming_open?, true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("cancel-open", _params, socket) do
+    {:noreply, assign(socket, :confirming_open?, false)}
+  end
+
+  def handle_event("confirm-open", _params, socket) do
+    socket
+    |> assign(:confirming_open?, false)
+    |> transition(:open, "Anonymous poll opened")
+  end
+
   def handle_event("close", _params, socket), do: transition(socket, :close, "Poll closed")
 
   def handle_event("publish", _params, socket),

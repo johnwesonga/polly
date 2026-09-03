@@ -67,9 +67,12 @@ defmodule PollyWeb.PollLive.Access do
               Deliver, revoke, or reissue private member access.
             </p>
           </div>
-          <span id="active-grant-count" class="pill open">
-            {@active_grant_count} of {@eligible_count} active
-          </span>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <.privacy_badge id="poll-access-privacy" privacy_mode={@poll.privacy_mode} />
+            <span id="active-grant-count" class="pill open">
+              {@active_grant_count} of {@eligible_count} active
+            </span>
+          </div>
         </div>
 
         <div class="detail-tabs" aria-label="Poll configuration sections">

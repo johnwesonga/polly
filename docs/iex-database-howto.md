@@ -148,6 +148,25 @@ Polls default to single choice with exactly one required selection:
 # => %{selection_mode: :single, minimum_selections: 1, maximum_selections: 1}
 ```
 
+Polls also default to identified choices. To prepare an anonymous-choice poll,
+set its privacy mode while it is still a draft:
+
+```elixir
+anonymous_poll =
+  Ash.create!(
+    Poll,
+    %{
+      title: "Anonymous 2027 Priorities",
+      privacy_mode: :anonymous
+    },
+    action: :create_draft,
+    actor: actor
+  )
+```
+
+The privacy mode becomes immutable when the poll opens. Anonymous polls track
+member participation separately while storing ballots without member identity.
+
 To create a multiple-choice draft, include its selection limits:
 
 ```elixir

@@ -767,6 +767,21 @@
      color: var(--green);
  }
 
+ .privacy-pill {
+     border: 1px solid var(--line-strong);
+ }
+
+ .privacy-identified {
+     background: var(--paper-alt);
+     color: var(--slate);
+ }
+
+ .privacy-anonymous {
+     border-color: var(--coral);
+     background: var(--coral-wash);
+     color: var(--coral-dark);
+ }
+
  .arrow {
      color: var(--slate-light);
      font-size: 18px;

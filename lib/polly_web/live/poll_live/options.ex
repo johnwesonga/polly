@@ -48,6 +48,7 @@ defmodule PollyWeb.PollLive.Options do
             </p>
           </div>
           <div class="flex items-center gap-2">
+            <.privacy_badge id="poll-options-privacy" privacy_mode={@poll.privacy_mode} />
             <span class={"pill #{@poll.status}"}>{@poll.status}</span>
             <div>
               <.link
