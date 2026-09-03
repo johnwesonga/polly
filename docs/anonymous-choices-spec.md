@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress. Phases 0 through 5 establish the persisted poll privacy contract,
+Implemented. Phases 0 through 6 establish the persisted poll privacy contract,
 independent participation tracking, privacy-aware ballot schema, atomic
-anonymous submission, and the voter and administrator experiences. Phase 6
-integrity monitoring and final privacy review remain.
+anonymous submission, voter and administrator experiences, and aggregate-only
+integrity monitoring.
 
 ## Summary
 
@@ -516,6 +516,8 @@ Implemented.
 - Add authorization, audit, and administrator privacy regression coverage.
 
 ### Phase 6 — Integrity monitoring and release gate
+
+Implemented.
 
 - Detect participation/ballot count discrepancies at aggregate level.
 - Complete end-to-end migration and privacy tests.

@@ -176,6 +176,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Polls.Electorate, :issue} => {:permission, :manage_access_grants},
       {Polly.Polls.Electorate, :revoke} => {:permission, :manage_access_grants},
       {Polly.Polls.Results, :for_poll} => {:permission, :view_results},
+      {Polly.Polls.Integrity, :scan} => {:permission, :view_results},
       {Polly.Polls.PublicResults, :fetch_by_slug} =>
         {:trusted, "closed, published poll explicitly configured for public results"},
       {Polly.Polls.Readiness, :attention_counts} => {:permission, :view_results},

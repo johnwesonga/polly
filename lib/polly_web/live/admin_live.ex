@@ -90,7 +90,7 @@ defmodule PollyWeb.AdminLive do
               class={[
                 "card",
                 "dashboard-attention-card",
-                item.kind == :failed_deliveries && "critical"
+                item.kind in [:failed_deliveries, :integrity_issues] && "critical"
               ]}
             >
               <span class="dashboard-attention-icon">
@@ -359,6 +359,9 @@ defmodule PollyWeb.AdminLive do
   defp attention_title(%{kind: :unpublished_results, count: count}),
     do: count_title(count, "result awaits publication", "results await publication")
 
+  defp attention_title(%{kind: :integrity_issues, count: count}),
+    do: count_title(count, "poll has an integrity warning", "polls have integrity warnings")
+
   defp count_title(1, singular, _plural), do: "1 #{singular}"
   defp count_title(count, _singular, plural), do: "#{count} #{plural}"
 
@@ -377,11 +380,15 @@ defmodule PollyWeb.AdminLive do
   defp attention_description(:unpublished_results),
     do: "Closed poll results are ready to review and publish."
 
+  defp attention_description(:integrity_issues),
+    do: "Participation and ballot totals differ. Review affected poll results before publishing."
+
   defp attention_link(:missing_options), do: "View drafts"
   defp attention_link(:missing_electorate), do: "View electorates"
   defp attention_link(:unsent_invitations), do: "View open polls"
   defp attention_link(:failed_deliveries), do: "View deliveries"
   defp attention_link(:unpublished_results), do: "Review results"
+  defp attention_link(:integrity_issues), do: "Review polls"
 
   defp format_percentage(percentage), do: :erlang.float_to_binary(percentage, decimals: 1) <> "%"
 

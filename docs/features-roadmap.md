@@ -25,7 +25,7 @@ Status labels:
 ## Poll configuration
 
 - **Implemented — [Multiple-choice polls with configurable selection limits](multiple-choice-polls-spec.md):** supports choose-up-to, exact-count, and minimum-to-maximum selection rules.
-- **Specified — [Anonymous choices with participation tracking](anonymous-choices-spec.md):** retain eligibility enforcement and participation records while separating ballots from member identities.
+- **Done — [Anonymous choices with participation tracking](anonymous-choices-spec.md):** retain eligibility enforcement and participation records while separating ballots from member identities, with aggregate integrity monitoring.
 - **Proposed — Ranked-choice voting.**
 - **Proposed — Yes/no and approval voting templates.**
 - **Proposed — Option descriptions or supporting links.**

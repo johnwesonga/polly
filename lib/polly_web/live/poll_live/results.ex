@@ -157,6 +157,19 @@ defmodule PollyWeb.PollLive.Results do
         </div>
 
         <div
+          :if={!@result.integrity.consistent?}
+          id="poll-integrity-warning"
+          class="callout amber"
+          role="alert"
+        >
+          <.icon name="hero-exclamation-triangle" class="size-5" />
+          <span>
+            Participation and ballot totals do not match. Review system integrity before
+            publishing or exporting these results. No individual records have been correlated.
+          </span>
+        </div>
+
+        <div
           :if={@confirming_open?}
           id="anonymous-open-confirmation-overlay"
           class="invitation-confirmation-overlay"

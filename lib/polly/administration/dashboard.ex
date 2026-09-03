@@ -5,6 +5,7 @@ defmodule Polly.Administration.Dashboard do
 
   alias Polly.Accounts.{Authorization, User}
   alias Polly.Audit.Event
+  alias Polly.Polls.Integrity
 
   @type poll_counts :: %{
           draft: non_neg_integer(),
@@ -52,11 +53,12 @@ defmodule Polly.Administration.Dashboard do
            }}
           | {:error, :forbidden}
   def load(%User{} = actor) do
-    with :ok <- Authorization.authorize(actor, :view_results) do
+    with :ok <- Authorization.authorize(actor, :view_results),
+         {:ok, integrity_issues} <- Integrity.scan(actor) do
       {:ok,
        %{
          poll_counts: poll_counts(),
-         attention_items: attention_items(actor),
+         attention_items: attention_items(actor, length(integrity_issues)),
          active_polls: active_polls(actor),
          recent_events: recent_events(actor),
          account_health: account_health(actor)
@@ -125,7 +127,7 @@ defmodule Polly.Administration.Dashboard do
     %{draft: draft, open: open, closed: closed, unpublished: unpublished}
   end
 
-  defp attention_items(actor) do
+  defp attention_items(actor, integrity_issue_count) do
     {:ok, counts} = Polly.Polls.Readiness.attention_counts(actor)
 
     manager_items =
@@ -141,7 +143,10 @@ defmodule Polly.Administration.Dashboard do
       end
 
     (manager_items ++
-       [item(:unpublished_results, counts.unpublished_results, "/admin/polls?status=closed")])
+       [
+         item(:integrity_issues, integrity_issue_count, "/admin/polls"),
+         item(:unpublished_results, counts.unpublished_results, "/admin/polls?status=closed")
+       ])
     |> Enum.reject(&is_nil/1)
   end
 

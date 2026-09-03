@@ -89,6 +89,26 @@ defmodule PollyWeb.PollResultsLiveTest do
     refute has_element?(view, "#total-selections")
   end
 
+  test "warns about aggregate participation and ballot discrepancies", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+    fixture = draft_poll!(actor, "Integrity warning")
+
+    Ash.create!(
+      Polly.Polls.Participation,
+      %{poll_id: fixture.poll.id, member_id: fixture.grant.member_id},
+      action: :record,
+      authorize?: false
+    )
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      {:ok, view, _html} = live(conn, ~p"/admin/polls/#{fixture.poll.id}/results")
+
+      assert has_element?(view, "#poll-integrity-warning", "totals do not match")
+      assert has_element?(view, "#poll-integrity-warning", "No individual records")
+      refute has_element?(view, "#poll-integrity-warning", fixture.option.label)
+    end)
+  end
+
   test "presents multiple-choice results as ballot support rates", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     fixture = draft_multiple_choice_poll!(actor, "Committee priorities")

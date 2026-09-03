@@ -3,7 +3,7 @@ defmodule Polly.Polls.Results do
 
   require Ash.Query
 
-  alias Polly.Polls.{Ballot, Eligibility, Option, Participation, Poll, Selection}
+  alias Polly.Polls.{Ballot, Eligibility, Integrity, Option, Participation, Poll, Selection}
 
   @type option_result :: %{
           option: Option.t(),
@@ -20,6 +20,7 @@ defmodule Polly.Polls.Results do
           total_selections: non_neg_integer(),
           ballot_count: non_neg_integer(),
           participation_count: non_neg_integer(),
+          integrity: Integrity.check(),
           eligible_count: non_neg_integer(),
           turnout_percentage: float(),
           winner_labels: [String.t()]
@@ -47,6 +48,7 @@ defmodule Polly.Polls.Results do
     total_selections = vote_counts |> Map.values() |> Enum.sum()
     ballot_count = count_ballots(poll.id)
     participation_count = count_participations(poll.id)
+    integrity = Integrity.compare(poll, participation_count, ballot_count)
     eligible_count = count_eligible(poll.id)
     highest_count = vote_counts |> Map.values() |> Enum.max(fn -> 0 end)
 
@@ -72,6 +74,7 @@ defmodule Polly.Polls.Results do
       total_selections: total_selections,
       ballot_count: ballot_count,
       participation_count: participation_count,
+      integrity: integrity,
       eligible_count: eligible_count,
       turnout_percentage: turnout_percentage(participation_count, eligible_count),
       winner_labels:

@@ -50,6 +50,24 @@ defmodule Polly.Administration.DashboardTest do
     assert item.kind == :unpublished_results
   end
 
+  test "surfaces aggregate poll integrity discrepancies" do
+    owner = create_user!(:owner, "integrity-owner@example.com")
+    poll = create_poll!(owner, "Mismatched poll")
+    member = Ash.create!(Polly.Members.Member, %{name: "Integrity member"}, actor: owner)
+
+    Ash.create!(
+      Polly.Polls.Ballot,
+      %{poll_id: poll.id, member_id: member.id},
+      action: :submit,
+      authorize?: false
+    )
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      assert {:ok, %{attention_items: items}} = Dashboard.load(owner)
+      assert %{kind: :integrity_issues, count: 1} = find_item(items, :integrity_issues)
+    end)
+  end
+
   test "rejects actors without poll visibility" do
     operator = create_user!(:operator, "dashboard-operator@example.com")
     disabled = create_user!(:administrator, "dashboard-disabled@example.com")

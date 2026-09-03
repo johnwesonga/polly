@@ -15,7 +15,7 @@ Run these aliases once at the beginning of the session:
 ```elixir
 alias Polly.Accounts.User
 alias Polly.Members.Member
-alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, Option, Participation, Poll, Selection}
+alias Polly.Polls.{AccessGrant, Ballot, Eligibility, Integrity, InvitationDelivery, Option, Participation, Poll, Selection}
 
 require Ash.Query
 ```
@@ -762,6 +762,8 @@ Inspect poll-level totals:
   selection_mode: results.selection_mode,
   eligible_members: results.eligible_count,
   submitted_ballots: results.ballot_count,
+  participation_records: results.participation_count,
+  integrity_consistent?: results.integrity.consistent?,
   total_selections: results.total_selections,
   turnout_percentage: results.turnout_percentage,
   leading_options: results.winner_labels
@@ -783,8 +785,37 @@ Enum.map(results.options, fn result ->
 end)
 ```
 
-Turnout is always submitted ballots divided by eligible members. An option's percentage is the number of submitted ballots that selected it divided by the total submitted ballots.
+Turnout is always participation records divided by eligible members. An option's percentage is the number of submitted ballots that selected it divided by the total submitted ballots.
 
 For single-choice polls, option percentages behave like vote share and normally total 100%. For multiple-choice polls, one ballot can select several options, so `total_selections` may exceed `ballot_count` and option percentages may total more than 100%.
 
 `winner_labels` currently identifies the highest-count option or tied options. It does not apply tie-breaking, quorum, seat-allocation, or election-certification rules.
+
+### Check participation and ballot integrity
+
+Scan for polls where aggregate participation and ballot totals differ:
+
+```elixir
+{:ok, integrity_issues} = Integrity.scan(actor)
+
+Enum.map(integrity_issues, fn issue ->
+  %{
+    poll_id: issue.poll_id,
+    privacy_mode: issue.privacy_mode,
+    participation_count: issue.participation_count,
+    ballot_count: issue.ballot_count
+  }
+end)
+```
+
+An empty list is the expected result. A discrepancy is logged and emits the
+`[:polly, :polls, :integrity, :mismatch]` telemetry event using aggregate
+counts only. Do not attempt to pair participation and ballot records by ID,
+timestamp, or insertion order when investigating an anonymous poll.
+
+### Retrieve a Poll, it's Ballots and Selections
+```elixir
+Poll 
+|> Ash.Query.load([:participations, ballots: [:selections]]) |> Ash.Query.filter(id == ^poll_id) 
+|>  Ash.read!(authorize?: false)
+```
