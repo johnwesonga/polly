@@ -2,7 +2,7 @@ defmodule PollyWeb.PhaseTwoLiveTest do
   use PollyWeb.ConnCase
 
   alias Polly.Members.Member
-  alias Polly.Polls.{AccessGrant, Poll}
+  alias Polly.Polls.{AccessGrant, Option, Poll}
 
   test "protects member and electorate management routes", %{conn: conn} do
     poll_id = Ash.UUID.generate()
@@ -114,6 +114,38 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     assert updated_grants
            |> Enum.find(&is_nil(&1.revoked_at))
            |> voting_token() != voting_token(grant)
+  end
+
+  test "uses checkbox controls in the ballot preview for multiple-choice polls", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    poll =
+      Ash.create!(
+        Poll,
+        %{
+          title: "Choose Projects",
+          selection_mode: :multiple,
+          minimum_selections: 1,
+          maximum_selections: 2
+        },
+        actor: actor
+      )
+
+    option =
+      Ash.create!(
+        Option,
+        %{poll_id: poll.id, label: "Community garden", position: 1},
+        actor: actor
+      )
+
+    {:ok, electorate, _html} = live(conn, ~p"/admin/polls/#{poll.id}/electorate")
+
+    assert has_element?(
+             electorate,
+             "#preview-option-control-#{option.id}[type='checkbox']"
+           )
+
+    refute has_element?(electorate, "#preview-option-control-#{option.id}[type='radio']")
   end
 
   test "selects and unselects all active electorate members", %{conn: conn} do

@@ -173,7 +173,14 @@ defmodule PollyWeb.PollLive.Electorate do
                 No options configured.
               </div>
               <div :for={{id, option} <- @streams.preview_options} id={id} class="option-row">
-                <span class="size-4 rounded-full border border-current"></span>
+                <input
+                  id={"preview-option-control-#{option.id}"}
+                  type={if(@poll.selection_mode == :single, do: "radio", else: "checkbox")}
+                  class="ballot-preview-control"
+                  disabled
+                  tabindex="-1"
+                  aria-hidden="true"
+                />
                 <span>{option.label}</span>
               </div>
             </div>
