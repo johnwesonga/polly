@@ -57,6 +57,33 @@ defmodule Polly.Polls.BallotsTest do
     assert selection.option_id == option.id
   end
 
+  test "anonymous submission records participation without ballot identity", %{actor: actor} do
+    %{poll: poll, member: member, grant: grant, option: option} = anonymous_open_poll!(actor)
+
+    assert {:ok, ballot} = Ballots.submit(poll.id, voting_token(grant), [option.id])
+    assert ballot.poll_id == poll.id
+    assert ballot.privacy_mode == :anonymous
+    assert is_nil(ballot.member_id)
+
+    participation =
+      Participation
+      |> Ash.Query.filter(poll_id == ^poll.id and member_id == ^member.id)
+      |> Ash.read_one!(authorize?: false)
+
+    assert participation.participated_at
+
+    [selection] =
+      Selection
+      |> Ash.Query.filter(ballot_id == ^ballot.id)
+      |> Ash.read!(authorize?: false)
+
+    refute Map.has_key?(Map.from_struct(ballot), :access_grant_id)
+    refute Map.has_key?(Map.from_struct(ballot), :participation_id)
+    refute Map.has_key?(Map.from_struct(selection), :member_id)
+    refute Map.has_key?(Map.from_struct(selection), :access_grant_id)
+    refute Map.has_key?(Map.from_struct(selection), :participation_id)
+  end
+
   test "ballot privacy snapshots enforce member identity rules", %{actor: actor} do
     poll = Ash.create!(Poll, %{title: "Privacy snapshot"}, actor: actor)
     member = Ash.create!(Member, %{name: "Privacy voter"}, actor: actor)
@@ -271,6 +298,48 @@ defmodule Polly.Polls.BallotsTest do
     assert 1 == participation_count(poll.id)
   end
 
+  test "participation uniqueness allows only one concurrent anonymous submission", %{actor: actor} do
+    %{poll: poll, grant: grant, option: option} = anonymous_open_poll!(actor, "Anonymous race")
+
+    results =
+      1..2
+      |> Task.async_stream(
+        fn _ -> Ballots.submit(poll.id, voting_token(grant), [option.id]) end,
+        max_concurrency: 2,
+        ordered: false,
+        timeout: :infinity
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+
+    assert 1 == Enum.count(results, &match?({:ok, _ballot}, &1))
+    assert 1 == Enum.count(results, &match?({:error, :already_submitted}, &1))
+    assert 1 == participation_count(poll.id)
+
+    [ballot] =
+      Ballot
+      |> Ash.Query.filter(poll_id == ^poll.id)
+      |> Ash.read!(authorize?: false)
+
+    assert ballot.privacy_mode == :anonymous
+    assert is_nil(ballot.member_id)
+  end
+
+  test "a reissued grant cannot submit after anonymous participation", %{actor: actor} do
+    %{poll: poll, grant: grant, option: option, other_option: other_option} =
+      anonymous_open_poll!(actor, "Anonymous reissue")
+
+    assert {:ok, _ballot} = Ballots.submit(poll.id, voting_token(grant), [option.id])
+
+    reissued_grant = Electorate.reissue(grant, actor)
+
+    assert {:error, :already_submitted} =
+             Ballots.submit(poll.id, voting_token(reissued_grant), [other_option.id])
+
+    assert 1 == participation_count(poll.id)
+    assert 1 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
+    assert 1 == Selection |> Ash.count!(authorize?: false)
+  end
+
   test "a failed selection insert rolls back the ballot and earlier selections", %{actor: actor} do
     %{poll: poll, grant: grant, option: option, other_option: other_option} = open_poll!(actor)
     set_selection_range!(poll, 2, 2)
@@ -295,6 +364,29 @@ defmodule Polly.Polls.BallotsTest do
     assert 0 == participation_count(poll.id)
   end
 
+  test "a failed anonymous selection rolls back participation and ballot", %{actor: actor} do
+    %{poll: poll, grant: grant, option: option} =
+      anonymous_open_poll!(actor, "Anonymous rollback")
+
+    trigger = "force_anonymous_selection_failure_#{System.unique_integer([:positive])}"
+
+    Polly.Repo.query!("""
+    CREATE TRIGGER #{trigger}
+    BEFORE INSERT ON poll_selections
+    WHEN NEW.option_id = '#{option.id}'
+    BEGIN
+      SELECT RAISE(ABORT, 'forced_anonymous_selection_failure');
+    END
+    """)
+
+    on_exit(fn -> Polly.Repo.query!("DROP TRIGGER IF EXISTS #{trigger}") end)
+
+    assert {:error, _reason} = Ballots.submit(poll.id, voting_token(grant), [option.id])
+    assert 0 == participation_count(poll.id)
+    assert 0 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
+    assert 0 == Selection |> Ash.count!(authorize?: false)
+  end
+
   defp participation_count(poll_id) do
     Participation
     |> Ash.Query.filter(poll_id == ^poll_id)
@@ -304,6 +396,17 @@ defmodule Polly.Polls.BallotsTest do
   defp open_poll!(actor, title \\ "Final ballot") do
     fixture = draft_poll!(actor, title)
     %{fixture | poll: Ash.update!(fixture.poll, %{}, action: :open, actor: actor)}
+  end
+
+  defp anonymous_open_poll!(actor, title \\ "Anonymous ballot") do
+    fixture = draft_poll!(actor, title)
+
+    poll =
+      fixture.poll
+      |> Ash.update!(%{privacy_mode: :anonymous}, action: :update_draft, actor: actor)
+      |> Ash.update!(%{}, action: :open, actor: actor)
+
+    %{fixture | poll: poll}
   end
 
   defp set_selection_range!(poll, minimum, maximum) do

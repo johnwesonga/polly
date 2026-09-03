@@ -19,7 +19,8 @@ defmodule Polly.Polls.Ballots do
   Submits one final collection of selections using a poll-scoped access token.
 
   The member is always derived from the grant. All checks and inserts run in
-  one transaction; the ballot identity also protects against racing calls.
+  one transaction; participation uniqueness protects against racing calls.
+  Identified ballots retain that member, while anonymous ballots omit it.
 
   Callers use the same option-ID list shape for single- and multiple-choice
   polls.
@@ -56,11 +57,7 @@ defmodule Polly.Polls.Ballots do
     ballot =
       create_or_rollback(
         Ballot,
-        %{
-          poll_id: poll_id,
-          member_id: grant.member_id,
-          privacy_mode: poll.privacy_mode
-        },
+        ballot_attributes(poll, grant.member_id),
         :submit
       )
 
@@ -137,6 +134,14 @@ defmodule Polly.Polls.Ballots do
       false -> :ok
       _other -> Polly.Repo.rollback(:already_submitted)
     end
+  end
+
+  defp ballot_attributes(%Poll{privacy_mode: :identified} = poll, member_id) do
+    %{poll_id: poll.id, member_id: member_id, privacy_mode: :identified}
+  end
+
+  defp ballot_attributes(%Poll{privacy_mode: :anonymous} = poll, _member_id) do
+    %{poll_id: poll.id, privacy_mode: :anonymous}
   end
 
   defp create_or_rollback(resource, attributes, action) do

@@ -702,6 +702,13 @@ multiple_choice_voting_token =
 
 Each ballot is final. Submitting too few or too many choices, repeating an option ID, selecting an option from another poll, or submitting a second ballot returns an error and rolls back the transaction.
 
+For an identified poll, the returned ballot snapshots `privacy_mode:
+:identified` and retains the member derived from the access grant. For an
+anonymous poll, it snapshots `privacy_mode: :anonymous` and stores
+`member_id: nil`; the separate participation record tracks that the member
+voted. Never attempt to associate an anonymous ballot with its participation
+record by timestamp or insertion order.
+
 Use the list form for both selection modes.
 `derive_token_for_delivery/1` is an infrastructure-level helper used by the
 invitation worker; use it in IEx only for controlled local debugging. Treat its

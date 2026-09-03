@@ -67,9 +67,6 @@ defmodule Polly.Polls.Poll do
       require_atomic? false
       validate attribute_equals(:status, :draft), message: "must be a draft to open"
 
-      validate attribute_equals(:privacy_mode, :identified),
-        message: "anonymous choices are not available yet"
-
       validate Polly.Polls.Validations.SelectionRulesAreValid
       validate Polly.Polls.Validations.HasMinimumOptions
       validate Polly.Polls.Validations.SelectionLimitsFitOptions

@@ -73,7 +73,7 @@ defmodule Polly.Polls.PollTest do
     assert Exception.message(error) =~ "can only be edited while in draft"
   end
 
-  test "anonymous drafts cannot open before anonymous submission is implemented", %{actor: actor} do
+  test "anonymous drafts can open once their configuration is ready", %{actor: actor} do
     poll =
       Ash.create!(
         Poll,
@@ -85,8 +85,10 @@ defmodule Polly.Polls.PollTest do
     create_option!(poll, actor, "Retro Arcade", 2)
     create_eligibility!(poll, actor)
 
-    assert {:error, error} = Ash.update(poll, %{}, action: :open, actor: actor)
-    assert Exception.message(error) =~ "anonymous choices are not available yet"
+    opened = Ash.update!(poll, %{}, action: :open, actor: actor)
+
+    assert opened.status == :open
+    assert opened.privacy_mode == :anonymous
   end
 
   test "stores multiple-choice mode on a draft without changing safe defaults", %{actor: actor} do

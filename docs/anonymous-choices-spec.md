@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress. Phases 0 through 2 establish the persisted poll privacy contract,
-independent participation tracking, and privacy-aware ballot schema. Anonymous
-voting must remain unavailable in the administrator UI until the submission
-and voter-disclosure phases are complete.
+In progress. Phases 0 through 3 establish the persisted poll privacy contract,
+independent participation tracking, privacy-aware ballot schema, and atomic
+anonymous submission. Anonymous mode must remain unavailable in the
+administrator UI until the voter-disclosure phase is complete.
 
 ## Summary
 
@@ -489,6 +489,8 @@ Implemented.
 - Add migration and schema-invariant coverage.
 
 ### Phase 3 — Atomic anonymous submission
+
+Implemented.
 
 - Create participation, ballot, and selections in one transaction.
 - Branch ballot creation by the poll's immutable privacy mode.

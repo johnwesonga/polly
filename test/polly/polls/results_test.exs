@@ -77,6 +77,25 @@ defmodule Polly.Polls.ResultsTest do
     assert Enum.sum(Enum.map(result.options, & &1.percentage)) == 200.0
   end
 
+  test "calculates aggregate results for anonymous ballots without member identity", %{
+    actor: actor
+  } do
+    fixture = open_poll!(actor, "Anonymous results", 2, %{privacy_mode: :anonymous})
+
+    first_ballot = submit!(fixture, 0, fixture.first)
+    second_ballot = submit!(fixture, 1, fixture.second)
+
+    assert is_nil(first_ballot.member_id)
+    assert is_nil(second_ballot.member_id)
+
+    result = Results.for_poll(fixture.poll)
+
+    assert result.ballot_count == 2
+    assert result.participation_count == 2
+    assert result.turnout_percentage == 100.0
+    assert Enum.map(result.options, & &1.votes) == [1, 1, 0]
+  end
+
   test "publishes only closed polls and cannot publish twice", %{actor: actor} do
     fixture = open_poll!(actor, "Publication", 1)
 
