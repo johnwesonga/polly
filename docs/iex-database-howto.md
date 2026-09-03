@@ -15,7 +15,7 @@ Run these aliases once at the beginning of the session:
 ```elixir
 alias Polly.Accounts.User
 alias Polly.Members.Member
-alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, Option, Poll, Selection}
+alias Polly.Polls.{AccessGrant, Ballot, Eligibility, InvitationDelivery, Option, Participation, Poll, Selection}
 
 require Ash.Query
 ```
@@ -42,11 +42,15 @@ erDiagram
     BALLOT ||--o{ SELECTION : "contains"
     OPTION ||--o{ SELECTION : "is chosen by"
 
+    POLL ||--o{ PARTICIPATION : "tracks turnout"
+    MEMBER ||--o{ PARTICIPATION : "participates"
+
     POLL {
         uuid id PK
         string title
         string slug UK
         string status
+        string privacy_mode
         string selection_mode
         integer minimum_selections
         integer maximum_selections
@@ -98,6 +102,13 @@ erDiagram
         datetime submitted_at
     }
 
+    PARTICIPATION {
+        uuid id PK
+        uuid poll_id FK
+        uuid member_id FK
+        datetime participated_at
+    }
+
     SELECTION {
         uuid id PK
         uuid ballot_id FK
@@ -105,7 +116,7 @@ erDiagram
     }
 ```
 
-`Eligibility` is the join resource between a poll and a member. `AccessGrant`, `Ballot`, and `InvitationDelivery` also reference both resources for their respective access, participation, and delivery responsibilities. A ballot's chosen option is represented by `Selection` rather than stored directly on the ballot.
+`Eligibility` is the join resource between a poll and a member. `AccessGrant`, `Participation`, `Ballot`, and `InvitationDelivery` reference the applicable poll and member for access, turnout, identified ballot, and delivery responsibilities. A ballot's chosen option is represented by `Selection` rather than stored directly on the ballot. `Participation` deliberately has no relationship to a ballot or selection.
 
 ## 1. Create a poll without authorization
 
@@ -557,6 +568,46 @@ ballots =
 ```
 
 Ballot data is private. The current identified-ballot model can associate a member with a selection, so do not copy this output into logs, screenshots, tickets, or shared chat. Prefer aggregate result queries unless individual-record debugging is strictly necessary.
+
+### Retrieve participation for a specific poll
+
+Participation is the authoritative record of which members completed a valid
+submission. It supports turnout and reminder queries without loading their
+ballot choices:
+
+```elixir
+participations =
+  Participation
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.Query.load(:member)
+  |> Ash.Query.sort(participated_at: :desc)
+  |> Ash.read!(actor: actor)
+```
+
+Inspect only the participation details you need:
+
+```elixir
+Enum.map(participations, fn participation ->
+  %{
+    member_id: participation.member_id,
+    member_name: participation.member.name,
+    participated_at: participation.participated_at
+  }
+end)
+```
+
+Count participation without loading member records:
+
+```elixir
+participation_count =
+  Participation
+  |> Ash.Query.filter(poll_id == ^poll_id)
+  |> Ash.count!(actor: actor)
+```
+
+For trusted debugging without authorization, replace `actor: actor` with
+`authorize?: false`. Participation intentionally cannot be loaded with a ballot
+or selections because no relationship exists between those records.
 
 ### Retrieve selections for a specific poll
 
