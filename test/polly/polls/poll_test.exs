@@ -25,10 +25,68 @@ defmodule Polly.Polls.PollTest do
     poll = create_poll!(actor, "Team Theme")
 
     assert poll.status == :draft
+    assert poll.privacy_mode == :identified
     assert poll.selection_mode == :single
     assert poll.minimum_selections == 1
     assert poll.maximum_selections == 1
     assert poll.slug == "team-theme"
+  end
+
+  test "stores and updates privacy mode while a poll is a draft", %{actor: actor} do
+    poll =
+      Ash.create!(
+        Poll,
+        %{title: "Anonymous priorities", privacy_mode: :anonymous},
+        action: :create_draft,
+        actor: actor
+      )
+
+    assert poll.privacy_mode == :anonymous
+
+    updated =
+      Ash.update!(
+        poll,
+        %{privacy_mode: :identified},
+        action: :update_draft,
+        actor: actor
+      )
+
+    assert updated.privacy_mode == :identified
+  end
+
+  test "privacy mode is frozen when the poll opens", %{actor: actor} do
+    poll = Ash.create!(Poll, %{title: "Identified priorities"}, actor: actor)
+
+    create_option!(poll, actor, "Under the Sea", 1)
+    create_option!(poll, actor, "Retro Arcade", 2)
+    create_eligibility!(poll, actor)
+    opened = Ash.update!(poll, %{}, action: :open, actor: actor)
+
+    assert {:error, error} =
+             Ash.update(
+               opened,
+               %{privacy_mode: :anonymous},
+               action: :update_draft,
+               actor: actor
+             )
+
+    assert Exception.message(error) =~ "can only be edited while in draft"
+  end
+
+  test "anonymous drafts cannot open before anonymous submission is implemented", %{actor: actor} do
+    poll =
+      Ash.create!(
+        Poll,
+        %{title: "Anonymous priorities", privacy_mode: :anonymous},
+        actor: actor
+      )
+
+    create_option!(poll, actor, "Under the Sea", 1)
+    create_option!(poll, actor, "Retro Arcade", 2)
+    create_eligibility!(poll, actor)
+
+    assert {:error, error} = Ash.update(poll, %{}, action: :open, actor: actor)
+    assert Exception.message(error) =~ "anonymous choices are not available yet"
   end
 
   test "stores multiple-choice mode on a draft without changing safe defaults", %{actor: actor} do

@@ -40,7 +40,11 @@ defmodule Polly.Polls.DuplicatorTest do
     configured_poll =
       Ash.update!(
         fixture.poll,
-        %{selection_mode: :multiple, minimum_selections: 1, maximum_selections: 2},
+        %{
+          selection_mode: :multiple,
+          minimum_selections: 1,
+          maximum_selections: 2
+        },
         action: :update_draft,
         actor: actor
       )
@@ -61,6 +65,7 @@ defmodule Polly.Polls.DuplicatorTest do
     assert duplicate.id != source.id
     assert duplicate.title == "Copy of Annual Theme"
     assert duplicate.description == source.description
+    assert duplicate.privacy_mode == source.privacy_mode
     assert duplicate.selection_mode == source.selection_mode
     assert duplicate.minimum_selections == source.minimum_selections
     assert duplicate.maximum_selections == source.maximum_selections
@@ -79,6 +84,29 @@ defmodule Polly.Polls.DuplicatorTest do
     unchanged = Ash.get!(Poll, source.id, actor: actor)
     assert unchanged.status == :closed
     assert unchanged.results_published_at == source.results_published_at
+  end
+
+  test "duplicates privacy mode into an editable draft", %{actor: actor} do
+    source =
+      Ash.create!(
+        Poll,
+        %{title: "Anonymous Template", privacy_mode: :anonymous},
+        actor: actor
+      )
+
+    assert {:ok, %{poll: duplicate}} = Duplicator.duplicate(source, actor)
+    assert duplicate.privacy_mode == :anonymous
+    assert duplicate.status == :draft
+
+    updated =
+      Ash.update!(
+        duplicate,
+        %{privacy_mode: :identified},
+        action: :update_draft,
+        actor: actor
+      )
+
+    assert updated.privacy_mode == :identified
   end
 
   test "duplicates draft, open, and closed source polls", %{actor: actor} do

@@ -34,6 +34,7 @@ defmodule Polly.Polls.Poll do
       accept [
         :title,
         :description,
+        :privacy_mode,
         :selection_mode,
         :minimum_selections,
         :maximum_selections
@@ -48,6 +49,7 @@ defmodule Polly.Polls.Poll do
       accept [
         :title,
         :description,
+        :privacy_mode,
         :selection_mode,
         :minimum_selections,
         :maximum_selections
@@ -64,6 +66,10 @@ defmodule Polly.Polls.Poll do
       accept []
       require_atomic? false
       validate attribute_equals(:status, :draft), message: "must be a draft to open"
+
+      validate attribute_equals(:privacy_mode, :identified),
+        message: "anonymous choices are not available yet"
+
       validate Polly.Polls.Validations.SelectionRulesAreValid
       validate Polly.Polls.Validations.HasMinimumOptions
       validate Polly.Polls.Validations.SelectionLimitsFitOptions
@@ -174,6 +180,12 @@ defmodule Polly.Polls.Poll do
       allow_nil? false
       public? true
       default :single
+    end
+
+    attribute :privacy_mode, Polly.Polls.Poll.PrivacyMode do
+      allow_nil? false
+      public? true
+      default :identified
     end
 
     attribute :minimum_selections, :integer do

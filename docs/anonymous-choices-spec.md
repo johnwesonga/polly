@@ -2,7 +2,10 @@
 
 ## Status
 
-Proposed.
+In progress. Phase 0 establishes the persisted poll privacy contract without
+changing ballot submission behavior. Anonymous voting must remain unavailable
+in the administrator UI until the storage, submission, and voter-disclosure
+phases are complete.
 
 ## Summary
 
@@ -452,6 +455,63 @@ Safe telemetry may include:
 
 Exceptions raised inside the transaction must rely on Ash's sensitive-value redaction and must not inspect the complete transaction state into logs.
 
+## Implementation phases
+
+### Phase 0 — Poll privacy contract
+
+Implemented.
+
+- Add the `PrivacyMode` enum and default existing behavior to `:identified`.
+- Persist privacy mode on polls and accept changes only through draft actions.
+- Copy privacy mode when duplicating a poll.
+- Migrate existing polls to identified mode and cover lifecycle invariants.
+- Reject opening anonymous drafts until anonymous submission is implemented.
+
+This phase deliberately does not expose anonymous mode in the UI or change how
+ballots are stored.
+
+### Phase 1 — Participation storage and historical backfill
+
+- Replace the current query-only participation module with an Ash resource.
+- Create the poll participation table and unique poll/member identity.
+- Backfill participation for existing identified ballots.
+- Switch invitation, reminder, and turnout reads to participation records.
+
+### Phase 2 — Privacy-aware ballot schema
+
+- Snapshot privacy mode on every ballot.
+- Make ballot member identity nullable and enforce mode/member consistency.
+- Preserve identified behavior while anonymous submission remains disabled.
+- Add migration and schema-invariant coverage.
+
+### Phase 3 — Atomic anonymous submission
+
+- Create participation, ballot, and selections in one transaction.
+- Branch ballot creation by the poll's immutable privacy mode.
+- Use participation uniqueness for duplicate and concurrent submission safety.
+- Add rollback, reissued-grant, and privacy regression tests.
+
+### Phase 4 — Voter privacy experience
+
+- Add mode-aware disclosure before review and submission.
+- Remove identity and selected choices from anonymous confirmation receipts.
+- Handle returning anonymous participants without locating their ballot.
+- Clear anonymous choice state immediately after successful submission.
+
+### Phase 5 — Administrator configuration and presentation
+
+- Add the privacy selector and explanatory copy to the draft poll form.
+- Add privacy badges and an explicit anonymous-mode opening confirmation.
+- Keep results and exports aggregate-only for anonymous polls.
+- Add authorization, audit, and administrator privacy regression coverage.
+
+### Phase 6 — Integrity monitoring and release gate
+
+- Detect participation/ballot count discrepancies at aggregate level.
+- Complete end-to-end migration and privacy tests.
+- Review application logs and rendered HTML for correlation leaks.
+- Enable anonymous-choice creation only after every release-gate check passes.
+
 ## Testing strategy
 
 ### Poll configuration tests
@@ -571,4 +631,3 @@ The feature should not be exposed until the migration, transactional submission,
 3. Should the voter confirmation display the selected choice transiently, or omit it immediately after submission as recommended here?
 4. Should identified polls also use `Participation` as the sole turnout source, as this specification recommends?
 5. What wording will legal, governance, or election owners approve for the privacy disclosure?
-
