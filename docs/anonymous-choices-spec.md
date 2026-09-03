@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress. Phases 0 and 1 establish the persisted poll privacy contract and
-independent participation tracking. Anonymous voting must remain unavailable
-in the administrator UI until the ballot schema, submission, and
-voter-disclosure phases are complete.
+In progress. Phases 0 through 2 establish the persisted poll privacy contract,
+independent participation tracking, and privacy-aware ballot schema. Anonymous
+voting must remain unavailable in the administrator UI until the submission
+and voter-disclosure phases are complete.
 
 ## Summary
 
@@ -480,6 +480,8 @@ Implemented.
 - Switch invitation, reminder, and turnout reads to participation records.
 
 ### Phase 2 — Privacy-aware ballot schema
+
+Implemented.
 
 - Snapshot privacy mode on every ballot.
 - Make ballot member identity nullable and enforce mode/member consistency.

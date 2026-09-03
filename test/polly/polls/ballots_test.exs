@@ -39,6 +39,7 @@ defmodule Polly.Polls.BallotsTest do
     assert {:ok, ballot} = Ballots.submit(poll.id, voting_token(grant), [option.id])
     assert ballot.poll_id == poll.id
     assert ballot.member_id == member.id
+    assert ballot.privacy_mode == :identified
     assert ballot.submitted_at
 
     participation =
@@ -54,6 +55,63 @@ defmodule Polly.Polls.BallotsTest do
       |> Ash.read_one!(authorize?: false)
 
     assert selection.option_id == option.id
+  end
+
+  test "ballot privacy snapshots enforce member identity rules", %{actor: actor} do
+    poll = Ash.create!(Poll, %{title: "Privacy snapshot"}, actor: actor)
+    member = Ash.create!(Member, %{name: "Privacy voter"}, actor: actor)
+
+    assert {:error, identified_error} =
+             Ash.create(
+               Ballot,
+               %{poll_id: poll.id, privacy_mode: :identified},
+               action: :submit,
+               authorize?: false
+             )
+
+    assert Exception.message(identified_error) =~ "required for an identified ballot"
+
+    assert {:error, anonymous_error} =
+             Ash.create(
+               Ballot,
+               %{poll_id: poll.id, member_id: member.id, privacy_mode: :anonymous},
+               action: :submit,
+               authorize?: false
+             )
+
+    assert Exception.message(anonymous_error) =~ "must be absent from an anonymous ballot"
+
+    anonymous_ballot =
+      Ash.create!(
+        Ballot,
+        %{poll_id: poll.id, privacy_mode: :anonymous},
+        action: :submit,
+        authorize?: false
+      )
+
+    assert anonymous_ballot.privacy_mode == :anonymous
+    assert is_nil(anonymous_ballot.member_id)
+  end
+
+  test "the database rejects inconsistent ballot privacy and identity", %{actor: actor} do
+    %{poll: poll, grant: grant, option: option} = open_poll!(actor, "Database privacy invariant")
+    assert {:ok, ballot} = Ballots.submit(poll.id, voting_token(grant), [option.id])
+
+    assert {:error, %Exqlite.Error{message: message}} =
+             Polly.Repo.query(
+               "UPDATE poll_ballots SET privacy_mode = 'anonymous' WHERE id = ?",
+               [ballot.id]
+             )
+
+    assert message =~ "poll_ballots_privacy_member_check"
+
+    assert {:error, %Exqlite.Error{message: message}} =
+             Polly.Repo.query(
+               "UPDATE poll_ballots SET member_id = NULL WHERE id = ?",
+               [ballot.id]
+             )
+
+    assert message =~ "poll_ballots_privacy_member_check"
   end
 
   test "selection storage permits distinct options but rejects the same option twice", %{

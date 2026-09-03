@@ -38,7 +38,7 @@ erDiagram
     ACCESS_GRANT ||--o{ INVITATION_DELIVERY : "is delivered through"
 
     POLL ||--o{ BALLOT : "receives"
-    MEMBER ||--o{ BALLOT : "submits"
+    MEMBER o|--o{ BALLOT : "identifies when applicable"
     BALLOT ||--o{ SELECTION : "contains"
     OPTION ||--o{ SELECTION : "is chosen by"
 
@@ -98,7 +98,8 @@ erDiagram
     BALLOT {
         uuid id PK
         uuid poll_id FK
-        uuid member_id FK
+        uuid member_id FK "nullable for anonymous"
+        string privacy_mode
         datetime submitted_at
     }
 
@@ -116,7 +117,7 @@ erDiagram
     }
 ```
 
-`Eligibility` is the join resource between a poll and a member. `AccessGrant`, `Participation`, `Ballot`, and `InvitationDelivery` reference the applicable poll and member for access, turnout, identified ballot, and delivery responsibilities. A ballot's chosen option is represented by `Selection` rather than stored directly on the ballot. `Participation` deliberately has no relationship to a ballot or selection.
+`Eligibility` is the join resource between a poll and a member. `AccessGrant`, `Participation`, and `InvitationDelivery` reference the applicable poll and member for access, turnout, and delivery responsibilities. A ballot references a member only in identified mode, while its chosen options are represented by `Selection`. `Participation` deliberately has no relationship to a ballot or selection.
 
 ## 1. Create a poll without authorization
 
@@ -523,7 +524,7 @@ ballot_count =
   |> Ash.count!(actor: actor)
 ```
 
-To investigate the current identified-ballot model, load each ballot's member and selected option:
+To investigate ballot storage, load each ballot's optional member and selected options:
 
 ```elixir
 ballots =
@@ -543,8 +544,9 @@ Inspect a constrained representation:
 Enum.map(ballots, fn ballot ->
   %{
     ballot_id: ballot.id,
+    privacy_mode: ballot.privacy_mode,
     member_id: ballot.member_id,
-    member_name: ballot.member.name,
+    member_name: ballot.member && ballot.member.name,
     submitted_at: ballot.submitted_at,
     selections:
       Enum.map(ballot.selections, fn selection ->
@@ -567,7 +569,7 @@ ballots =
   |> Ash.read!(authorize?: false)
 ```
 
-Ballot data is private. The current identified-ballot model can associate a member with a selection, so do not copy this output into logs, screenshots, tickets, or shared chat. Prefer aggregate result queries unless individual-record debugging is strictly necessary.
+Ballot data is private. Identified ballots associate a member with their selections, while anonymous ballots must have `member_id: nil`. Do not copy this output into logs, screenshots, tickets, or shared chat. Prefer aggregate result queries unless individual-record debugging is strictly necessary.
 
 ### Retrieve participation for a specific poll
 

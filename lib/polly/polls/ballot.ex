@@ -1,10 +1,11 @@
 defmodule Polly.Polls.Ballot do
   @moduledoc """
-  Records a member's final submission for a poll.
+  Records the final choices submitted for a poll.
 
   Ballots are created only by `Polly.Polls.Ballots.submit/3`; their database
-  identity is the final guard against concurrent duplicate submissions. Each
-  ballot may own one or more distinct selections.
+  privacy mode is snapshotted at submission time. Identified ballots retain a
+  member relationship, while anonymous ballots must not contain member
+  identity. Each ballot may own one or more distinct selections.
   """
 
   use Ash.Resource,
@@ -22,8 +23,9 @@ defmodule Polly.Polls.Ballot do
     defaults [:read]
 
     create :submit do
-      accept [:poll_id, :member_id]
+      accept [:poll_id, :member_id, :privacy_mode]
       change set_attribute(:submitted_at, &DateTime.utc_now/0)
+      validate Polly.Polls.Validations.BallotPrivacyIsValid
     end
   end
 
@@ -40,6 +42,13 @@ defmodule Polly.Polls.Ballot do
   attributes do
     uuid_primary_key :id
     attribute :submitted_at, :utc_datetime_usec, allow_nil?: false, public?: true
+
+    attribute :privacy_mode, Polly.Polls.Poll.PrivacyMode do
+      allow_nil? false
+      default :identified
+      public? true
+    end
+
     create_timestamp :inserted_at
     update_timestamp :updated_at
   end
@@ -51,7 +60,7 @@ defmodule Polly.Polls.Ballot do
     end
 
     belongs_to :member, Polly.Members.Member do
-      allow_nil? false
+      allow_nil? true
       public? true
     end
 

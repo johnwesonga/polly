@@ -54,7 +54,15 @@ defmodule Polly.Polls.Ballots do
       )
 
     ballot =
-      create_or_rollback(Ballot, %{poll_id: poll_id, member_id: grant.member_id}, :submit)
+      create_or_rollback(
+        Ballot,
+        %{
+          poll_id: poll_id,
+          member_id: grant.member_id,
+          privacy_mode: poll.privacy_mode
+        },
+        :submit
+      )
 
     Enum.each(option_ids, fn option_id ->
       create_or_rollback(Selection, %{ballot_id: ballot.id, option_id: option_id}, :select)
