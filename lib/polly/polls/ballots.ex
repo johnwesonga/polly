@@ -3,7 +3,7 @@ defmodule Polly.Polls.Ballots do
 
   require Ash.Query
 
-  alias Polly.Polls.{AccessGrant, Ballot, Eligibility, Option, Poll, Selection}
+  alias Polly.Polls.{AccessGrant, Ballot, Eligibility, Option, Participation, Poll, Selection}
 
   @type submission_error ::
           :invalid_grant
@@ -45,6 +45,13 @@ defmodule Polly.Polls.Ballots do
     ensure_selection_count!(poll, option_ids)
     ensure_options_in_poll!(poll_id, option_ids)
     ensure_not_submitted!(poll_id, grant.member_id)
+
+    _participation =
+      create_or_rollback(
+        Participation,
+        %{poll_id: poll_id, member_id: grant.member_id},
+        :record
+      )
 
     ballot =
       create_or_rollback(Ballot, %{poll_id: poll_id, member_id: grant.member_id}, :submit)
@@ -115,7 +122,7 @@ defmodule Polly.Polls.Ballots do
   end
 
   defp ensure_not_submitted!(poll_id, member_id) do
-    Ballot
+    Participation
     |> Ash.Query.filter(poll_id == ^poll_id and member_id == ^member_id)
     |> Ash.exists?(authorize?: false)
     |> case do

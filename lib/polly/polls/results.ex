@@ -3,7 +3,7 @@ defmodule Polly.Polls.Results do
 
   require Ash.Query
 
-  alias Polly.Polls.{Ballot, Eligibility, Option, Poll, Selection}
+  alias Polly.Polls.{Ballot, Eligibility, Option, Participation, Poll, Selection}
 
   @type option_result :: %{
           option: Option.t(),
@@ -19,6 +19,7 @@ defmodule Polly.Polls.Results do
           options: [option_result()],
           total_selections: non_neg_integer(),
           ballot_count: non_neg_integer(),
+          participation_count: non_neg_integer(),
           eligible_count: non_neg_integer(),
           turnout_percentage: float(),
           winner_labels: [String.t()]
@@ -45,6 +46,7 @@ defmodule Polly.Polls.Results do
     vote_counts = vote_counts(poll.id)
     total_selections = vote_counts |> Map.values() |> Enum.sum()
     ballot_count = count_ballots(poll.id)
+    participation_count = count_participations(poll.id)
     eligible_count = count_eligible(poll.id)
     highest_count = vote_counts |> Map.values() |> Enum.max(fn -> 0 end)
 
@@ -69,8 +71,9 @@ defmodule Polly.Polls.Results do
       options: option_results,
       total_selections: total_selections,
       ballot_count: ballot_count,
+      participation_count: participation_count,
       eligible_count: eligible_count,
-      turnout_percentage: turnout_percentage(ballot_count, eligible_count),
+      turnout_percentage: turnout_percentage(participation_count, eligible_count),
       winner_labels:
         option_results
         |> Enum.filter(& &1.winner?)
@@ -94,6 +97,12 @@ defmodule Polly.Polls.Results do
 
   defp count_ballots(poll_id) do
     Ballot
+    |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.count!(authorize?: false)
+  end
+
+  defp count_participations(poll_id) do
+    Participation
     |> Ash.Query.filter(poll_id == ^poll_id)
     |> Ash.count!(authorize?: false)
   end

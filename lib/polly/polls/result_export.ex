@@ -152,7 +152,7 @@ defmodule Polly.Polls.ResultExport do
              poll_status: to_string(poll.status),
              result_state: result_state,
              option_count: length(result.options),
-             submitted_count: result.ballot_count,
+             submitted_count: result.participation_count,
              eligible_count: result.eligible_count,
              provisional: result_state == "provisional"
            }

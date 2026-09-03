@@ -3,7 +3,7 @@ defmodule Polly.Polls.ParticipationTest do
 
   alias Polly.Accounts.User
   alias Polly.Members.Member
-  alias Polly.Polls.{Ballot, Participation, Poll}
+  alias Polly.Polls.{Participation, Poll}
 
   setup do
     actor =
@@ -36,9 +36,9 @@ defmodule Polly.Polls.ParticipationTest do
     refute Participation.submitted?(context.poll.id, context.member.id)
 
     Ash.create!(
-      Ballot,
+      Participation,
       %{poll_id: context.poll.id, member_id: context.member.id},
-      action: :submit,
+      action: :record,
       authorize?: false
     )
 
@@ -49,13 +49,27 @@ defmodule Polly.Polls.ParticipationTest do
 
   test "submitted_member_ids/2 returns participation without selections", context do
     Ash.create!(
-      Ballot,
+      Participation,
       %{poll_id: context.poll.id, member_id: context.member.id},
-      action: :submit,
+      action: :record,
       authorize?: false
     )
 
     assert Participation.submitted_member_ids(context.poll.id, context.actor) ==
              MapSet.new([context.member.id])
+  end
+
+  test "permits only one participation per poll and member", context do
+    attributes = %{poll_id: context.poll.id, member_id: context.member.id}
+
+    participation =
+      Ash.create!(Participation, attributes, action: :record, authorize?: false)
+
+    assert participation.participated_at
+
+    assert {:error, error} =
+             Ash.create(Participation, attributes, action: :record, authorize?: false)
+
+    assert Exception.message(error) =~ "has already been taken"
   end
 end

@@ -137,7 +137,7 @@ defmodule Polly.Administration.DashboardTest do
     assert {:ok, %{active_polls: [active]}} = Dashboard.load(owner)
     assert active.id == poll.id
     assert active.opened_at == poll.opened_at
-    assert active.ballot_count == 1
+    assert active.participation_count == 1
     assert active.eligible_count == 1
     assert active.turnout_percentage == Polly.Polls.Results.for_poll(poll.id).turnout_percentage
     assert active.destination == "/admin/polls/#{poll.id}/access"

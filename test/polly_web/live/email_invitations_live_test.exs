@@ -5,7 +5,7 @@ defmodule PollyWeb.EmailInvitationsLiveTest do
   require Ash.Query
 
   alias Polly.Members.Member
-  alias Polly.Polls.{Ballot, InvitationDelivery, Invitations, Option, Poll}
+  alias Polly.Polls.{InvitationDelivery, Invitations, Option, Participation, Poll}
 
   test "queues ready invitations from the poll access page", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
@@ -180,9 +180,9 @@ defmodule PollyWeb.EmailInvitationsLiveTest do
     accept_initial_invitations!(poll, actor)
 
     Ash.create!(
-      Ballot,
+      Participation,
       %{poll_id: poll.id, member_id: member.id},
-      action: :submit,
+      action: :record,
       authorize?: false
     )
 

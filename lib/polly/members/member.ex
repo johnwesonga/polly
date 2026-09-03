@@ -83,6 +83,10 @@ defmodule Polly.Members.Member do
       destination_attribute :member_id
     end
 
+    has_many :participations, Polly.Polls.Participation do
+      destination_attribute :member_id
+    end
+
     has_many :invitation_deliveries, Polly.Polls.InvitationDelivery do
       destination_attribute :member_id
     end

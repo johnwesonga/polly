@@ -123,6 +123,10 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         read: {:permission, :view_results},
         submit: {:trusted, "validated voter access grant"}
       },
+      Polly.Polls.Participation => %{
+        read: {:permission, :view_results},
+        record: {:trusted, "validated ballot submission transaction"}
+      },
       Polly.Polls.Selection => %{
         read: {:permission, :view_results},
         select: {:trusted, "validated ballot submission"}
@@ -228,7 +232,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         reason: "choice-free participation lookup used by the trusted invitation worker"
       },
       "lib/polly/polls/results.ex" => %{
-        count: 5,
+        count: 6,
         reason: "aggregate result builder called from protected boundaries"
       },
       "lib/polly/polls/public_results.ex" => %{

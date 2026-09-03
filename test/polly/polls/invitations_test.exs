@@ -7,7 +7,15 @@ defmodule Polly.Polls.InvitationsTest do
 
   alias Polly.Accounts.User
   alias Polly.Members.Member
-  alias Polly.Polls.{Ballot, InvitationDelivery, InvitationWorker, Invitations, Option, Poll}
+
+  alias Polly.Polls.{
+    InvitationDelivery,
+    InvitationWorker,
+    Invitations,
+    Option,
+    Participation,
+    Poll
+  }
 
   setup do
     actor =
@@ -74,9 +82,9 @@ defmodule Polly.Polls.InvitationsTest do
     {poll, member, _grant} = open_poll_with_member!(actor)
 
     Ash.create!(
-      Ballot,
+      Participation,
       %{poll_id: poll.id, member_id: member.id},
-      action: :submit,
+      action: :record,
       authorize?: false
     )
 
@@ -136,9 +144,9 @@ defmodule Polly.Polls.InvitationsTest do
     assert {:ok, [delivery]} = Invitations.enqueue_bulk(poll, actor)
 
     Ash.create!(
-      Ballot,
+      Participation,
       %{poll_id: poll.id, member_id: member.id},
-      action: :submit,
+      action: :record,
       authorize?: false
     )
 
@@ -213,9 +221,9 @@ defmodule Polly.Polls.InvitationsTest do
              Invitations.preview_reminders(poll, actor)
 
     Ash.create!(
-      Ballot,
+      Participation,
       %{poll_id: poll.id, member_id: member.id},
-      action: :submit,
+      action: :record,
       authorize?: false
     )
 
@@ -311,9 +319,9 @@ defmodule Polly.Polls.InvitationsTest do
     assert {:ok, %{deliveries: [delivery]}} = Invitations.enqueue_reminders(poll, actor)
 
     Ash.create!(
-      Ballot,
+      Participation,
       %{poll_id: poll.id, member_id: member.id},
-      action: :submit,
+      action: :record,
       authorize?: false
     )
 

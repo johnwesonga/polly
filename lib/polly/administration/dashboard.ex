@@ -23,7 +23,7 @@ defmodule Polly.Administration.Dashboard do
           id: Ecto.UUID.t(),
           title: String.t(),
           opened_at: DateTime.t() | nil,
-          ballot_count: non_neg_integer(),
+          participation_count: non_neg_integer(),
           eligible_count: non_neg_integer(),
           turnout_percentage: float(),
           accepted_deliveries: non_neg_integer(),
@@ -168,7 +168,7 @@ defmodule Polly.Administration.Dashboard do
         p.id,
         p.title,
         p.opened_at,
-        (SELECT COUNT(*) FROM poll_ballots b WHERE b.poll_id = p.id),
+        (SELECT COUNT(*) FROM poll_participations participation WHERE participation.poll_id = p.id),
         (SELECT COUNT(*) FROM poll_eligibilities e WHERE e.poll_id = p.id),
         (SELECT COUNT(*) FROM poll_invitation_deliveries d
          WHERE d.poll_id = p.id AND d.status = 'accepted'),
@@ -180,14 +180,14 @@ defmodule Polly.Administration.Dashboard do
       ORDER BY p.updated_at DESC, p.title ASC
       """)
 
-    Enum.map(rows, fn [id, title, opened_at, ballots, eligible, accepted, pending, failed] ->
+    Enum.map(rows, fn [id, title, opened_at, participations, eligible, accepted, pending, failed] ->
       %{
         id: id,
         title: title,
         opened_at: parse_datetime(opened_at),
-        ballot_count: ballots,
+        participation_count: participations,
         eligible_count: eligible,
-        turnout_percentage: Polly.Polls.Results.turnout_percentage(ballots, eligible),
+        turnout_percentage: Polly.Polls.Results.turnout_percentage(participations, eligible),
         accepted_deliveries: accepted,
         pending_deliveries: pending,
         failed_deliveries: failed,

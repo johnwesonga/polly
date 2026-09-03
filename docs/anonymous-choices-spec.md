@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress. Phase 0 establishes the persisted poll privacy contract without
-changing ballot submission behavior. Anonymous voting must remain unavailable
-in the administrator UI until the storage, submission, and voter-disclosure
-phases are complete.
+In progress. Phases 0 and 1 establish the persisted poll privacy contract and
+independent participation tracking. Anonymous voting must remain unavailable
+in the administrator UI until the ballot schema, submission, and
+voter-disclosure phases are complete.
 
 ## Summary
 
@@ -295,7 +295,7 @@ After participation:
 
 ## Invitation and reminder integration
 
-`Polly.Polls.Invitations` and `InvitationWorker` currently use ballots to determine whether a member has voted. Replace those checks with `Participation` queries.
+`Polly.Polls.Invitations` and `InvitationWorker` use participation records to determine whether a member has voted.
 
 This supports both privacy modes without loading ballot identity.
 
@@ -471,6 +471,8 @@ This phase deliberately does not expose anonymous mode in the UI or change how
 ballots are stored.
 
 ### Phase 1 — Participation storage and historical backfill
+
+Implemented.
 
 - Replace the current query-only participation module with an Ash resource.
 - Create the poll participation table and unique poll/member identity.

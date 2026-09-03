@@ -36,6 +36,7 @@ defmodule Polly.Polls.ResultsTest do
     assert result.selection_mode == :single
     assert result.total_selections == 4
     assert result.ballot_count == 4
+    assert result.participation_count == 4
     assert result.eligible_count == 5
     assert result.turnout_percentage == 80.0
     assert result.winner_labels == ["Alpha", "Beta"]
@@ -64,6 +65,7 @@ defmodule Polly.Polls.ResultsTest do
 
     assert result.selection_mode == :multiple
     assert result.ballot_count == 2
+    assert result.participation_count == 2
     assert result.total_selections == 4
     assert result.eligible_count == 2
     assert result.turnout_percentage == 100.0

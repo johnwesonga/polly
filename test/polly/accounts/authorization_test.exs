@@ -11,6 +11,7 @@ defmodule Polly.Accounts.AuthorizationTest do
     Eligibility,
     InvitationDelivery,
     Option,
+    Participation,
     Poll,
     Selection
   }
@@ -67,6 +68,13 @@ defmodule Polly.Accounts.AuthorizationTest do
       )
 
     Ash.create!(
+      Participation,
+      %{poll_id: poll.id, member_id: member.id},
+      action: :record,
+      authorize?: false
+    )
+
+    Ash.create!(
       Selection,
       %{ballot_id: ballot.id, option_id: option.id},
       action: :select,
@@ -100,6 +108,7 @@ defmodule Polly.Accounts.AuthorizationTest do
       {Eligibility, [:owner, :administrator]},
       {AccessGrant, [:owner, :administrator]},
       {Ballot, [:owner, :administrator, :auditor]},
+      {Participation, [:owner, :administrator, :auditor]},
       {Selection, [:owner, :administrator, :auditor]},
       {InvitationDelivery, [:owner, :administrator, :auditor, :operator]},
       {Event, [:owner, :auditor]}

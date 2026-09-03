@@ -12,6 +12,7 @@ defmodule Polly.Polls.BallotsTest do
     Eligibility,
     Electorate,
     Option,
+    Participation,
     Poll,
     Selection
   }
@@ -39,6 +40,13 @@ defmodule Polly.Polls.BallotsTest do
     assert ballot.poll_id == poll.id
     assert ballot.member_id == member.id
     assert ballot.submitted_at
+
+    participation =
+      Participation
+      |> Ash.Query.filter(poll_id == ^poll.id and member_id == ^member.id)
+      |> Ash.read_one!(authorize?: false)
+
+    assert participation.participated_at
 
     selection =
       Selection
@@ -90,6 +98,7 @@ defmodule Polly.Polls.BallotsTest do
              Ballots.submit(poll.id, voting_token(grant), [option.id, option.id])
 
     assert 0 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
+    assert 0 == participation_count(poll.id)
   end
 
   test "stores every valid option atomically for a poll range", %{actor: actor} do
@@ -118,6 +127,7 @@ defmodule Polly.Polls.BallotsTest do
 
     assert 0 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
     assert 0 == Selection |> Ash.count!(authorize?: false)
+    assert 0 == participation_count(poll.id)
   end
 
   test "rejects invalid, cross-poll, and revoked grants", %{actor: actor} do
@@ -182,6 +192,7 @@ defmodule Polly.Polls.BallotsTest do
              |> Ash.count!(authorize?: false)
 
     assert 1 == Selection |> Ash.count!(authorize?: false)
+    assert 1 == participation_count(poll.id)
   end
 
   test "the database identity allows only one concurrent submission", %{actor: actor} do
@@ -199,6 +210,7 @@ defmodule Polly.Polls.BallotsTest do
 
     assert 1 == Enum.count(results, &match?({:ok, _ballot}, &1))
     assert 1 == Enum.count(results, &match?({:error, :already_submitted}, &1))
+    assert 1 == participation_count(poll.id)
   end
 
   test "a failed selection insert rolls back the ballot and earlier selections", %{actor: actor} do
@@ -222,6 +234,13 @@ defmodule Polly.Polls.BallotsTest do
 
     assert 0 == Ballot |> Ash.Query.filter(poll_id == ^poll.id) |> Ash.count!(authorize?: false)
     assert 0 == Selection |> Ash.count!(authorize?: false)
+    assert 0 == participation_count(poll.id)
+  end
+
+  defp participation_count(poll_id) do
+    Participation
+    |> Ash.Query.filter(poll_id == ^poll_id)
+    |> Ash.count!(authorize?: false)
   end
 
   defp open_poll!(actor, title \\ "Final ballot") do

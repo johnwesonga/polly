@@ -229,6 +229,10 @@ defmodule Polly.Polls.Poll do
       destination_attribute :poll_id
     end
 
+    has_many :participations, Polly.Polls.Participation do
+      destination_attribute :poll_id
+    end
+
     has_many :invitation_deliveries, Polly.Polls.InvitationDelivery do
       destination_attribute :poll_id
     end
