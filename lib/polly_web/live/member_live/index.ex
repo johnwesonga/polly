@@ -85,6 +85,7 @@ defmodule PollyWeb.MemberLive.Index do
                   {"Inactive", "inactive"}
                 ]}
               />
+              <br />
               <.link
                 :if={@filtered?}
                 id="clear-member-filters"
