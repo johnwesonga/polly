@@ -19,7 +19,7 @@ Status labels:
 
 - **Proposed — Delivery-status CSV export:** export member, eligibility, and invitation status without working voting credentials.
 - **Specified — [Poll archiving](poll-archiving-spec.md):** hide completed polls from normal administration while retaining their history.
-- **Proposed — Scheduled opening and closing:** configure lifecycle timestamps instead of requiring manual actions.
+- **Specified — [Scheduled opening and closing](scheduled-poll-lifecycle-spec.md):** configure durable, version-pinned lifecycle jobs with explicit UTC timing, execution-time validation, and visible failure state.
 - **Specified — [Reminder emails](reminder-email-spec.md):** notify eligible members who have not voted without revealing their selections.
 
 ## Poll configuration
@@ -63,7 +63,7 @@ Status labels:
 - **Specified — [Voter credential protection](voter-credential-protection-spec.md):** prevent administrators from retrieving working voting links while preserving durable delivery, rotation, revocation, and eligibility enforcement.
 - **Proposed — Delivery-status CSV export:** replace the superseded [credential-bearing access-link export](access-link-csv-export-spec.md) with member, eligibility, and delivery status that contains no private URLs.
 - **Proposed — Expiring voting links.**
-- **Proposed — Bulk link revocation and reissue.**
+- **Specified — [Bulk link revocation and reissue](bulk-access-grant-lifecycle-spec.md):** safely preview and atomically revoke or replace protected voter credentials across explicit, paginated, or filtered member selections.
 - **Specified — [Administrator user management and roles](administrator-user-management-spec.md):** owner-managed invitations, account lifecycle controls, final-owner protection, and role-based authorization.
 - **Proposed — Multi-factor authentication for administrators.**
 - **Proposed — Rate limiting on public voting routes.**
