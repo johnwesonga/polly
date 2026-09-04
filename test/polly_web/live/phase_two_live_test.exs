@@ -75,6 +75,83 @@ defmodule PollyWeb.PhaseTwoLiveTest do
     refute has_element?(view, "#members-#{last.id}")
   end
 
+  test "filters members by name or email with URL-backed controls", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    rachel =
+      Ash.create!(
+        Member,
+        %{name: "Rachel Gray", email: "rachel.gray@example.com"},
+        actor: actor
+      )
+
+    bruce =
+      Ash.create!(
+        Member,
+        %{name: "Bruce Wayne", email: "accounts@wayne.example.com"},
+        actor: actor
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/members")
+
+    view
+    |> form("#member-filter-form", filters: %{q: "RACHEL", status: "all"})
+    |> render_change()
+
+    assert_patch(view, ~p"/admin/members?q=RACHEL")
+    assert has_element?(view, "#members-#{rachel.id}")
+    refute has_element?(view, "#members-#{bruce.id}")
+    assert has_element?(view, "#member-filter-count", "1 matching · 2 total")
+    assert has_element?(view, "#clear-member-filters")
+
+    view
+    |> form("#member-filter-form", filters: %{q: "WAYNE.EXAMPLE", status: "all"})
+    |> render_change()
+
+    assert has_element?(view, "#members-#{bruce.id}")
+    refute has_element?(view, "#members-#{rachel.id}")
+  end
+
+  test "filters members by status and retains filters across pagination", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn)
+
+    active_members =
+      Enum.map(1..16, fn number ->
+        Ash.create!(
+          Member,
+          %{name: "Active Search #{number |> Integer.to_string() |> String.pad_leading(2, "0")}"},
+          actor: actor
+        )
+      end)
+
+    inactive =
+      Member
+      |> Ash.create!(%{name: "Inactive Search"}, actor: actor)
+      |> Ash.update!(%{active: false}, actor: actor)
+
+    {:ok, view, _html} = live(conn, ~p"/admin/members?q=search&status=active")
+
+    assert has_element?(view, "#member-filter-count", "16 matching · 17 total")
+    refute has_element?(view, "#members-#{inactive.id}")
+    assert has_element?(view, "#next-members-page[href*='q=search']")
+    assert has_element?(view, "#next-members-page[href*='status=active']")
+
+    view |> element("#next-members-page") |> render_click()
+
+    assert has_element?(view, "#members-#{List.last(active_members).id}")
+    refute has_element?(view, "#members-#{inactive.id}")
+    assert has_element?(view, "#previous-members-page[href*='q=search']")
+    assert has_element?(view, "#previous-members-page[href*='status=active']")
+
+    view
+    |> form("#member-filter-form", filters: %{q: "search", status: "inactive"})
+    |> render_change()
+
+    assert has_element?(view, "#members-#{inactive.id}")
+    refute has_element?(view, "#members-#{List.first(active_members).id}")
+    refute has_element?(view, "#member-pagination")
+  end
+
   test "selects an electorate and manages access without exposing its credential", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     poll = create_poll!(actor)
