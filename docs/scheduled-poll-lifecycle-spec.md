@@ -4,620 +4,439 @@
 
 Specified. No implementation has started.
 
+This feature is Polly's proposed greenfield evaluation of AshOban. It begins
+with a contained proof of concept before touching the production poll
+lifecycle.
+
 ## Summary
 
-Allow authorized administrators to schedule a poll to open and close at
-specific future times. Polly persists the intended schedule, executes each
-transition through durable Oban jobs, and applies the same validation,
-authorization boundary, audit history, timestamps, and PubSub notifications as
-the existing manual lifecycle actions.
+Allow administrators to schedule future poll opening and closing. Each request
+is persisted as an Ash resource. AshOban periodically finds due transition
+records, generates and runs Oban jobs, and invokes an Ash action that applies
+the existing poll lifecycle rules.
 
-Scheduling does not add new poll lifecycle statuses. A scheduled draft remains
-`:draft` until its opening transition succeeds, an open poll remains `:open`
-until its closing transition succeeds, and a completed poll remains `:closed`.
-The interface presents schedule state separately from lifecycle state.
+This is intentionally an **AshOban implementation**, not a handwritten
+`Oban.Worker` implementation. Polly still owns its lifecycle rules, audit
+events, safe failure states, and PubSub broadcasts. AshOban owns job discovery,
+worker generation, record loading, locking, retries, and final-error dispatch.
 
-The first iteration uses explicitly labelled UTC date-times. Installation and
-administrator-specific time zones are deferred until Polly has a dependable
-time-zone source and daylight-saving-time policy.
+Scheduling does not add poll statuses. A scheduled draft stays `:draft` until
+opening succeeds; an open poll stays `:open` until closing succeeds. Schedule
+state is shown separately. The first iteration accepts and displays explicitly
+labelled UTC date-times.
 
-## Complexity assessment
+## Why use a greenfield feature
 
-This is a **medium-complexity** feature. Creating a future Oban job is simple;
-keeping the database, queued jobs, manual actions, edits, deployment behavior,
-and administrator expectations consistent is the harder part.
+Polly's invitation workers are working, tested security boundaries.
+Retrofitting AshOban would relocate their email, credential, provider
+idempotency, and delivery-state logic without eliminating it.
 
-The principal risks are:
+Scheduled lifecycle transitions naturally fit AshOban's resource-driven model:
 
-- a superseded job applying an old schedule;
-- a scheduled opening failing readiness checks;
-- a sleeping Fly.io Machine not executing a job on time;
-- ambiguous date-times around time-zone or daylight-saving changes;
-- concurrent manual and scheduled transitions;
-- duplicate execution after retries or deployment; and
-- representing a schedule as a lifecycle status and complicating all existing
-  status-dependent behavior.
+```text
+persist pending transition
+→ transition becomes due
+→ AshOban finds it
+→ generated worker invokes an Ash action
+→ action updates poll and transition
+→ record no longer matches the trigger
+```
 
-These risks are addressed with version-pinned jobs, execution-time validation,
-idempotent workers, explicit UTC input, persisted failure state, and a
-deployment readiness check.
+If the implementation works well with AshSQLite, `Oban.Engines.Lite`, audit
+attribution, deployment, and tests, it can guide later scheduled reminders,
+expiry processing, and maintenance jobs.
+
+## Complexity and risks
+
+This is a **medium-complexity** feature. AshOban removes infrastructure code,
+not lifecycle complexity. Principal risks are:
+
+- cancelled or replaced work executing from an older queued job;
+- opening failing readiness checks;
+- manual and scheduled transitions racing;
+- duplicate execution after retry or deployment;
+- time-based trigger queries changing while records are streamed;
+- incorrect actor or audit attribution;
+- unsupported locking behavior with AshSQLite; and
+- every Fly.io Machine sleeping when work becomes due.
+
+Use one record per transition, state-based idempotency, execution-time
+validation, explicit generated module names, bounded retries, UTC timing, and a
+production availability gate.
 
 ## Goals
 
-- Let an administrator schedule a draft poll to open automatically.
-- Let an administrator schedule a draft or open poll to close automatically.
-- Permit an opening and closing window to be configured together.
-- Execute transitions durably across application restarts and deployments.
-- Reuse the existing `Poll.open` and `Poll.close` business rules.
-- Make pending, completed, cancelled, superseded, and failed schedules visible.
-- Allow an authorized administrator to edit or cancel future transitions.
-- Reject stale jobs after a schedule is edited, cancelled, or overtaken by a
-  manual lifecycle action.
-- Attribute schedule configuration and automatic execution in the audit trail.
-- Keep voter, ballot, selection, and credential data out of job arguments,
-  logs, and schedule records.
+- Schedule a draft poll to open.
+- Schedule a draft or open poll to close.
+- Configure an opening and closing window together.
+- Survive restarts and deployments.
+- Use AshOban without a feature-specific handwritten worker.
+- Reuse `Poll.open` and `Poll.close` actions and validations.
+- Show pending, completed, cancelled, skipped, and failed transitions.
+- Allow authorized replacement and cancellation.
+- Make retries and repeat execution idempotent.
+- Audit configuration separately from automatic execution.
+- Keep voter, credential, ballot, and choice data out of jobs and diagnostics.
 
 ## Non-goals
 
-- Automatically publishing results when a poll closes.
-- Automatically sending invitations or reminders when a poll opens.
-- Recurring polls or recurring schedules.
-- Reopening a closed poll or returning an open poll to draft.
-- Scheduling option, electorate, privacy, or selection-rule changes.
-- Scheduling result publication or public-result visibility.
-- Per-administrator time-zone preferences in the first iteration.
-- Guaranteeing second-level execution precision.
-- Waking a fully stopped Fly.io application without external infrastructure.
-- Replacing Oban Web with a schedule management interface.
+- Rewriting either invitation worker.
+- Automatically publishing results or sending invitations/reminders.
+- Recurring polls or lifecycle transitions.
+- Reopening a closed poll or moving an open poll back to draft.
+- Scheduling configuration or result-visibility changes.
+- Per-administrator time zones in the first iteration.
+- Second-level execution guarantees.
+- Waking a stopped Fly application without external infrastructure.
 
-## Lifecycle model
+## AshOban versus handwritten Oban
 
-The existing forward-only lifecycle remains authoritative:
+### Selected: AshOban trigger
+
+AshOban owns:
+
+- querying due records;
+- generated scheduler and worker modules;
+- one job per matching record;
+- primary-key reload and resource locking;
+- queue, attempts, priority, timeout, and backoff;
+- invoking `:execute`; and
+- invoking an `on_error` action after final failure.
+
+Polly owns:
+
+- schedule creation, replacement, and cancellation;
+- readiness and lifecycle rules;
+- calling `Poll.open` or `Poll.close`;
+- outcome and error classification;
+- audit attribution, telemetry, and PubSub; and
+- administrator, deployment, and privacy behavior.
+
+“Pure AshOban” means no manual lifecycle worker or `Oban.insert` call. It does
+not mean custom business logic disappears.
+
+### Rejected by default: handwritten worker
+
+The alternative is a custom `Polly.Polls.LifecycleWorker` whose job contains a
+transition ID. The scheduling service would insert jobs and implement
+uniqueness, loading, attempt handling, final failure, and stale-work rejection.
+This offers maximum control but duplicates the infrastructure being evaluated.
+
+Use it only if Phase 0 proves a material AshOban problem: unsupported SQLite
+locking, unsafe arguments, unreliable transaction behavior, insufficient retry
+control, or tests that are materially harder to understand.
+
+| Concern | AshOban | Handwritten Oban |
+| --- | --- | --- |
+| Worker/scheduler | Generated from resource DSL | Manually maintained |
+| Due-record discovery | Trigger query | Custom scheduler or scheduled jobs |
+| Execution | Native Ash action | Worker calls service/action |
+| Locking | AshOban orchestration | Explicit application code |
+| Retry/final error | DSL and `on_error` | Worker callbacks/attempt checks |
+| Cancellation safety | Record state revalidation | Explicit state/version checks |
+| Domain/audit/PubSub | Custom Ash logic | Custom domain logic |
+
+## Lifecycle and product rules
+
+The lifecycle remains:
 
 ```text
 draft ── open ── closed
 ```
 
-A schedule is an instruction to request one of those transitions later:
-
-```text
-draft + pending open_at  ── worker ──> open
-open  + pending close_at ── worker ──> closed
-```
-
-Result publication remains a separate, explicit administrator action after a
-poll has closed.
-
-The UI must not label a draft poll as “scheduled” in place of its `Draft`
-status. It may show an additional `Opens Sep 12, 17:00 UTC` badge or schedule
-summary.
-
-## Product rules
-
-1. Only a `:draft` poll may receive a scheduled opening.
-2. A `:draft` or `:open` poll may receive a scheduled closing.
-3. A `:closed` poll cannot be scheduled.
-4. Every newly supplied time must be in the future.
-5. When both times are present, `close_at` must be later than `open_at`.
-6. An open poll cannot receive or retain a future opening.
-7. A scheduled opening runs the existing readiness checks at execution time:
-   valid selection rules, enough options, compatible limits, and at least one
-   eligible member.
-8. Configuration may continue while the poll is a draft. Therefore readiness
-   is shown when scheduling but is not required until opening executes.
-9. A failed opening leaves the poll in draft and does not discard its failure
-   details.
-10. A failed opening does not automatically cancel a later closing job. If the
-    poll is still draft at closing time, that close job is recorded as skipped
-    because its lifecycle precondition is no longer valid.
-11. Manual opening before `open_at` completes the opening transition and makes
-    its queued job stale; a valid scheduled closing remains in effect.
-12. Manual closing before `close_at` completes the closing transition and makes
-    all remaining lifecycle jobs stale.
-13. Editing or cancelling a schedule increments its version so previously
-    queued jobs cannot mutate the poll.
-14. Automatic transitions are idempotent. Oban retrying a completed or stale
-    instruction must be a safe no-op.
-15. Scheduling never rotates access grants or exposes voter credentials.
+1. Only a draft poll may receive an opening transition.
+2. A draft or open poll may receive a closing transition.
+3. A closed poll cannot be scheduled.
+4. New times must be future UTC values; closing must follow opening.
+5. Opening executes all normal readiness checks at execution time.
+6. Scheduling an unready draft is allowed with a visible warning.
+7. A readiness failure leaves the poll draft and marks the transition failed.
+8. A later close records a skip if the poll never opened.
+9. Manual opening makes pending opening inapplicable but preserves closing.
+10. Manual closing makes every pending lifecycle transition inapplicable.
+11. Editing cancels the old record and creates a replacement.
+12. Non-pending transitions can never mutate a poll.
+13. Closing never publishes results.
 
 ## Time semantics
 
-### First iteration
-
-The form accepts and displays date-times in UTC and labels them visibly, for
-example:
+Show UTC explicitly, including in confirmation:
 
 ```text
 Opens: 2026-09-12 17:00 UTC
 Closes: 2026-09-19 17:00 UTC
 ```
 
-The server converts accepted values to `DateTime` and persists
-`:utc_datetime_usec`. Browser locale must not silently reinterpret an unlabelled
-date-time. The confirmation dialog repeats the normalized UTC values.
+Persist `:utc_datetime_usec`. Use a configurable one-minute lead time and
+one-year horizon. An every-minute trigger provides minute-level best-effort
+execution; copy says “scheduled for,” not “will open exactly at.” Record both
+requested and actual times.
 
-A configurable minimum lead time, initially one minute, prevents a schedule
-from expiring while its form is being submitted. A configurable maximum
-horizon, initially one year, prevents obvious data-entry errors.
-
-### Later iteration
-
-Add an installation or administrator time zone, display both local time and
-UTC, and define behavior for ambiguous or nonexistent daylight-saving times.
-That iteration should use a maintained time-zone database rather than a fixed
-numeric offset.
-
-### Execution precision
-
-Execution is best effort and should normally begin shortly after the requested
-time. Product copy must say “scheduled for,” not promise an exact second. Record
-both the requested time and actual completion time so operational delay can be
-measured.
+An overdue transition runs after the application resumes. Future time-zone
+support must use a maintained time-zone database and define daylight-saving
+ambiguities.
 
 ## Data model
 
-Add a `Polly.Polls.LifecycleSchedule` Ash resource backed by a
-`poll_lifecycle_schedules` table. A separate resource is preferred over only
-adding timestamps to `Poll` because schedule execution has its own mutable
-version, per-transition state, errors, and administrator attribution.
-
-Suggested attributes:
+Add `Polly.Polls.LifecycleTransition`, backed by
+`poll_lifecycle_transitions`. One record represents one open or close request.
 
 | Attribute | Type | Purpose |
 | --- | --- | --- |
-| `id` | UUID | Primary key. |
-| `poll_id` | UUID | Required poll relationship; one schedule per poll. |
-| `open_at` | UTC datetime, nullable | Desired opening time. |
-| `close_at` | UTC datetime, nullable | Desired closing time. |
-| `version` | integer | Incremented for every edit or cancellation. |
-| `open_state` | enum | `not_scheduled`, `scheduled`, `completed`, `cancelled`, `failed`, or `skipped`. |
-| `close_state` | enum | Same states as `open_state`. |
-| `open_completed_at` | UTC datetime, nullable | Actual successful opening time. |
-| `close_completed_at` | UTC datetime, nullable | Actual successful closing time. |
-| `open_failure_code` | string, nullable | Safe bounded failure code. |
-| `close_failure_code` | string, nullable | Safe bounded failure code. |
-| `scheduled_by_id` | UUID | Administrator who last configured the schedule. |
-| `inserted_at` / `updated_at` | UTC datetime | Standard timestamps. |
+| `id` | UUID | Primary key and generated-job identifier. |
+| `poll_id` | UUID | Poll relationship. |
+| `kind` | enum | `:open` or `:close`. |
+| `scheduled_at` | UTC datetime | Requested time. |
+| `state` | enum | `:pending`, `:completed`, `:cancelled`, `:failed`, `:skipped`. |
+| `scheduled_by_id` | UUID | Configuring administrator. |
+| `completed_at` | UTC datetime | Actual completion, when successful. |
+| `cancelled_at` | UTC datetime | Cancellation time. |
+| `failure_code` | string | Safe allow-listed failure or skip code. |
+| `replaces_transition_id` | UUID | Superseded transition, when applicable. |
+| timestamps | UTC datetime | Standard timestamps. |
 
-Add a unique identity on `poll_id`. Add indexes supporting pending opening and
-closing lookups. Failure fields contain allow-listed codes, never raw exception
-messages.
+Index `(state, scheduled_at)` and `(poll_id, kind, state)`. Enforce at most one
+pending transition of each kind per poll, preferably with a partial unique
+index. Retain historical rows.
 
-Suggested safe failure codes include:
+Safe codes include `poll_not_draft`, `poll_not_open`,
+`selection_rules_invalid`, `insufficient_options`,
+`selection_limits_invalid`, `no_eligible_members`, and `transition_failed`.
+No member, grant, delivery, ballot, participation, selection, token, or URL
+fields belong in this resource.
 
-- `poll_not_draft`;
-- `poll_not_open`;
-- `selection_rules_invalid`;
-- `insufficient_options`;
-- `selection_limits_invalid`;
-- `no_eligible_members`;
-- `schedule_superseded`; and
-- `transition_failed`.
+## Resource and domain actions
 
-The schedule has a `belongs_to :poll` relationship and `Poll` has a
-`has_one :lifecycle_schedule` relationship. Deleting a user in the future must
-not delete schedule history; administrator accounts are currently disabled
-rather than deleted.
+Suggested resource actions are `:schedule`, `:execute`, `:cancel`, and
+`:execution_failed`. The execute action accepts no browser-controlled fields,
+requires pending state, and delegates to
+`Polly.Polls.Changes.ExecuteLifecycleTransition`. The final-error action accepts
+AshOban's error argument but stores only an allow-listed code.
 
-No ballot, participation, selection, member, eligibility, access-grant, or
-credential identifier belongs in this table.
-
-## Domain boundary
-
-Create a lifecycle scheduling service rather than constructing jobs in a
-LiveView:
+Administrator commands use a service boundary:
 
 ```elixir
 Polly.Polls.LifecycleScheduling.schedule(poll, attributes, actor)
-Polly.Polls.LifecycleScheduling.cancel_open(poll, actor)
-Polly.Polls.LifecycleScheduling.cancel_close(poll, actor)
-Polly.Polls.LifecycleScheduling.fetch(poll, actor)
+Polly.Polls.LifecycleScheduling.cancel(transition, actor)
+Polly.Polls.LifecycleScheduling.replace(transition, scheduled_at, actor)
+Polly.Polls.LifecycleScheduling.list_for_poll(poll, actor)
 ```
 
-The service must:
+The service authorizes, normalizes UTC input, validates poll state and ordering,
+cancels superseded rows, creates replacements, and appends audit events. It
+does not construct workers or insert Oban jobs.
 
-1. authorize the administrator for the relevant lifecycle permission;
-2. validate the poll state and normalized UTC times;
-3. create or update the schedule and increment its version transactionally;
-4. insert replacement Oban jobs carrying the new version;
-5. append an audit event; and
-6. return safe schedule state for presentation.
+The execution action reloads the poll and calls the existing `Poll.open` or
+`Poll.close` action. Readiness rules must not be copied into the trigger filter:
+the filter decides what is due; the action decides what is valid.
 
-Job insertion and schedule mutation should share the same repository
-transaction where supported. Old jobs do not need destructive deletion for
-correctness: version checking makes them stale. A best-effort cancellation may
-reduce queue clutter, but it must not be the safety mechanism.
+## AshOban trigger
 
-The service accepts only `open_at` and `close_at` from the UI. It owns version,
-state, completion, failure, and attribution fields.
-
-## Oban job design
-
-Add `Polly.Polls.LifecycleWorker` on a dedicated low-concurrency queue, for
-example:
+The target design is conceptually:
 
 ```elixir
-queues: [mailers: 5, poll_lifecycle: 1]
+oban do
+  triggers do
+    trigger :execute_due_transition do
+      action :execute
+      where expr(state == :pending and scheduled_at <= now())
+      read_action :read
+      worker_read_action :read_pending
+      scheduler_cron "* * * * *"
+      stream_with :full_read
+      queue :poll_lifecycle
+      max_attempts 5
+      on_error :execution_failed
+      shared_context [:job]
+
+      worker_module_name Polly.Polls.LifecycleTransitionWorker
+      scheduler_module_name Polly.Polls.LifecycleTransitionScheduler
+    end
+  end
+end
 ```
 
-One job represents one transition. Its arguments are deliberately small:
+Verify exact DSL against the installed version during Phase 0. Important
+choices:
 
-```elixir
-%{
-  "schedule_id" => schedule.id,
-  "transition" => "open",
-  "version" => schedule.version
-}
-```
+- Set stable worker/scheduler module names so refactors do not strand jobs.
+- Specify the cron explicitly; AshOban 0.8 otherwise defaults to every minute.
+- Evaluate `stream_with :full_read` because the filter changes with time.
+- Use a dedicated `poll_lifecycle: 1` queue.
+- Keep successful/cancelled/skipped/failed rows outside pending state.
+- Use job context only for bounded attempt/timing information.
+- Inspect persisted arguments for sensitive or unexpectedly broad actor data.
 
-Do not put titles, administrator email addresses, voter data, credentials, or
-date-time strings in job arguments. The worker loads authoritative state from
-the database.
+Outcomes are completed, cancelled, skipped, deterministic failure, transient
+retry, or already handled. `on_error` should do only the minimum safe terminal
+state update because failure handling can itself fail.
 
-Before applying a transition, the worker verifies:
+## Concurrency and idempotency
 
-- the schedule exists;
-- its version matches the job version;
-- the transition is still `scheduled`;
-- the corresponding requested time has arrived; and
-- the poll remains in the required lifecycle state.
+Generated workers reload the transition and require pending state. Existing
+Poll actions retain status validation. Cancellation and replacement move old
+rows out of the trigger condition. If a manual action commits first, generated
+execution records a skip; if generated execution commits first, the manual
+action receives the existing validation error.
 
-It then invokes the same domain transition used by manual actions. The worker
-must not reproduce readiness or lifecycle rules in ad hoc SQL.
+AshOban normally locks triggered records in a transaction. Phase 0 must verify
+its `lock_for_update?` behavior with AshSQLite. SQLite serialization helps but
+must not be the sole correctness mechanism.
 
-Worker outcomes:
+## Authorization and actor handling
 
-- `completed` — transition succeeded and actual completion time is recorded;
-- `discard`/safe success — job is stale, cancelled, or already completed;
-- `skipped` — a manual or earlier transition made the requested transition
-  inapplicable;
-- `failed` — a deterministic domain validation failed; record a safe code and
-  stop retrying; or
-- retry — a transient database or runtime failure occurred.
+Opening schedules require `:manage_polls`; closing schedules require
+`:publish_results`; configuring both requires both. Execution is trusted
+fulfillment of a previously authorized command and does not depend on an active
+browser session.
 
-Use bounded attempts and normal Oban backoff. Oban uniqueness is useful for
-reducing duplicate jobs, but version and state checks provide correctness.
+Phase 0 must compare:
 
-## Concurrency and transactions
+1. an `AshOban.PersistActor` that restores the configuring administrator; and
+2. a restricted system actor with `scheduled_by_id` retained for attribution.
 
-Scheduled and manual actions may race. Correctness relies on database state,
-not on which process checks first.
+Prefer the system actor if persisting an administrator would place unnecessary
+attributes in job arguments. Disabling the configuring administrator later
+does not silently cancel an authorized schedule. Document generated-worker and
+trusted calls in `Polly.Accounts.AuthorizationCoverage`.
 
-- The transition action retains its current status validation.
-- Schedule completion updates must verify the expected schedule version.
-- Only one successful forward lifecycle transition is possible.
-- If a manual action wins, the worker reloads state and marks its instruction
-  skipped or stale.
-- If the worker wins, a concurrent manual action receives the existing
-  user-facing lifecycle validation error.
+## Audit and observability
 
-SQLite writes are serialized, which helps on the current deployment, but the
-design must not depend exclusively on single-process execution. Tests should
-exercise repeat execution and stale versions even if true parallelism is
-limited by SQLite.
+Add `poll.lifecycle_scheduled`, `poll.lifecycle_schedule_replaced`,
+`poll.lifecycle_schedule_cancelled`, `poll.opened_automatically`,
+`poll.closed_automatically`, and `poll.lifecycle_schedule_failed`.
 
-## Authorization and trusted execution
+Configuration uses administrator attribution and `admin_ui`; execution uses
+`scheduled_job` and distinguishes executor from configurator. Safe metadata is
+limited to transition kind, requested/actual UTC time, and failure code. Never
+persist Oban arguments, raw errors, member data, credentials, or choices.
 
-Scheduling and cancelling opening requires `:manage_polls`. Scheduling or
-cancelling closing requires `:publish_results`, matching the existing manual
-actions. If one request configures both, the actor must hold both permissions.
-
-Authorization is evaluated when an administrator creates or edits a schedule.
-The durable worker is a trusted internal executor of that authorized command;
-it must not depend on the scheduling account still being signed in when the
-time arrives. The schedule retains `scheduled_by_id` for attribution.
-
-The worker boundary and every intentional `authorize?: false` call must be
-listed in `Polly.Accounts.AuthorizationCoverage` with a narrow reason.
-
-## Audit trail
-
-Add allow-listed events:
-
-- `poll.lifecycle_scheduled` with changed transition names and requested UTC
-  times;
-- `poll.lifecycle_schedule_updated` with changed transition names and new UTC
-  times;
-- `poll.lifecycle_schedule_cancelled` with cancelled transition names;
-- `poll.opened_automatically` with requested and actual execution times;
-- `poll.closed_automatically` with requested and actual execution times; and
-- `poll.lifecycle_schedule_failed` with transition and safe failure code.
-
-Configuration events use the administrator as actor and `admin_ui` as source.
-Execution events should preserve the scheduling administrator for historical
-attribution while setting source to `scheduled_job`. The UI should phrase this
-as “opened automatically from a schedule configured by …” rather than imply
-the administrator was present at execution time.
-
-If the audit model later gains a first-class system actor, automatic execution
-can use it and retain the scheduling administrator ID as safe metadata.
+Measure scheduled counts, execution delay, outcome, retry, and bounded failure
+codes. Failed transitions appear in dashboard Action Required, not only Oban
+Web.
 
 ## Administrator experience
 
-### Location
-
-Lifecycle controls are confusing when presented as result viewing actions.
-Introduce a poll **Overview** or **Lifecycle** section accessible from the poll
-list and poll detail tabs. Move manual Open and Close controls there as part of
-the UI iteration, while keeping Results focused on turnout, aggregates,
+Introduce a poll **Overview** or **Lifecycle** section. Move manual Open and
+Close controls out of Results so that Results focuses on turnout, aggregates,
 publication, and export.
 
-This relocation should be a separate, reviewable UI change; the scheduling
-domain must not depend on it.
+- Draft: readiness, UTC schedule form, pending transitions, and Open now.
+- Open: actual opening/duration, close scheduling, and Close now.
+- Closed: actual times and transition history; no new scheduling.
 
-### Draft poll
+Confirm normalized UTC values. Replacing or cancelling an imminent transition
+requires explicit confirmation. Show safe, actionable failures.
 
-The lifecycle panel shows:
+## Fly.io requirements
 
-- current `Draft` status;
-- current readiness checks;
-- optional opening and closing date-time inputs labelled `UTC`;
-- normalized schedule summary;
-- **Schedule lifecycle** confirmation; and
-- manual **Open now** action.
-
-If the poll is not currently ready, scheduling is allowed but the confirmation
-warns that opening will fail unless the listed issues are resolved before
-`open_at`.
-
-### Open poll
-
-The panel shows when the poll actually opened and how long it has been open. It
-allows a closing time to be added, edited, or cancelled, and retains **Close
-now**.
-
-### Closed poll
-
-The panel shows actual opening and closing times plus schedule history. No new
-lifecycle schedule may be created. Result publication remains in Results.
-
-### Confirmation and feedback
-
-Every create or edit confirmation repeats the UTC schedule. Cancellation is
-confirmed when it removes an imminent transition. Success messages distinguish
-configuration from execution:
-
-```text
-Poll opening scheduled for Sep 12, 2026 at 17:00 UTC.
-Scheduled closing cancelled. The poll remains open until closed manually.
-```
-
-A failed transition produces an Action Required item with a safe explanation
-and link to the lifecycle panel. It must never fail silently.
-
-### Poll list and dashboard
-
-Poll cards may show the next pending transition. The dashboard adds:
-
-- upcoming opening and closing items within a useful horizon;
-- failed lifecycle schedules under Action Required; and
-- links to the poll lifecycle panel.
-
-Do not run per-poll schedule queries from the template. Load schedule summaries
-through a bounded dashboard query.
-
-## Voter and result behavior
-
-- Before opening, voting links retain the current draft behavior.
-- Successful scheduled opening immediately uses the normal open-poll voting
-  behavior and broadcasts the existing status event.
-- Successful scheduled closing rejects new submissions through the existing
-  closed-poll validation and updates connected LiveViews through PubSub.
-- A voter already submitting at the boundary receives whichever result the
-  committed database ordering permits; no partially committed ballot is
-  created.
-- Closing does not publish results.
-- Public results remain unavailable until the existing explicit publication
-  requirements are met.
-- Anonymous and identified polls use exactly the same scheduling boundary.
-
-## Fly.io and operational requirements
-
-Oban persists scheduled jobs in the SQLite database on the Fly volume, so jobs
-survive application restarts and deployments. They cannot execute while every
-Machine is stopped or suspended.
-
-Before enabling this feature in production, Polly must either:
-
-- keep at least one Machine running (`min_machines_running = 1` and an
-  auto-stop policy compatible with that requirement); or
-- provide an external wake mechanism with explicitly documented delay and
-  reliability characteristics.
-
-The first production iteration should require an always-running Machine. The
-deployment guide must call this out because a health check passing during
-deployment does not guarantee timely future job execution.
-
-Oban Web remains useful for operators, but it is not the administrator-facing
-source of schedule state. Operational telemetry should include:
-
-- scheduled transition count by kind;
-- execution delay in milliseconds;
-- completed, skipped, stale, failed, and retried counts; and
-- safe failure codes.
-
-Alerts must not include job arguments or raw exception text.
-
-## Failure handling
-
-### Readiness failure at opening
-
-Mark the opening transition failed, retain the draft state, record an
-allow-listed failure code, append an audit event, emit telemetry, and surface
-Action Required. Do not repeatedly retry deterministic validation failures.
-
-An administrator can fix the poll and explicitly choose **Open now** or
-schedule a new future opening. Fixing readiness must not silently execute a
-previously failed instruction.
-
-### Application unavailable at the requested time
-
-When the application resumes, Oban executes the overdue job. Polly records the
-requested and actual times and exposes the delay. It does not skip solely
-because the scheduled time passed.
-
-### Database or transient runtime failure
-
-Return an Oban error for retry. Do not mark the schedule terminally failed
-until attempts are exhausted. The final attempt records a generic safe failure
-code and raises an operational alert.
-
-### Edited or cancelled schedule
-
-The old job observes a version mismatch and exits without modifying the poll.
-This is an expected stale outcome, not an administrator-facing error.
+AshOban still requires running scheduler and worker processes. Jobs and
+transition rows survive restart on the SQLite volume, but nothing executes
+while every Machine is stopped or suspended. Production enablement therefore
+requires `min_machines_running = 1` with compatible auto-stop settings, or a
+documented external wake mechanism. The first release requires an always-on
+Machine.
 
 ## Testing strategy
 
-### Resource and domain tests
+Phase 0 must prove:
 
-- accept a valid future opening, closing, and combined window;
-- reject past times and an inverted window;
-- reject opening schedules for open or closed polls;
-- reject closing schedules for closed polls;
-- enforce permission differences between opening and closing;
-- increment the version on edit and cancellation;
-- retain only safe bounded failure codes; and
-- ensure scheduling never changes poll status immediately.
+- AshOban integrates without changing existing invitation workers;
+- explicit generated module names and queue work;
+- due records execute and future/non-pending records do not;
+- persisted arguments contain no sensitive state;
+- SQLite locking, retries, restart recovery, and Oban Web work; and
+- completed records cannot execute twice.
 
-### Worker tests
-
-Use `Oban.Testing` and explicit times rather than sleeps:
-
-- a due opening transitions a ready draft to open;
-- a due closing transitions an open poll to closed;
-- early execution does not apply a transition;
-- duplicate execution is idempotent;
-- an old version is discarded;
-- a cancelled transition is discarded;
-- manual opening makes only the opening job stale and preserves closing;
-- manual closing makes pending lifecycle jobs stale;
-- deterministic readiness failure is recorded without retrying;
-- transient errors retry; and
-- jobs contain only schedule ID, transition, and version.
-
-### Audit and privacy tests
-
-- schedule changes are attributed to the administrator;
-- automatic events identify their scheduled-job source;
-- requested and actual times are present;
-- raw exceptions and unauthorized metadata are rejected;
-- logs, telemetry, jobs, and rendered HTML contain no voter credentials or
-  member-choice data; and
-- authorization coverage accounts for the worker and scheduling service.
-
-### LiveView tests
-
-- controls appear only for permitted roles and valid lifecycle states;
-- UTC labels and normalized confirmation values are visible;
-- validation errors do not crash the LiveView;
-- editing and cancelling refresh schedule state;
-- manual action confirmations explain their effect on pending schedules;
-- failed schedules render Action Required; and
-- Results no longer presents opening as a result-viewing concern after the
-  lifecycle UI is introduced.
-
-### Deployment tests
-
-- migrations preserve all existing polls;
-- scheduled jobs survive an application restart;
-- an overdue job executes after restart exactly once;
-- a release uses the persisted Fly volume database; and
-- deployment documentation verifies the always-running Machine requirement.
-
-## Rollout and observability
-
-1. Deploy the resource, migration, query boundary, and read-only presentation
-   with schedule creation disabled.
-2. Deploy worker execution and verify restart behavior in staging.
-3. Enable scheduling for owners and administrators behind application config.
-4. Monitor execution delay, failures, stale jobs, and duplicate attempts.
-5. Enable it by default after at least one real opening and closing window is
-   observed successfully.
-
-The feature flag controls creation and editing. Existing persisted schedules
-must continue to execute when the flag is disabled unless an owner explicitly
-cancels them; disabling UI creation must not strand previously authorized
-commands.
+Later suites cover time validation, role permissions, readiness failures,
+open/close execution, manual races, cancellation/replacement, `on_error`, audit
+attribution, PubSub, LiveView behavior, and leakage across jobs, logs, errors,
+telemetry, audits, and HTML. Use `Oban.Testing` and explicit times, never sleeps.
 
 ## Implementation phases
 
-### Phase 0 — State model and migration
+### Phase 0 — AshOban proof of concept
 
-- Add schedule and transition-state enums.
-- Add `LifecycleSchedule`, relationships, constraints, and migration.
-- Add read-only IEx examples for schedules.
-- Test defaults, identities, constraints, and preservation of existing polls.
+- Add `ash_oban` and integrate `AshOban.config/2` with existing Oban config.
+- Add a minimal transition state model.
+- Generate a trigger that marks a due test record completed without touching a
+  poll.
+- Inspect worker arguments and actor strategies.
+- Verify SQLite locking, retry, restart, tests, Oban Web, and coexistence.
+- Record a go/no-go decision with evidence.
 
-This PR contains no job execution or administrator mutation UI.
+This PR stays small and does not call `Poll.open` or `Poll.close`.
 
-### Phase 1 — Scheduling service
+### Phase 1 — Production resource and scheduling service
 
-- Add authorized create, edit, fetch, and cancel boundaries.
-- Normalize and validate UTC inputs.
-- Increment versions and enqueue version-pinned jobs transactionally.
-- Add schedule configuration audit events.
-- Cover permissions, validation, and safe job arguments.
+- Finalize enums, relationships, constraints, indexes, and migration.
+- Add authorized schedule, replace, cancel, and listing boundaries.
+- Add UTC and opening/closing-order validation.
+- Add configuration audits and update the IEx how-to.
 
-### Phase 2 — Durable lifecycle worker
+### Phase 2 — Real lifecycle execution
 
-- Add the dedicated Oban queue and worker.
-- Revalidate version, due time, schedule state, and poll lifecycle.
-- Call existing open and close transitions.
-- Persist completion, skip, and safe failure state.
-- Add idempotency, stale-job, retry, and race-condition tests.
+- Connect `:execute` to existing Poll open/close actions.
+- Add skip/failure classification and final-error handling.
+- Preserve lifecycle timestamps and PubSub.
+- Add retry, idempotency, race, and privacy tests.
 
-### Phase 3 — Poll lifecycle UI
+### Phase 3 — Lifecycle UI
 
-- Add an Overview or Lifecycle section.
-- Present readiness, UTC schedule controls, confirmation, edit, and cancel.
-- Move manual Open and Close controls out of Results.
-- Add permission-aware LiveView coverage.
+- Add Overview/Lifecycle routes and page.
+- Present readiness, UTC scheduling, replacement, cancellation, and history.
+- Move manual Open/Close out of Results.
+- Add permission-aware LiveView tests.
 
 ### Phase 4 — Dashboard, audit, and monitoring
 
-- Show next transitions and failed schedules on the dashboard.
-- Complete automatic execution audit presentation.
-- Emit execution outcome and delay telemetry.
-- Add operational documentation and safe diagnostics.
+- Show next transitions and failed work on the dashboard.
+- Complete audit humanization and filtering.
+- Add bounded telemetry and safe Oban Web diagnostics.
 
-### Phase 5 — Production hardening and release
+### Phase 5 — Production hardening
 
-- Verify restart and overdue execution behavior.
-- Update Fly.io documentation for an always-running Machine.
+- Verify overdue/restart behavior on Fly.io staging.
+- Document always-running worker availability.
 - Exercise anonymous and identified polls end to end.
-- Audit logs, jobs, telemetry, and rendered pages for sensitive data.
-- Complete the staged feature-flag rollout and update roadmap status.
+- Audit all persisted/rendered surfaces for sensitive information.
+- Roll out behind configuration and update roadmap status.
+
+## Go/no-go criteria
+
+Proceed after Phase 0 only if generated jobs work with AshSQLite and
+`Oban.Engines.Lite`, locking is understood, arguments satisfy privacy rules,
+cancellation/repetition are safe, module names survive refactors, tests remain
+clear, existing workers are unaffected, and operations are visible in Oban
+Web.
+
+Otherwise use the documented handwritten-worker alternative. Do not combine
+an AshOban scheduler and custom worker for the same transition without a
+specific documented ownership boundary.
 
 ## Acceptance criteria
 
-The feature is complete when:
-
-- an authorized administrator can schedule, edit, and cancel valid future
-  opening and closing transitions;
-- scheduled transitions survive restarts and execute through existing poll
-  lifecycle rules;
-- stale, duplicate, cancelled, manual-overtaken, and invalid jobs cannot apply
-  an incorrect transition;
-- administrators can see pending, completed, skipped, and failed state without
-  opening Oban Web;
-- manual and scheduled transitions produce clear audit history;
-- closing never publishes results automatically;
-- schedule handling works identically for identified and anonymous polls;
-- no schedule artifact contains voter credentials or choice data;
-- production cannot enable scheduling without documented worker availability;
-  and
-- all resource, worker, authorization, audit, privacy, LiveView, migration, and
-  deployment tests pass.
+The feature is complete when administrators can schedule, replace, and cancel
+valid transitions; AshOban-generated workers execute existing lifecycle actions
+without a custom lifecycle worker; retries, races, stale work, and cancellation
+cannot apply an incorrect transition; state and failures are visible outside
+Oban Web; audit attribution is clear; closing never publishes results;
+anonymous and identified polls behave consistently; no sensitive voter data
+enters jobs or diagnostics; and all compatibility, domain, authorization,
+audit, privacy, LiveView, migration, and deployment tests pass.
 
 ## Open questions
 
-1. Should the initial production release accept UTC only, or should an
-   installation-wide time zone be required before enabling it?
-2. How close to execution should cancellation require an extra confirmation?
-3. Should invitation delivery optionally be scheduled relative to opening in a
-   later feature, or remain entirely independent?
-4. Should a failed opening automatically cancel its later closing instruction,
-   instead of allowing that job to record a lifecycle skip?
-5. Should operators receive an external notification for terminal schedule
-   failures, beyond dashboard and telemetry alerts?
+1. Is every-minute detection sufficient?
+2. Should execution restore the administrator or use a system actor?
+3. Does AshSQLite support default AshOban locking adequately?
+4. Should opening failure automatically cancel its close transition?
+5. Should future time zones be installation-wide or administrator-specific?
+
+## Related documentation
+
+- [AshOban documentation](https://ash-oban.hexdocs.pm/readme.html)
+- [AshOban triggers and scheduled actions](https://ash-oban.hexdocs.pm/triggers-and-scheduled-actions.html)
+- [Email invitation delivery specification](email-invitation-delivery-spec.md)
+- [Administrator audit trail specification](admin-audit-trail-spec.md)
+- [Fly.io deployment guide](flyio-deployment.md)

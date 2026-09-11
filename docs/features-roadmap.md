@@ -19,7 +19,7 @@ Status labels:
 
 - **Proposed — Delivery-status CSV export:** export member, eligibility, and invitation status without working voting credentials.
 - **Specified — [Poll archiving](poll-archiving-spec.md):** hide completed polls from normal administration while retaining their history.
-- **Specified — [Scheduled opening and closing](scheduled-poll-lifecycle-spec.md):** configure durable, version-pinned lifecycle jobs with explicit UTC timing, execution-time validation, and visible failure state.
+- **Specified — [Scheduled opening and closing](scheduled-poll-lifecycle-spec.md):** use AshOban-triggered transition resources with explicit UTC timing, execution-time validation, idempotency, and visible failure state.
 - **Specified — [Reminder emails](reminder-email-spec.md):** notify eligible members who have not voted without revealing their selections.
 
 ## Poll configuration
