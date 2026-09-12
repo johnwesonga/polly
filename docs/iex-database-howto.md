@@ -820,18 +820,57 @@ Poll
 |>  Ash.read!(authorize?: false)
 ```
 
-## 13. Inspect scheduled lifecycle proof-of-concept records
+## 13. Configure and inspect scheduled lifecycle transitions
 
-Phase 0 persists lifecycle transition records but deliberately does not open or
-close polls yet:
+Use the scheduling service so authorization, ordering, auditing, uniqueness,
+and generated-job creation remain in one boundary. Times are normalized to UTC
+and must be between one minute and one year in the future:
 
 ```elixir
-alias Polly.Polls.LifecycleTransition
+alias Polly.Polls.{LifecycleScheduling, LifecycleTransition}
+
+opens_at = DateTime.add(DateTime.utc_now(), 2 * 60 * 60, :second)
+closes_at = DateTime.add(DateTime.utc_now(), 7 * 24 * 60 * 60, :second)
+
+{:ok, opening} =
+  LifecycleScheduling.schedule(
+    poll,
+    %{kind: :open, scheduled_at: opens_at},
+    actor
+  )
+
+{:ok, closing} =
+  LifecycleScheduling.schedule(
+    poll,
+    %{kind: :close, scheduled_at: closes_at},
+    actor
+  )
+```
+
+Retrieve the poll's complete transition history:
+
+```elixir
+{:ok, transitions} = LifecycleScheduling.list_for_poll(poll, actor)
+```
+
+Replace or cancel a pending transition:
+
+```elixir
+{:ok, replacement} =
+  LifecycleScheduling.replace(opening, DateTime.add(opens_at, 60 * 60, :second), actor)
+
+{:ok, cancelled} = LifecycleScheduling.cancel(closing, actor)
+```
+
+For trusted local diagnostics, query the resource directly:
+
+```elixir
 
 transitions =
   LifecycleTransition
+  |> Ash.Query.filter(poll_id == ^poll.id)
   |> Ash.Query.sort(scheduled_at: :asc)
-  |> Ash.read!(authorize?: false)
+  |> Ash.read!(actor: actor)
 ```
 
 Inspect only the bounded scheduling state:
@@ -840,12 +879,19 @@ Inspect only the bounded scheduling state:
 Enum.map(transitions, fn transition ->
   %{
     id: transition.id,
+    poll_id: transition.poll_id,
+    kind: transition.kind,
     state: transition.state,
     scheduled_at: transition.scheduled_at,
-    completed_at: transition.completed_at
+    scheduled_by_id: transition.scheduled_by_id,
+    completed_at: transition.completed_at,
+    cancelled_at: transition.cancelled_at,
+    replaces_transition_id: transition.replaces_transition_id,
+    failure_code: transition.failure_code
   }
 end)
 ```
 
-Do not create or enqueue these proof-of-concept records manually in production.
-Phase 1 introduces the authorized scheduling boundary and poll relationship.
+Do not create `LifecycleTransition` or Oban job records directly. Phase 1's
+generated worker does not yet open or close the poll; real execution is added
+in Phase 2.

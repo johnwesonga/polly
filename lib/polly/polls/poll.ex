@@ -234,6 +234,10 @@ defmodule Polly.Polls.Poll do
       destination_attribute :poll_id
     end
 
+    has_many :lifecycle_transitions, Polly.Polls.LifecycleTransition do
+      destination_attribute :poll_id
+    end
+
     has_many :options, Polly.Polls.Option do
       destination_attribute :poll_id
       sort position: :asc

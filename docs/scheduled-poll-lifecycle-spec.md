@@ -2,8 +2,8 @@
 
 ## Status
 
-Phase 0 proof of concept implemented. Production poll lifecycle integration has
-not started.
+Phases 0 and 1 implemented. Production poll lifecycle execution begins in
+Phase 2.
 
 This feature is Polly's proposed greenfield evaluation of AshOban. It begins
 with a contained proof of concept before touching the production poll
@@ -398,6 +398,28 @@ service exist.
 - Add authorized schedule, replace, cancel, and listing boundaries.
 - Add UTC and opening/closing-order validation.
 - Add configuration audits and update the IEx how-to.
+
+#### Phase 1 implementation notes
+
+- `LifecycleTransition` now records its poll, `:open` or `:close` kind,
+  configuring administrator, replacement lineage, outcome timestamps, and safe
+  failure code.
+- Partial and supporting SQLite indexes enforce one pending transition per poll
+  and kind and support poll-history and due-work queries.
+- `LifecycleScheduling` provides permission-gated schedule, replace, cancel,
+  and list operations with a one-minute lead time and one-year horizon.
+- Opening and closing order is validated whenever either transition is created
+  or replaced.
+- Configuration changes append semantic audit events without storing job
+  arguments, actor details, credentials, or voter data.
+- Replacement preserves the cancelled record and its already-enqueued job;
+  execution-time state filtering safely cancels that stale job.
+- The Phase 1 migration removes any poll-free Phase 0 probe rows because they
+  cannot be converted into valid production lifecycle commands.
+
+The generated worker still only completes the transition record and does not
+change the poll. Phase 2 replaces that proof action with real, classified
+lifecycle execution.
 
 ### Phase 2 — Real lifecycle execution
 

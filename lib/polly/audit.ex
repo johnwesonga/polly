@@ -34,6 +34,14 @@ defmodule Polly.Audit do
     ],
     "poll.opened" => [:old_status, :new_status],
     "poll.closed" => [:old_status, :new_status],
+    "poll.lifecycle_scheduled" => [:transition_kind, :scheduled_for],
+    "poll.lifecycle_schedule_replaced" => [
+      :transition_kind,
+      :scheduled_for,
+      :previous_scheduled_for,
+      :replaced_transition_id
+    ],
+    "poll.lifecycle_schedule_cancelled" => [:transition_kind, :scheduled_for],
     "poll.results_published" => [],
     "poll.results_made_public" => [:old_visibility, :new_visibility],
     "poll.results_made_credentialed" => [:old_visibility, :new_visibility],
@@ -156,6 +164,15 @@ defmodule Polly.Audit do
 
       "poll.closed" ->
         "closed “#{event.target_label}”"
+
+      "poll.lifecycle_scheduled" ->
+        "scheduled #{event.metadata["transition_kind"]} for “#{event.target_label}”"
+
+      "poll.lifecycle_schedule_replaced" ->
+        "rescheduled #{event.metadata["transition_kind"]} for “#{event.target_label}”"
+
+      "poll.lifecycle_schedule_cancelled" ->
+        "cancelled scheduled #{event.metadata["transition_kind"]} for “#{event.target_label}”"
 
       "poll.results_published" ->
         "published results for “#{event.target_label}”"

@@ -104,8 +104,9 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       },
       Polly.Polls.LifecycleTransition => %{
         read: {:any, [:manage_polls, :publish_results]},
-        create_proof_of_concept: {:trusted, "scheduled lifecycle Phase 0 test setup"},
-        complete_proof_of_concept: {:trusted, "AshOban scheduled lifecycle worker"}
+        schedule: {:trusted, "authorized lifecycle scheduling service"},
+        execute: {:trusted, "AshOban scheduled lifecycle worker"},
+        cancel: {:trusted, "authorized lifecycle scheduling service"}
       },
       Polly.Polls.Option => %{
         read: {:any, [:manage_polls, :view_results]},
@@ -176,6 +177,11 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       {Polly.Polls.Invitations, :enqueue_reminders} => {:permission, :send_invitations},
       {Polly.Polls.Duplicator, :duplicate} => {:permission, :manage_polls},
       {Polly.Polls.Duplicator, :preview} => {:permission, :manage_polls},
+      {Polly.Polls.LifecycleScheduling, :schedule} => {:any, [:manage_polls, :publish_results]},
+      {Polly.Polls.LifecycleScheduling, :replace} => {:any, [:manage_polls, :publish_results]},
+      {Polly.Polls.LifecycleScheduling, :cancel} => {:any, [:manage_polls, :publish_results]},
+      {Polly.Polls.LifecycleScheduling, :list_for_poll} =>
+        {:any, [:manage_polls, :publish_results]},
       {Polly.Polls.Electorate, :include_member} => {:permission, :manage_electorates},
       {Polly.Polls.Electorate, :reissue} => {:permission, :manage_access_grants},
       {Polly.Polls.Electorate, :issue} => {:permission, :manage_access_grants},
@@ -232,6 +238,10 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       "lib/polly/polls/invitation_worker.ex" => %{
         count: 11,
         reason: "trusted Oban worker processing an authorized durable command"
+      },
+      "lib/polly/polls/lifecycle_scheduling.ex" => %{
+        count: 2,
+        reason: "permission-gated lifecycle scheduling transaction"
       },
       "lib/polly/polls/participation.ex" => %{
         count: 1,
