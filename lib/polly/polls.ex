@@ -14,6 +14,7 @@ defmodule Polly.Polls do
     resource Polly.Polls.Ballot
     resource Polly.Polls.Eligibility
     resource Polly.Polls.InvitationDelivery
+    resource Polly.Polls.LifecycleTransition
     resource Polly.Polls.Option
     resource Polly.Polls.Participation
     resource Polly.Polls.Poll

@@ -71,6 +71,7 @@ defmodule Polly.MixProject do
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
       {:oban, "~> 2.20"},
+      {:ash_oban, "~> 0.8"},
       {:oban_web, "~> 2.12"},
       {:nimble_csv, "~> 1.2"},
       {:telemetry_metrics, "~> 1.0"},

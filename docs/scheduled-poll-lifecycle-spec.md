@@ -2,7 +2,8 @@
 
 ## Status
 
-Specified. No implementation has started.
+Phase 0 proof of concept implemented. Production poll lifecycle integration has
+not started.
 
 This feature is Polly's proposed greenfield evaluation of AshOban. It begins
 with a contained proof of concept before touching the production poll
@@ -11,9 +12,9 @@ lifecycle.
 ## Summary
 
 Allow administrators to schedule future poll opening and closing. Each request
-is persisted as an Ash resource. AshOban periodically finds due transition
-records, generates and runs Oban jobs, and invokes an Ash action that applies
-the existing poll lifecycle rules.
+is persisted as an Ash resource and immediately handed to an AshOban-generated
+worker with its requested execution time. The worker later reloads the record
+and invokes an Ash action that applies the existing poll lifecycle rules.
 
 This is intentionally an **AshOban implementation**, not a handwritten
 `Oban.Worker` implementation. Polly still owns its lifecycle rules, audit
@@ -35,8 +36,8 @@ Scheduled lifecycle transitions naturally fit AshOban's resource-driven model:
 
 ```text
 persist pending transition
+→ schedule its generated AshOban worker for the requested time
 → transition becomes due
-→ AshOban finds it
 → generated worker invokes an Ash action
 → action updates poll and transition
 → record no longer matches the trigger
@@ -168,9 +169,8 @@ Closes: 2026-09-19 17:00 UTC
 ```
 
 Persist `:utc_datetime_usec`. Use a configurable one-minute lead time and
-one-year horizon. An every-minute trigger provides minute-level best-effort
-execution; copy says “scheduled for,” not “will open exactly at.” Record both
-requested and actual times.
+one-year horizon. Execution remains best effort; copy says “scheduled for,” not
+“will open exactly at.” Record both requested and actual times.
 
 An overdue transition runs after the application resumes. Future time-zone
 support must use a maintained time-zone database and define daylight-saving
@@ -242,8 +242,7 @@ oban do
       where expr(state == :pending and scheduled_at <= now())
       read_action :read
       worker_read_action :read_pending
-      scheduler_cron "* * * * *"
-      stream_with :full_read
+      scheduler_cron false
       queue :poll_lifecycle
       max_attempts 5
       on_error :execution_failed
@@ -260,8 +259,9 @@ Verify exact DSL against the installed version during Phase 0. Important
 choices:
 
 - Set stable worker/scheduler module names so refactors do not strand jobs.
-- Specify the cron explicitly; AshOban 0.8 otherwise defaults to every minute.
-- Evaluate `stream_with :full_read` because the filter changes with time.
+- Set `scheduler_cron false`; AshOban 0.8 otherwise defaults to every minute.
+- Schedule the generated worker directly at `scheduled_at` when the transition
+  is created or replaced.
 - Use a dedicated `poll_lifecycle: 1` queue.
 - Keep successful/cancelled/skipped/failed rows outside pending state.
 - Use job context only for bounded attempt/timing information.
@@ -367,6 +367,31 @@ telemetry, audits, and HTML. Use `Oban.Testing` and explicit times, never sleeps
 
 This PR stays small and does not call `Poll.open` or `Poll.close`.
 
+#### Phase 0 findings
+
+- AshOban 0.8.14 is integrated through `AshOban.config/2` alongside Polly's
+  existing handwritten invitation workers.
+- The trigger has `scheduler_cron false`; creating a production schedule will
+  enqueue its generated worker directly for the transition's `scheduled_at`.
+- The generated worker uses the stable module name
+  `Polly.Polls.LifecycleTransitionWorker` and the dedicated
+  `poll_lifecycle` queue.
+- Worker arguments contain only the transition primary key and empty AshOban
+  bookkeeping maps. No actor, poll, member, ballot, credential, or choice data
+  is persisted in the proof-of-concept job.
+- A pending record completes once; a stale job is cancelled after the record
+  leaves the pending state.
+- `Oban.Engines.Lite`, AshSQLite, manual Oban testing, and the existing Oban Web
+  installation coexist successfully in the focused test suite.
+- Phase 0 uses no persisted actor. Phase 1 will retain the configuring
+  administrator on the transition record while automatic execution uses a
+  restricted trusted boundary.
+
+**Decision:** proceed to Phase 1. The proof of concept found no need for a
+feature-specific handwritten worker. Transaction races and restart behavior
+still require production-level tests once the poll relationship and scheduling
+service exist.
+
 ### Phase 1 — Production resource and scheduling service
 
 - Finalize enums, relationships, constraints, indexes, and migration.
@@ -427,7 +452,7 @@ audit, privacy, LiveView, migration, and deployment tests pass.
 
 ## Open questions
 
-1. Is every-minute detection sufficient?
+1. What execution-delay threshold should production telemetry alert on?
 2. Should execution restore the administrator or use a system actor?
 3. Does AshSQLite support default AshOban locking adequately?
 4. Should opening failure automatically cancel its close transition?

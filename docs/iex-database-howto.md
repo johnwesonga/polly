@@ -819,3 +819,33 @@ Poll
 |> Ash.Query.load([:participations, ballots: [:selections]]) |> Ash.Query.filter(id == ^poll_id) 
 |>  Ash.read!(authorize?: false)
 ```
+
+## 13. Inspect scheduled lifecycle proof-of-concept records
+
+Phase 0 persists lifecycle transition records but deliberately does not open or
+close polls yet:
+
+```elixir
+alias Polly.Polls.LifecycleTransition
+
+transitions =
+  LifecycleTransition
+  |> Ash.Query.sort(scheduled_at: :asc)
+  |> Ash.read!(authorize?: false)
+```
+
+Inspect only the bounded scheduling state:
+
+```elixir
+Enum.map(transitions, fn transition ->
+  %{
+    id: transition.id,
+    state: transition.state,
+    scheduled_at: transition.scheduled_at,
+    completed_at: transition.completed_at
+  }
+end)
+```
+
+Do not create or enqueue these proof-of-concept records manually in production.
+Phase 1 introduces the authorized scheduling boundary and poll relationship.

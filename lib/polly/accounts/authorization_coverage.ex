@@ -102,6 +102,11 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         make_results_public: {:permission, :publish_results},
         make_results_credentialed: {:permission, :publish_results}
       },
+      Polly.Polls.LifecycleTransition => %{
+        read: {:any, [:manage_polls, :publish_results]},
+        create_proof_of_concept: {:trusted, "scheduled lifecycle Phase 0 test setup"},
+        complete_proof_of_concept: {:trusted, "AshOban scheduled lifecycle worker"}
+      },
       Polly.Polls.Option => %{
         read: {:any, [:manage_polls, :view_results]},
         create: {:permission, :manage_polls},
