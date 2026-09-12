@@ -1,10 +1,9 @@
 defmodule PollyWeb.PollLive.Results do
   @moduledoc """
-  Presents live administrator results and poll lifecycle controls.
+  Presents live administrator poll results and publication controls.
 
   The LiveView subscribes to poll events, renders mode-aware aggregate results,
-  and exposes authorized actions for opening, closing, publishing, sharing, and
-  exporting results.
+  and exposes authorized actions for publishing, sharing, and exporting results.
   """
 
   use PollyWeb, :live_view
@@ -29,7 +28,6 @@ defmodule PollyWeb.PollLive.Results do
      |> assign(:publish_results?, Polly.Accounts.Authorization.allowed?(actor, :publish_results))
      |> assign(:export_results?, Polly.Accounts.Authorization.allowed?(actor, :export_results))
      |> assign(:poll, poll)
-     |> assign(:confirming_open?, false)
      |> assign(:confirming_export?, false)
      |> load_results()}
   end
@@ -77,13 +75,16 @@ defmodule PollyWeb.PollLive.Results do
           >
             Voter access
           </.link>
+          <.link navigate={~p"/admin/polls/#{@poll.id}/lifecycle"} class="phase-tab">
+            Lifecycle
+          </.link>
           <span class="phase-tab current">Results</span>
         </div>
 
-        <div id="poll-lifecycle-controls" class="card card-pad lifecycle-card">
+        <div id="poll-results-actions" class="card card-pad lifecycle-card">
           <div>
-            <h3>Poll lifecycle</h3>
-            <p class="admin-sub lifecycle-copy">{lifecycle_copy(@poll)}</p>
+            <h3>Results actions</h3>
+            <p class="admin-sub lifecycle-copy">{results_action_copy(@poll)}</p>
             <p :if={@poll.status == :open} id="poll-open-timing" class="poll-meta">
               {PollyWeb.PollTiming.summary(@poll.opened_at)}
             </p>
@@ -95,30 +96,13 @@ defmodule PollyWeb.PollLive.Results do
               {PollyWeb.PollTiming.publication_summary(@poll.results_published_at)}
             </p>
           </div>
-          <button
-            :if={@manage_polls? && @poll.status == :draft}
-            id="open-poll-button"
-            type="button"
-            phx-click={if(@poll.privacy_mode == :anonymous, do: "prepare-open", else: "open")}
-            data-confirm={
-              if(@poll.privacy_mode == :identified,
-                do: "Open this poll? Options and electorate will be frozen."
-              )
-            }
-            class="btn btn-coral"
+          <.link
+            id="manage-poll-lifecycle-link"
+            navigate={~p"/admin/polls/#{@poll.id}/lifecycle"}
+            class="btn btn-outline"
           >
-            Open poll
-          </button>
-          <button
-            :if={@publish_results? && @poll.status == :open}
-            id="close-poll-button"
-            type="button"
-            phx-click="close"
-            data-confirm="Close this poll? No more ballots will be accepted."
-            class="btn btn-ghost close-poll-button"
-          >
-            Close poll
-          </button>
+            Manage lifecycle
+          </.link>
           <button
             :if={@publish_results? && @poll.status == :closed && is_nil(@poll.results_published_at)}
             id="publish-results-button"
@@ -167,55 +151,6 @@ defmodule PollyWeb.PollLive.Results do
             Participation and ballot totals do not match. Review system integrity before
             publishing or exporting these results. No individual records have been correlated.
           </span>
-        </div>
-
-        <div
-          :if={@confirming_open?}
-          id="anonymous-open-confirmation-overlay"
-          class="invitation-confirmation-overlay"
-          phx-window-keydown="cancel-open"
-          phx-key="escape"
-        >
-          <section
-            id="anonymous-open-confirmation"
-            class="card card-pad invitation-confirmation"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="anonymous-open-confirmation-title"
-          >
-            <div class="m-eyebrow">Anonymous choices</div>
-            <h2 id="anonymous-open-confirmation-title" class="admin-h2">
-              Confirm anonymous poll opening
-            </h2>
-            <p class="admin-sub">
-              Once voting opens, the privacy mode cannot be changed. Polly will not be able to
-              associate submitted choices with members.
-            </p>
-            <div class="callout amber invitation-private-warning">
-              <.icon name="hero-lock-closed" class="size-5" />
-              <span>
-                Options and the electorate will also be frozen. This action cannot be undone.
-              </span>
-            </div>
-            <div class="invitation-confirmation-actions">
-              <button
-                id="cancel-anonymous-open"
-                type="button"
-                phx-click="cancel-open"
-                class="btn btn-outline"
-              >
-                Keep as draft
-              </button>
-              <button
-                id="confirm-anonymous-open"
-                type="button"
-                phx-click="confirm-open"
-                class="btn btn-coral"
-              >
-                Open anonymous poll
-              </button>
-            </div>
-          </section>
         </div>
 
         <div :if={@poll.status == :closed} id="result-visibility" class="card card-pad lifecycle-card">
@@ -410,28 +345,6 @@ defmodule PollyWeb.PollLive.Results do
   end
 
   @impl true
-  def handle_event("open", _params, socket), do: transition(socket, :open, "Poll opened")
-
-  def handle_event("prepare-open", _params, socket) do
-    if socket.assigns.poll.status == :draft and socket.assigns.poll.privacy_mode == :anonymous do
-      {:noreply, assign(socket, :confirming_open?, true)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("cancel-open", _params, socket) do
-    {:noreply, assign(socket, :confirming_open?, false)}
-  end
-
-  def handle_event("confirm-open", _params, socket) do
-    socket
-    |> assign(:confirming_open?, false)
-    |> transition(:open, "Anonymous poll opened")
-  end
-
-  def handle_event("close", _params, socket), do: transition(socket, :close, "Poll closed")
-
   def handle_event("publish", _params, socket),
     do: transition(socket, :publish_results, "Results published")
 
@@ -518,16 +431,17 @@ defmodule PollyWeb.PollLive.Results do
 
   defp result_value(row, :single), do: "#{row.votes} · #{format_percentage(row.percentage)}"
 
-  defp lifecycle_copy(%Poll{status: :draft}),
-    do: "Opening freezes options and electorate and makes private voting links live."
+  defp results_action_copy(%Poll{status: :draft}),
+    do: "Results become available after the poll opens."
 
-  defp lifecycle_copy(%Poll{status: :open}),
-    do: "Voting is live. Closing is final and immediately stops new submissions."
+  defp results_action_copy(%Poll{status: :open}),
+    do: "Provisional aggregate results are available while voting is live."
 
-  defp lifecycle_copy(%Poll{results_published_at: published_at}) when not is_nil(published_at),
-    do: "Final results are visible to members with valid access links."
+  defp results_action_copy(%Poll{results_published_at: published_at})
+       when not is_nil(published_at),
+       do: "Final results are visible to members with valid access links."
 
-  defp lifecycle_copy(%Poll{status: :closed}),
+  defp results_action_copy(%Poll{status: :closed}),
     do: "Voting is closed. Review the final totals before publishing them to members."
 
   defp visibility_copy(%Poll{result_visibility: :public, results_published_at: nil}),

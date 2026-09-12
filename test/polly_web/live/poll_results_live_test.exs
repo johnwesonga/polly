@@ -9,19 +9,20 @@ defmodule PollyWeb.PollResultsLiveTest do
              live(conn, ~p"/admin/polls/#{Ecto.UUID.generate()}/results")
   end
 
-  test "opens, closes, and explicitly publishes a configured poll", %{conn: conn} do
+  test "publishes a closed poll and links to lifecycle management", %{conn: conn} do
     {conn, actor} = register_and_log_in_administrator(conn)
     fixture = draft_poll!(actor, "Lifecycle controls")
 
-    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{fixture.poll.id}/results")
+    poll =
+      fixture.poll
+      |> Ash.update!(%{}, action: :open, actor: actor)
+      |> Ash.update!(%{}, action: :close, actor: actor)
 
-    assert has_element?(view, "#open-poll-button")
-    view |> element("#open-poll-button") |> render_click()
-    assert has_element?(view, "#poll-results-status", "open")
-    assert has_element?(view, "#close-poll-button")
+    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/results")
 
-    view |> element("#close-poll-button") |> render_click()
-    assert has_element?(view, "#poll-results-status", "closed")
+    assert has_element?(view, "#manage-poll-lifecycle-link")
+    refute has_element?(view, "#open-poll-button")
+    refute has_element?(view, "#close-poll-button")
     assert has_element?(view, "#publish-results-button")
 
     view |> element("#publish-results-button") |> render_click()
@@ -29,37 +30,6 @@ defmodule PollyWeb.PollResultsLiveTest do
     assert has_element?(view, "#results-publication-timing", "Published")
     assert has_element?(view, "#poll-duration", "less than a minute")
     refute has_element?(view, "#publish-results-button")
-  end
-
-  test "requires explicit confirmation before opening an anonymous poll", %{conn: conn} do
-    {conn, actor} = register_and_log_in_administrator(conn)
-    fixture = draft_poll!(actor, "Anonymous lifecycle")
-
-    poll =
-      Ash.update!(
-        fixture.poll,
-        %{privacy_mode: :anonymous},
-        action: :update_draft,
-        actor: actor
-      )
-
-    {:ok, view, _html} = live(conn, ~p"/admin/polls/#{poll.id}/results")
-
-    assert has_element?(view, "#poll-results-privacy", "Anonymous choices")
-    view |> element("#open-poll-button") |> render_click()
-
-    assert has_element?(view, "#anonymous-open-confirmation", "cannot be changed")
-    assert has_element?(view, "#anonymous-open-confirmation", "cannot be undone")
-    assert Ash.get!(Poll, poll.id, actor: actor).status == :draft
-
-    view |> element("#cancel-anonymous-open") |> render_click()
-    refute has_element?(view, "#anonymous-open-confirmation")
-
-    view |> element("#open-poll-button") |> render_click()
-    view |> element("#confirm-anonymous-open") |> render_click()
-
-    assert has_element?(view, "#poll-results-status", "open")
-    assert Ash.get!(Poll, poll.id, actor: actor).status == :open
   end
 
   test "shows poll-scoped result totals and turnout", %{conn: conn} do

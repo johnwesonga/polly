@@ -70,6 +70,7 @@ defmodule PollyWeb.PollLive.Electorate do
           <.link navigate={~p"/admin/polls/#{@poll.id}/options"} class="phase-tab">Options</.link>
           <span class="phase-tab current">Electorate</span>
           <.link navigate={~p"/admin/polls/#{@poll.id}/access"} class="phase-tab">Voter access</.link>
+          <.link navigate={~p"/admin/polls/#{@poll.id}/lifecycle"} class="phase-tab">Lifecycle</.link>
           <.link navigate={~p"/admin/polls/#{@poll.id}/results"} class="phase-tab">Results</.link>
         </div>
 

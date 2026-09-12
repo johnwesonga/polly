@@ -63,6 +63,7 @@ defmodule PollyWeb.Router do
       live "/admin/polls/:id/options", PollLive.Options, :index
       live "/admin/polls/:id/electorate", PollLive.Electorate, :index
       live "/admin/polls/:id/access", PollLive.Access, :index
+      live "/admin/polls/:id/lifecycle", PollLive.Lifecycle, :index
       live "/admin/polls/:id/results", PollLive.Results, :index
     end
   end

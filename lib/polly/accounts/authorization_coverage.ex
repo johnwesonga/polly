@@ -29,10 +29,12 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       PollyWeb.PollLive.Electorate => {:permission, :manage_electorates},
       PollyWeb.PollLive.Access =>
         {:all, [:manage_access_grants], event_permissions: [send: :send_invitations]},
+      PollyWeb.PollLive.Lifecycle =>
+        {:any, [:manage_polls, :publish_results],
+         event_permissions: [open: :manage_polls, close: :publish_results]},
       PollyWeb.PollLive.Results =>
         {:all, [:view_results],
          event_permissions: [
-           {:open, :manage_polls},
            {:publish, :publish_results},
            {:export, :export_results},
            {:"make-results-public", :publish_results},

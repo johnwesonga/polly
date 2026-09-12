@@ -69,6 +69,7 @@ defmodule PollyWeb.PollLive.Options do
             Electorate
           </.link>
           <.link navigate={~p"/admin/polls/#{@poll.id}/access"} class="phase-tab">Voter access</.link>
+          <.link navigate={~p"/admin/polls/#{@poll.id}/lifecycle"} class="phase-tab">Lifecycle</.link>
           <.link navigate={~p"/admin/polls/#{@poll.id}/results"} class="phase-tab">Results</.link>
         </div>
 

@@ -65,6 +65,16 @@ defmodule Polly.Accounts.AuthorizationCoverageTest do
     assert MapSet.subset?(MapSet.new(permissions), known)
   end
 
+  defp assert_valid_classification({:any, permissions, options}, known) do
+    assert permissions != []
+    assert MapSet.subset?(MapSet.new(permissions), known)
+
+    options
+    |> Keyword.get(:event_permissions, [])
+    |> Keyword.values()
+    |> Enum.each(&assert(&1 in known))
+  end
+
   defp assert_valid_classification({:all, permissions, options}, known) do
     assert permissions != []
     assert MapSet.subset?(MapSet.new(permissions), known)

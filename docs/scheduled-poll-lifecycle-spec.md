@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 0 through 2 implemented. Lifecycle UI work begins in Phase 3.
+Phases 0 through 3 implemented.
 
 This feature is Polly's proposed greenfield evaluation of AshOban. It begins
 with a contained proof of concept before touching the production poll
@@ -451,6 +451,8 @@ Phase 2.
   bounded audit/job data.
 
 ### Phase 3 — Lifecycle UI
+
+**Implemented.**
 
 - Add Overview/Lifecycle routes and page.
 - Present readiness, UTC scheduling, replacement, cancellation, and history.
