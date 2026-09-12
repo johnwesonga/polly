@@ -3,9 +3,8 @@ defmodule Polly.Polls.LifecycleTransition do
   Persists a scheduled poll lifecycle transition.
 
   It records who configured an opening or closing transition, when it should
-  run, and its eventual outcome. The generated AshOban worker remains a
-  harmless state-transition proof of concept until Phase 2 connects it to the
-  poll lifecycle.
+  run, and its eventual outcome. Its generated AshOban worker applies the
+  existing poll lifecycle actions and records safe terminal outcomes.
   """
 
   use Ash.Resource,
@@ -42,7 +41,8 @@ defmodule Polly.Polls.LifecycleTransition do
         worker_read_action(:read)
         scheduler_cron(false)
         queue(:poll_lifecycle)
-        max_attempts(1)
+        max_attempts(5)
+        on_error(:execution_failed)
         trigger_once?(true)
         actor_persister(:none)
         worker_module_name(Polly.Polls.LifecycleTransitionWorker)
@@ -63,8 +63,16 @@ defmodule Polly.Polls.LifecycleTransition do
       accept []
       require_atomic? false
       validate attribute_equals(:state, :pending)
-      change set_attribute(:state, :completed)
-      change set_attribute(:completed_at, &DateTime.utc_now/0)
+      change Polly.Polls.Changes.ExecuteLifecycleTransition
+    end
+
+    update :execution_failed do
+      public? false
+      accept []
+      require_atomic? false
+      argument :error, :term, allow_nil?: false, sensitive?: true
+      validate attribute_equals(:state, :pending)
+      change Polly.Polls.Changes.FailLifecycleTransition
     end
 
     update :cancel do

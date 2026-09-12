@@ -106,6 +106,7 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         read: {:any, [:manage_polls, :publish_results]},
         schedule: {:trusted, "authorized lifecycle scheduling service"},
         execute: {:trusted, "AshOban scheduled lifecycle worker"},
+        execution_failed: {:trusted, "AshOban final lifecycle failure handler"},
         cancel: {:trusted, "authorized lifecycle scheduling service"}
       },
       Polly.Polls.Option => %{
@@ -196,7 +197,8 @@ defmodule Polly.Accounts.AuthorizationCoverage do
         {:trusted, "invitation worker participation revalidation"},
       {Polly.Polls.ResultExport, :generate} => {:permission, :export_results},
       {Polly.Polls.Ballots, :submit} => {:trusted, "public voting credential flow"},
-      {Polly.Audit, :append} => {:trusted, "authorized domain action audit hook"}
+      {Polly.Audit, :append} => {:trusted, "authorized domain action audit hook"},
+      {Polly.Audit, :append_scheduled!} => {:trusted, "ID-loaded scheduled lifecycle execution"}
     }
   end
 
@@ -242,6 +244,14 @@ defmodule Polly.Accounts.AuthorizationCoverage do
       "lib/polly/polls/lifecycle_scheduling.ex" => %{
         count: 2,
         reason: "permission-gated lifecycle scheduling transaction"
+      },
+      "lib/polly/polls/changes/execute_lifecycle_transition.ex" => %{
+        count: 4,
+        reason: "AshOban transition execution after loading its persisted command"
+      },
+      "lib/polly/polls/changes/fail_lifecycle_transition.ex" => %{
+        count: 2,
+        reason: "AshOban terminal failure handling after loading its persisted command"
       },
       "lib/polly/polls/participation.ex" => %{
         count: 1,

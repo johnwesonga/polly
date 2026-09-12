@@ -6,7 +6,7 @@ defmodule Polly.Polls.LifecycleTransitionTest do
 
   alias Polly.Accounts.User
   alias Polly.Audit.Event
-  alias Polly.Polls.{LifecycleScheduling, LifecycleTransition, Poll}
+  alias Polly.Polls.{LifecycleScheduling, Poll}
 
   setup do
     actor = create_user!(:administrator)
@@ -198,36 +198,6 @@ defmodule Polly.Polls.LifecycleTransitionTest do
 
     assert {:error, :forbidden} = LifecycleScheduling.list_for_poll(poll, operator)
     assert {:error, :actor_required} = LifecycleScheduling.list_for_poll(poll, nil)
-  end
-
-  test "the Phase 1 worker remains harmless to the poll", %{actor: actor, poll: poll} do
-    transition = create_transition!(poll, actor, DateTime.add(DateTime.utc_now(), -60, :second))
-
-    _job =
-      AshOban.run_trigger(transition, :execute_due_transition,
-        scheduled_at: transition.scheduled_at
-      )
-
-    assert %{success: 1, failure: 0} =
-             Oban.drain_queue(queue: :poll_lifecycle, with_scheduled: DateTime.utc_now())
-
-    assert Ash.reload!(transition, authorize?: false).state == :completed
-    assert Ash.reload!(poll, authorize?: false).status == :draft
-  end
-
-  defp create_transition!(poll, actor, scheduled_at) do
-    LifecycleTransition
-    |> Ash.Changeset.for_create(
-      :schedule,
-      %{
-        poll_id: poll.id,
-        kind: :open,
-        scheduled_at: scheduled_at,
-        scheduled_by_id: actor.id
-      },
-      authorize?: false
-    )
-    |> Ash.create!()
   end
 
   defp audit_event!(poll_id, action) do

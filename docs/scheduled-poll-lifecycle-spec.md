@@ -2,8 +2,7 @@
 
 ## Status
 
-Phases 0 and 1 implemented. Production poll lifecycle execution begins in
-Phase 2.
+Phases 0 through 2 implemented. Lifecycle UI work begins in Phase 3.
 
 This feature is Polly's proposed greenfield evaluation of AshOban. It begins
 with a contained proof of concept before touching the production poll
@@ -417,9 +416,8 @@ service exist.
 - The Phase 1 migration removes any poll-free Phase 0 probe rows because they
   cannot be converted into valid production lifecycle commands.
 
-The generated worker still only completes the transition record and does not
-change the poll. Phase 2 replaces that proof action with real, classified
-lifecycle execution.
+The generated worker now executes the real lifecycle actions as described in
+Phase 2.
 
 ### Phase 2 — Real lifecycle execution
 
@@ -427,6 +425,30 @@ lifecycle execution.
 - Add skip/failure classification and final-error handling.
 - Preserve lifecycle timestamps and PubSub.
 - Add retry, idempotency, race, and privacy tests.
+
+#### Phase 2 implementation notes
+
+- The generated worker reloads a pending transition and its poll, then invokes
+  the existing `Poll.open` or `Poll.close` action inside the transition
+  transaction.
+- Existing readiness validation, lifecycle timestamps, and poll PubSub
+  broadcasts remain authoritative; closing never publishes results.
+- Successful work becomes `:completed`. Readiness failures become `:failed`
+  with an allow-listed code, while transitions made inapplicable by manual
+  lifecycle changes become `:skipped`.
+- Unknown exceptions retain AshOban's five-attempt retry behavior. The
+  `:execution_failed` action stores only `transition_failed` after the final
+  attempt and never persists the raw exception.
+- Automatic execution does not depend on the configuring administrator still
+  being active. Audit attribution retains that administrator's identity while
+  marking the event source as `scheduled_job`.
+- Automatic completion, skip, and failure events are distinct. Poll actions
+  suppress their normal manual audit hook during scheduled execution, avoiding
+  duplicate or misleading entries.
+- Jobs continue to contain only the transition primary key. Tests cover
+  successful opening and closing, deterministic failure, manual races,
+  repeated execution, disabled administrators, final failure, PubSub, and
+  bounded audit/job data.
 
 ### Phase 3 — Lifecycle UI
 

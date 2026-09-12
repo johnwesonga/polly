@@ -42,6 +42,18 @@ defmodule Polly.Audit do
       :replaced_transition_id
     ],
     "poll.lifecycle_schedule_cancelled" => [:transition_kind, :scheduled_for],
+    "poll.opened_automatically" => [:transition_kind, :scheduled_for, :actual_at],
+    "poll.closed_automatically" => [:transition_kind, :scheduled_for, :actual_at],
+    "poll.lifecycle_schedule_skipped" => [
+      :transition_kind,
+      :scheduled_for,
+      :failure_code
+    ],
+    "poll.lifecycle_schedule_failed" => [
+      :transition_kind,
+      :scheduled_for,
+      :failure_code
+    ],
     "poll.results_published" => [],
     "poll.results_made_public" => [:old_visibility, :new_visibility],
     "poll.results_made_credentialed" => [:old_visibility, :new_visibility],
@@ -74,6 +86,12 @@ defmodule Polly.Audit do
 
   @forbidden_fragments ~w(token password secret url csv ballot selection email)
   @max_metadata_bytes 16_384
+  @scheduled_actions ~w(
+    poll.opened_automatically
+    poll.closed_automatically
+    poll.lifecycle_schedule_skipped
+    poll.lifecycle_schedule_failed
+  )
 
   resources do
     resource Polly.Audit.Event
@@ -92,7 +110,7 @@ defmodule Polly.Audit do
 
   def append(attributes) when is_map(attributes) do
     started_at = System.monotonic_time()
-    result = do_append(attributes)
+    result = do_append(attributes, true)
 
     :telemetry.execute(
       [:polly, :audit, :append],
@@ -106,7 +124,18 @@ defmodule Polly.Audit do
     result
   end
 
-  defp do_append(attributes) do
+  @doc false
+  def append_scheduled!(%{action: action} = attributes) when action in @scheduled_actions do
+    attributes
+    |> Map.put(:source, "scheduled_job")
+    |> do_append(false)
+    |> case do
+      {:ok, event} -> event
+      {:error, reason} -> raise "scheduled audit append failed: #{inspect(reason)}"
+    end
+  end
+
+  defp do_append(attributes, authorize?) do
     with %User{} = actor <- Map.get(attributes, :actor),
          action when is_binary(action) <- Map.get(attributes, :action),
          {:ok, allowed_keys} <- fetch_definition(action),
@@ -133,7 +162,7 @@ defmodule Polly.Audit do
         },
         actor: actor
       )
-      |> Ash.create()
+      |> Ash.create(authorize?: authorize?)
     else
       nil -> {:error, :actor_required}
       {:error, reason} -> {:error, reason}
@@ -173,6 +202,18 @@ defmodule Polly.Audit do
 
       "poll.lifecycle_schedule_cancelled" ->
         "cancelled scheduled #{event.metadata["transition_kind"]} for “#{event.target_label}”"
+
+      "poll.opened_automatically" ->
+        "automatically opened “#{event.target_label}”"
+
+      "poll.closed_automatically" ->
+        "automatically closed “#{event.target_label}”"
+
+      "poll.lifecycle_schedule_failed" ->
+        "could not apply scheduled #{event.metadata["transition_kind"]} for “#{event.target_label}”"
+
+      "poll.lifecycle_schedule_skipped" ->
+        "skipped scheduled #{event.metadata["transition_kind"]} for “#{event.target_label}”"
 
       "poll.results_published" ->
         "published results for “#{event.target_label}”"

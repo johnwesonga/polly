@@ -892,6 +892,7 @@ Enum.map(transitions, fn transition ->
 end)
 ```
 
-Do not create `LifecycleTransition` or Oban job records directly. Phase 1's
-generated worker does not yet open or close the poll; real execution is added
-in Phase 2.
+Do not create `LifecycleTransition` or Oban job records directly. The generated
+worker now executes the existing `Poll.open` or `Poll.close` action when the
+job becomes due. Inspect state through `LifecycleScheduling.list_for_poll/2`;
+do not invoke the internal `:execute` or `:execution_failed` actions from IEx.
