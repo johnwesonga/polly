@@ -16,6 +16,8 @@ defmodule PollyWeb.AdminLive do
      |> assign(:attention_empty?, dashboard.attention_items == [])
      |> assign(:active_polls_visible?, dashboard.active_polls != nil)
      |> assign(:active_polls_empty?, dashboard.active_polls == [])
+     |> assign(:scheduled_transitions_visible?, dashboard.scheduled_transitions != nil)
+     |> assign(:scheduled_transitions_empty?, dashboard.scheduled_transitions == [])
      |> assign(:recent_activity_visible?, dashboard.recent_events != nil)
      |> assign(:recent_activity_empty?, dashboard.recent_events == [])
      |> assign(:account_health, dashboard.account_health)
@@ -24,6 +26,10 @@ defmodule PollyWeb.AdminLive do
      |> stream(:attention_items, dashboard.attention_items || [])
      |> stream_configure(:active_polls, dom_id: &"dashboard-active-poll-#{&1.id}")
      |> stream(:active_polls, dashboard.active_polls || [])
+     |> stream_configure(:scheduled_transitions,
+       dom_id: &"dashboard-lifecycle-transition-#{&1.id}"
+     )
+     |> stream(:scheduled_transitions, dashboard.scheduled_transitions || [])
      |> stream(:recent_events, dashboard.recent_events || [])}
   end
 
@@ -104,6 +110,65 @@ defmodule PollyWeb.AdminLive do
                 </.link>
               </div>
             </article>
+          </div>
+        </section>
+
+        <section
+          :if={@scheduled_transitions_visible?}
+          id="dashboard-scheduled-lifecycle"
+          class="dashboard-section card dashboard-panel"
+        >
+          <div class="dashboard-panel-heading">
+            <h2 class="dashboard-section-heading">Scheduled lifecycle</h2>
+            <.link navigate={~p"/admin/polls"} class="dashboard-card-link">
+              View all polls <.icon name="hero-arrow-right" />
+            </.link>
+          </div>
+          <div
+            :if={@scheduled_transitions_empty?}
+            id="dashboard-scheduled-lifecycle-empty"
+            class="dashboard-panel-empty"
+          >
+            No poll openings or closings are scheduled.
+          </div>
+          <div
+            :if={!@scheduled_transitions_empty?}
+            id="dashboard-scheduled-lifecycle-list"
+            class="dashboard-active-poll-list"
+            phx-update="stream"
+          >
+            <.link
+              :for={{id, transition} <- @streams.scheduled_transitions}
+              id={id}
+              navigate={transition.destination}
+              class="dashboard-active-poll-row dashboard-lifecycle-row"
+            >
+              <span class="dashboard-lifecycle-icon">
+                <.icon name="hero-calendar-days" />
+              </span>
+              <div class="dashboard-lifecycle-copy">
+                <h3>{transition.poll_title}</h3>
+              </div>
+              <dl class="dashboard-lifecycle-window">
+                <div :if={transition.opening_at}>
+                  <dt><span class="dashboard-lifecycle-dot opening"></span>Opens</dt>
+                  <dd>
+                    <time datetime={DateTime.to_iso8601(transition.opening_at)}>
+                      {format_lifecycle_datetime(transition.opening_at)}
+                    </time>
+                  </dd>
+                </div>
+                <div :if={transition.closing_at}>
+                  <dt><span class="dashboard-lifecycle-dot closing"></span>Closes</dt>
+                  <dd>
+                    <time datetime={DateTime.to_iso8601(transition.closing_at)}>
+                      {format_lifecycle_datetime(transition.closing_at)}
+                    </time>
+                  </dd>
+                </div>
+              </dl>
+              <span class="pill draft dashboard-lifecycle-status">Scheduled</span>
+            </.link>
           </div>
         </section>
 
@@ -333,6 +398,7 @@ defmodule PollyWeb.AdminLive do
           poll_counts: nil,
           attention_items: nil,
           active_polls: nil,
+          scheduled_transitions: nil,
           recent_events: nil,
           account_health: nil
         }
@@ -356,6 +422,14 @@ defmodule PollyWeb.AdminLive do
   defp attention_title(%{kind: :failed_deliveries, count: count}),
     do: count_title(count, "open poll has failed deliveries", "open polls have failed deliveries")
 
+  defp attention_title(%{kind: :failed_lifecycle_transitions, count: count}),
+    do:
+      count_title(
+        count,
+        "scheduled lifecycle change failed",
+        "scheduled lifecycle changes failed"
+      )
+
   defp attention_title(%{kind: :unpublished_results, count: count}),
     do: count_title(count, "result awaits publication", "results await publication")
 
@@ -377,6 +451,9 @@ defmodule PollyWeb.AdminLive do
   defp attention_description(:failed_deliveries),
     do: "Some member invitation deliveries require review."
 
+  defp attention_description(:failed_lifecycle_transitions),
+    do: "Review the failure reason and schedule a replacement if needed."
+
   defp attention_description(:unpublished_results),
     do: "Closed poll results are ready to review and publish."
 
@@ -387,6 +464,7 @@ defmodule PollyWeb.AdminLive do
   defp attention_link(:missing_electorate), do: "View electorates"
   defp attention_link(:unsent_invitations), do: "View open polls"
   defp attention_link(:failed_deliveries), do: "View deliveries"
+  defp attention_link(:failed_lifecycle_transitions), do: "Review lifecycle"
   defp attention_link(:unpublished_results), do: "Review results"
   defp attention_link(:integrity_issues), do: "Review polls"
 
@@ -402,6 +480,9 @@ defmodule PollyWeb.AdminLive do
   defp delivery_summary(_poll), do: "No deliveries"
 
   defp format_datetime(datetime), do: Calendar.strftime(datetime, "%b %d, %Y · %H:%M")
+
+  defp format_lifecycle_datetime(datetime),
+    do: Calendar.strftime(datetime, "%b %d, %Y · %H:%M UTC")
 
   defp expiring_invitation_warning(1), do: "1 administrator invitation expires within 48 hours"
 

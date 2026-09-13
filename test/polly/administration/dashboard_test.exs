@@ -248,6 +248,43 @@ defmodule Polly.Administration.DashboardTest do
     assert {:ok, %{account_health: nil}} = Dashboard.load(auditor)
   end
 
+  test "returns upcoming transitions and failed lifecycle attention to permitted actors" do
+    owner = create_user!(:owner, "lifecycle-dashboard-owner@example.com")
+    poll = create_poll!(owner, "Scheduled dashboard poll")
+    failed_poll = create_poll!(owner, "Failed dashboard poll")
+    scheduled_at = DateTime.add(DateTime.utc_now(), 2, :hour)
+
+    _opening = create_transition!(poll, owner, :open, scheduled_at)
+    _closing = create_transition!(poll, owner, :close, DateTime.add(scheduled_at, 2, :hour))
+
+    failed =
+      create_transition!(failed_poll, owner, :open, DateTime.add(scheduled_at, 1, :hour))
+
+    Polly.Repo.query!(
+      "UPDATE poll_lifecycle_transitions SET state = 'failed', failure_code = 'poll_not_open' WHERE id = ?",
+      [failed.id]
+    )
+
+    assert {:ok, %{scheduled_transitions: [upcoming], attention_items: items}} =
+             Dashboard.load(owner)
+
+    assert upcoming.id == poll.id
+    assert upcoming.poll_title == poll.title
+    assert upcoming.opening_at == scheduled_at
+    assert upcoming.closing_at == DateTime.add(scheduled_at, 2, :hour)
+    assert upcoming.destination == "/admin/polls/#{poll.id}/lifecycle"
+
+    assert %{kind: :failed_lifecycle_transitions, count: 1} =
+             find_item(items, :failed_lifecycle_transitions)
+
+    auditor = create_user!(:auditor, "lifecycle-dashboard-auditor@example.com")
+
+    assert {:ok, %{scheduled_transitions: nil, attention_items: auditor_items}} =
+             Dashboard.load(auditor)
+
+    refute find_item(auditor_items, :failed_lifecycle_transitions)
+  end
+
   defp create_user!(role, email) do
     Ash.create!(
       User,
@@ -270,6 +307,20 @@ defmodule Polly.Administration.DashboardTest do
       %{title: title},
       action: :create_draft,
       actor: actor
+    )
+  end
+
+  defp create_transition!(poll, actor, kind, scheduled_at) do
+    Ash.create!(
+      Polly.Polls.LifecycleTransition,
+      %{
+        poll_id: poll.id,
+        kind: kind,
+        scheduled_at: scheduled_at,
+        scheduled_by_id: actor.id
+      },
+      action: :schedule,
+      authorize?: false
     )
   end
 

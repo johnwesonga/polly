@@ -72,6 +72,7 @@ defmodule PollyWeb.AuditLive do
               {"All categories", ""},
               {"Members", "member"},
               {"Polls", "poll"},
+              {"Scheduled lifecycle", "poll_lifecycle"},
               {"Options", "poll_option"},
               {"Electorate", "poll_electorate"},
               {"Access grants", "poll_access_grant"}
@@ -253,7 +254,17 @@ defmodule PollyWeb.AuditLive do
   end
 
   defp filter_category(query, category) do
-    prefixes = if category == "member", do: ["member.", "member_import."], else: [category <> "."]
+    prefixes =
+      case category do
+        "member" ->
+          ["member.", "member_import."]
+
+        "poll_lifecycle" ->
+          ["poll.lifecycle_", "poll.opened_automatically", "poll.closed_automatically"]
+
+        category ->
+          [category <> "."]
+      end
 
     actions =
       Enum.filter(

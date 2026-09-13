@@ -136,4 +136,30 @@ defmodule PollyWeb.AuditLiveTest do
 
     assert has_element?(date_view, "#audit-event-count", "2 matching events")
   end
+
+  test "filters scheduled lifecycle events separately from other poll events", %{conn: conn} do
+    {conn, actor} = register_and_log_in_administrator(conn, %{role: :owner})
+    poll_id = Ash.UUID.generate()
+
+    Audit.append!(%{
+      action: "poll.created",
+      actor: actor,
+      target: %{type: "poll", id: poll_id, label: "Lifecycle audit poll"},
+      poll_id: poll_id
+    })
+
+    Audit.append!(%{
+      action: "poll.lifecycle_scheduled",
+      actor: actor,
+      target: %{type: "poll", id: poll_id, label: "Lifecycle audit poll"},
+      poll_id: poll_id,
+      metadata: %{transition_kind: "open", scheduled_for: "2026-09-14T12:00:00Z"}
+    })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/audit?category=poll_lifecycle")
+
+    assert has_element?(view, "#audit-event-count", "1 matching events")
+    assert has_element?(view, "#audit-events article", "scheduled open")
+    refute has_element?(view, "#audit-events article", "created poll")
+  end
 end

@@ -86,7 +86,8 @@ config :polly, :reminder_operation_limit, 5_000
 config :polly, Oban,
   engine: Oban.Engines.Lite,
   repo: Polly.Repo,
-  queues: [mailers: 5, poll_lifecycle: 1]
+  queues: [mailers: 5, poll_lifecycle: 1],
+  plugins: [{Oban.Plugins.Pruner, max_age: 7 * 24 * 60 * 60}]
 
 # Configure esbuild (the version is required)
 config :esbuild,

@@ -505,6 +505,90 @@
      margin-top: 3px;
  }
 
+ .dashboard-lifecycle-row {
+     grid-template-columns: 40px minmax(180px, 1fr) minmax(290px, auto) auto;
+     gap: 16px;
+     min-height: 76px;
+     padding: 14px 0;
+ }
+
+ .dashboard-lifecycle-icon {
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     width: 36px;
+     height: 36px;
+     border-radius: 10px;
+     background: rgba(32, 145, 104, 0.12);
+     color: var(--green);
+ }
+
+ .dashboard-lifecycle-icon svg {
+     width: 17px;
+     height: 17px;
+ }
+
+ .dashboard-lifecycle-copy {
+     min-width: 0;
+ }
+
+ .dashboard-lifecycle-copy h3 {
+     overflow: hidden;
+     color: var(--ink);
+     text-overflow: ellipsis;
+     white-space: nowrap;
+ }
+
+ .dashboard-lifecycle-window {
+     display: grid;
+     gap: 7px;
+     margin: 0;
+ }
+
+ .dashboard-lifecycle-window>div {
+     display: grid;
+     grid-template-columns: 62px auto;
+     align-items: center;
+     gap: 10px;
+ }
+
+ .dashboard-lifecycle-window dt,
+ .dashboard-lifecycle-window dd {
+     margin: 0;
+ }
+
+ .dashboard-lifecycle-window dt {
+     display: flex;
+     align-items: center;
+     gap: 6px;
+     color: var(--slate);
+     font-size: 10px;
+     font-weight: 750;
+     text-transform: uppercase;
+ }
+
+ .dashboard-lifecycle-window dd {
+     color: var(--ink-soft);
+     font-size: 12px;
+     font-weight: 650;
+     white-space: nowrap;
+ }
+
+ .dashboard-lifecycle-dot {
+     width: 7px;
+     height: 7px;
+     border-radius: 50%;
+     background: var(--green);
+ }
+
+ .dashboard-lifecycle-dot.closing {
+     background: var(--coral);
+ }
+
+ .dashboard-lifecycle-status {
+     justify-self: end;
+ }
+
  .dashboard-turnout strong {
      display: block;
      margin-bottom: 7px;
@@ -2202,6 +2286,15 @@
      .poll-selection-limit-grid { grid-template-columns: 1fr; }
 
      .dashboard-active-poll-row { grid-template-columns: minmax(180px, 1fr) auto; }
+
+     .dashboard-lifecycle-row {
+         grid-template-columns: 36px minmax(0, 1fr) auto;
+     }
+
+     .dashboard-lifecycle-window {
+         grid-column: 2 / -1;
+         grid-row: 2;
+     }
 
      .dashboard-turnout,
      .dashboard-delivery-summary { grid-column: 1 / -1; }

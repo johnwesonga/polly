@@ -25,6 +25,8 @@ defmodule Polly.Polls.Changes.FailLifecycleTransition do
         }
       })
 
+      Polly.Polls.LifecycleTelemetry.executed(transition, :failed, :transition_failed)
+
       Ash.Changeset.force_change_attributes(changeset, %{
         state: :failed,
         failure_code: "transition_failed"

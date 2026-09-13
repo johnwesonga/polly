@@ -75,6 +75,14 @@ defmodule PollyWeb.Telemetry do
           "The time the connection spent waiting before being checked out for the query"
       ),
 
+      # Scheduled poll lifecycle metrics. Tags contain bounded enums only.
+      sum("polly.polls.lifecycle.scheduled.count", tags: [:kind]),
+      sum("polly.polls.lifecycle.executed.count", tags: [:kind, :outcome, :failure_code]),
+      summary("polly.polls.lifecycle.executed.delay",
+        tags: [:kind, :outcome],
+        unit: :millisecond
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),

@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 0 through 3 implemented.
+Phases 0 through 4 implemented.
 
 This feature is Polly's proposed greenfield evaluation of AshOban. It begins
 with a contained proof of concept before touching the production poll
@@ -461,9 +461,20 @@ Phase 2.
 
 ### Phase 4 — Dashboard, audit, and monitoring
 
+**Implemented.**
+
 - Show next transitions and failed work on the dashboard.
 - Complete audit humanization and filtering.
 - Add bounded telemetry and safe Oban Web diagnostics.
+
+The dashboard lists the next five pending transitions and treats only
+unresolved failures as action required. The audit trail has a dedicated
+scheduled-lifecycle category, while the lifecycle detail page exposes safe
+pending and historical outcomes. Telemetry reports bounded kind, outcome, safe
+failure code, and execution delay fields; record identifiers and job arguments
+remain available only through their existing authorized administration
+surfaces. Oban Web remains the job-level diagnostic rather than being
+duplicated in the dashboard.
 
 ### Phase 5 — Production hardening
 

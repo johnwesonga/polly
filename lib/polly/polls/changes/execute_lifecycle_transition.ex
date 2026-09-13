@@ -25,6 +25,8 @@ defmodule Polly.Polls.Changes.ExecuteLifecycleTransition do
             %{actual_at: DateTime.to_iso8601(completed_at)}
           )
 
+          Polly.Polls.LifecycleTelemetry.executed(transition, :completed)
+
           Ash.Changeset.force_change_attributes(changeset, %{
             state: :completed,
             completed_at: completed_at,
@@ -40,6 +42,8 @@ defmodule Polly.Polls.Changes.ExecuteLifecycleTransition do
             code
           )
 
+          Polly.Polls.LifecycleTelemetry.executed(transition, :skipped, code)
+
           Ash.Changeset.force_change_attributes(changeset, %{
             state: :skipped,
             failure_code: to_string(code)
@@ -53,6 +57,8 @@ defmodule Polly.Polls.Changes.ExecuteLifecycleTransition do
             configuring_actor,
             code
           )
+
+          Polly.Polls.LifecycleTelemetry.executed(transition, :failed, code)
 
           Ash.Changeset.force_change_attributes(changeset, %{
             state: :failed,

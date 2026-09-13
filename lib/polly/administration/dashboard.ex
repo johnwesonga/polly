@@ -42,12 +42,22 @@ defmodule Polly.Administration.Dashboard do
           final_owner?: boolean()
         }
 
+  @type scheduled_transition :: %{
+          id: Ecto.UUID.t(),
+          poll_id: Ecto.UUID.t(),
+          poll_title: String.t(),
+          opening_at: DateTime.t() | nil,
+          closing_at: DateTime.t() | nil,
+          destination: String.t()
+        }
+
   @spec load(User.t()) ::
           {:ok,
            %{
              poll_counts: poll_counts(),
              attention_items: [attention_item()],
              active_polls: [active_poll()],
+             scheduled_transitions: [scheduled_transition()] | nil,
              recent_events: [Event.t()] | nil,
              account_health: account_health() | nil
            }}
@@ -60,6 +70,7 @@ defmodule Polly.Administration.Dashboard do
          poll_counts: poll_counts(),
          attention_items: attention_items(actor, length(integrity_issues)),
          active_polls: active_polls(actor),
+         scheduled_transitions: scheduled_transitions(actor),
          recent_events: recent_events(actor),
          account_health: account_health(actor)
        }}
@@ -129,6 +140,7 @@ defmodule Polly.Administration.Dashboard do
 
   defp attention_items(actor, integrity_issue_count) do
     {:ok, counts} = Polly.Polls.Readiness.attention_counts(actor)
+    lifecycle_failure_count = lifecycle_failure_count(actor)
 
     manager_items =
       if Authorization.allowed?(actor, :manage_polls) do
@@ -136,7 +148,8 @@ defmodule Polly.Administration.Dashboard do
           item(:missing_options, counts.missing_options, "/admin/polls?status=draft"),
           item(:missing_electorate, counts.missing_electorate, "/admin/polls?status=draft"),
           item(:unsent_invitations, counts.unsent_invitations, "/admin/polls?status=open"),
-          item(:failed_deliveries, counts.failed_deliveries, "/admin/polls?status=open")
+          item(:failed_deliveries, counts.failed_deliveries, "/admin/polls?status=open"),
+          item(:failed_lifecycle_transitions, lifecycle_failure_count, "/admin/polls")
         ]
       else
         []
@@ -153,6 +166,85 @@ defmodule Polly.Administration.Dashboard do
   defp item(_kind, 0, _destination), do: nil
   defp item(_kind, nil, _destination), do: nil
   defp item(kind, count, destination), do: %{kind: kind, count: count, destination: destination}
+
+  defp lifecycle_failure_count(actor) do
+    if Authorization.any_allowed?(actor, [:manage_polls, :publish_results]) do
+      %{rows: [[count]]} =
+        Polly.Repo.query!("""
+        SELECT COUNT(*)
+        FROM poll_lifecycle_transitions failed
+        JOIN polls poll ON poll.id = failed.poll_id
+        WHERE failed.state = 'failed'
+          AND ((failed.kind = 'open' AND poll.status = 'draft')
+            OR (failed.kind = 'close' AND poll.status IN ('draft', 'open')))
+          AND NOT EXISTS (
+            SELECT 1
+            FROM poll_lifecycle_transitions newer
+            WHERE newer.poll_id = failed.poll_id
+              AND newer.kind = failed.kind
+              AND newer.inserted_at > failed.inserted_at
+              AND newer.state IN ('pending', 'completed')
+          )
+        """)
+
+      count
+    end
+  end
+
+  defp scheduled_transitions(actor) do
+    if Authorization.any_allowed?(actor, [:manage_polls, :publish_results]) do
+      %{rows: rows} =
+        Polly.Repo.query!("""
+        WITH next_polls AS (
+          SELECT poll_id, MIN(scheduled_at) AS next_at
+          FROM poll_lifecycle_transitions
+          WHERE state = 'pending'
+          GROUP BY poll_id
+          ORDER BY next_at ASC, poll_id ASC
+          LIMIT 5
+        )
+        SELECT transition.id, transition.poll_id, poll.title,
+               transition.kind, transition.scheduled_at, next_polls.next_at
+        FROM poll_lifecycle_transitions transition
+        JOIN next_polls ON next_polls.poll_id = transition.poll_id
+        JOIN polls poll ON poll.id = transition.poll_id
+        WHERE transition.state = 'pending'
+        ORDER BY next_polls.next_at ASC, transition.poll_id ASC,
+                 transition.scheduled_at ASC, transition.id ASC
+        """)
+
+      Enum.reduce(rows, [], &group_scheduled_transition/2)
+    end
+  end
+
+  defp group_scheduled_transition(
+         [_id, poll_id, poll_title, kind, scheduled_at, _next_at],
+         schedules
+       ) do
+    scheduled_at = parse_datetime(scheduled_at)
+
+    case Enum.find_index(schedules, &(&1.poll_id == poll_id)) do
+      nil ->
+        schedule = %{
+          id: poll_id,
+          poll_id: poll_id,
+          poll_title: poll_title,
+          opening_at: if(kind == "open", do: scheduled_at),
+          closing_at: if(kind == "close", do: scheduled_at),
+          destination: "/admin/polls/#{poll_id}/lifecycle"
+        }
+
+        schedules ++ [schedule]
+
+      index ->
+        List.update_at(schedules, index, fn schedule ->
+          case kind do
+            "open" -> %{schedule | opening_at: scheduled_at}
+            "close" -> %{schedule | closing_at: scheduled_at}
+          end
+        end)
+    end
+  end
 
   defp active_polls(actor) do
     destination =

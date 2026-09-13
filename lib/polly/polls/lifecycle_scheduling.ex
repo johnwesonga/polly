@@ -32,6 +32,7 @@ defmodule Polly.Polls.LifecycleScheduling do
 
         schedule_worker!(transition)
         append_audit!("poll.lifecycle_scheduled", transition, poll, actor)
+        Polly.Polls.LifecycleTelemetry.scheduled(kind)
         transition
       end)
     end

@@ -199,6 +199,40 @@ defmodule PollyWeb.AdminLiveTest do
     refute has_element?(administrator_view, "#dashboard-account-health")
   end
 
+  test "shows upcoming and failed lifecycle transitions", %{conn: conn} do
+    owner = create_user!(:owner, "lifecycle-ui-owner@example.com")
+    poll = create_poll!(owner, "Dashboard lifecycle")
+    failed_poll = create_poll!(owner, "Failed dashboard lifecycle")
+    scheduled_at = DateTime.add(DateTime.utc_now(), 2, :hour)
+
+    _opening = create_transition!(poll, owner, :open, scheduled_at)
+    _closing = create_transition!(poll, owner, :close, DateTime.add(scheduled_at, 2, :hour))
+    failed = create_transition!(failed_poll, owner, :open, DateTime.add(scheduled_at, 1, :hour))
+
+    Polly.Repo.query!(
+      "UPDATE poll_lifecycle_transitions SET state = 'failed', failure_code = 'poll_not_open' WHERE id = ?",
+      [failed.id]
+    )
+
+    view = conn |> sign_in(owner) |> mount()
+
+    assert has_element?(view, "#dashboard-scheduled-lifecycle")
+
+    assert has_element?(
+             view,
+             "#dashboard-lifecycle-transition-#{poll.id}[href='/admin/polls/#{poll.id}/lifecycle']",
+             "Opens"
+           )
+
+    assert has_element?(view, "#dashboard-lifecycle-transition-#{poll.id}", "Closes")
+
+    assert has_element?(
+             view,
+             "#dashboard-attention-failed_lifecycle_transitions",
+             "1 scheduled lifecycle change failed"
+           )
+  end
+
   test "does not expose public administrator registration", %{conn: conn} do
     assert conn |> get("/register") |> response(404)
   end
@@ -223,6 +257,20 @@ defmodule PollyWeb.AdminLiveTest do
       %{title: title, description: "Dashboard summary"},
       action: :create_draft,
       actor: actor
+    )
+  end
+
+  defp create_transition!(poll, actor, kind, scheduled_at) do
+    Ash.create!(
+      Polly.Polls.LifecycleTransition,
+      %{
+        poll_id: poll.id,
+        kind: kind,
+        scheduled_at: scheduled_at,
+        scheduled_by_id: actor.id
+      },
+      action: :schedule,
+      authorize?: false
     )
   end
 
