@@ -55,14 +55,6 @@ defmodule PollyWeb.Layouts do
             <.icon name="hero-chart-bar" class="nav-icon" /> Overview
           </.link>
           <.link
-            :if={allowed?(@current_scope.user, :manage_members)}
-            id="admin-nav-members"
-            navigate={~p"/admin/members"}
-            class={["nav-item", @active_nav == :members && "current"]}
-          >
-            <.icon name="hero-user-group" class="nav-icon" /> Members
-          </.link>
-          <.link
             :if={
               allowed?(@current_scope.user, :manage_polls) ||
                 allowed?(@current_scope.user, :view_results)
@@ -73,6 +65,15 @@ defmodule PollyWeb.Layouts do
           >
             <.icon name="hero-list-bullet" class="nav-icon" /> Polls
           </.link>
+          <.link
+            :if={allowed?(@current_scope.user, :manage_members)}
+            id="admin-nav-members"
+            navigate={~p"/admin/members"}
+            class={["nav-item", @active_nav == :members && "current"]}
+          >
+            <.icon name="hero-user-group" class="nav-icon" /> Members
+          </.link>
+
           <.link
             :if={allowed?(@current_scope.user, :manage_administrators)}
             id="admin-nav-administrators"
